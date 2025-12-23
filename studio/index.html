@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Bracify Studio</title>
+    <link data-t-source="projects" href="/_sys/data/projects.json">
+    <link rel="stylesheet" href="common.css">
+    <script src="../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+
+    <div data-t-content="main-content">
+        <span class="section-label">Overview</span>
+        <h1>Welcome Back</h1>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+            <div>
+                <p style="color: var(--text-muted); margin: 0;">You have {projects._length} projects registered.</p>
+            </div>
+            <button class="btn-primary" onclick="location.href='project.html'">+ Create New Project</button>
+        </div>
+
+        <div class="grid">
+            <!-- Project Card List -->
+            <div data-t-list="projects" class="card" onclick="location.href='project.html?id=' + this.dataset.id"
+                data-id="{projects.id}">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+                    <h3>{projects.name}</h3>
+                    <span class="status-dot {projects.status}"></span>
+                </div>
+
+                <div class="path">{projects.path}</div>
+
+                <div
+                    style="margin-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem;">
+                    <span style="color: var(--text-muted);">Port: {projects.port}</span>
+                    <span style="color: var(--accent); font-weight: 500;">Manage &rarr;</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

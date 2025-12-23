@@ -1,0 +1,27 @@
+{
+  "name": "att-app-gui",
+  "version": "1.0.0",
+  "description": "GUI Launcher for att-app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "copy-engine": "rm -rf engine && cp -R ../engine engine",
+    "package": "npm run package:x64 && npm run package:arm64",
+    "package:x64": "npm run copy-engine && electron-packager . att-app-studio --platform=darwin --arch=x64 --overwrite",
+    "package:arm64": "npm run copy-engine && electron-packager . att-app-studio --platform=darwin --arch=arm64 --overwrite"
+  },
+  "author": "att-app Team",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsdom": "^20.0.3",
+    "socket.io": "^4.7.5",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-packager": "^17.1.2"
+  }
+}

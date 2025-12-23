@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Details | Bracify Studio</title>
+    <!-- Data Source: Fetch single project if ID exists -->
+    <link data-t-source="project" href="/_sys/data/projects.json?id={?id}&_limit=1">
+    <link rel="stylesheet" href="common.css">
+    <script src="../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+
+    <div data-t-content="main-content">
+        <a href="index.html"
+            style="color: var(--accent); font-size: 0.9rem; margin-bottom: 2rem; display: inline-block;">&larr; Back to
+            Dashboard</a>
+
+        <span class="section-label">Configuration</span>
+        <h1 data-t-if="project.id">Edit Project</h1>
+        <h1 data-t-if="!project.id">Create New Project</h1>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+            <div class="card">
+                <span class="section-label">General Info</span>
+                <!-- Form: Automagically binds to 'project' data if editing, or creates new if POST -->
+                <form data-t-scope="project" method="POST" action="/_sys/data/projects.json"
+                    data-t-redirect="index.html">
+                    <input type="hidden" name="id">
+                    <div class="form-group">
+                        <label>Project Name</label>
+                        <input type="text" name="name" placeholder="e.g. My Awesome App" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Local Path</label>
+                        <input type="text" name="path" placeholder="/Users/name/projects/my-app" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Server Port</label>
+                        <input type="number" name="port" value="8080">
+                        <input type="hidden" name="status" value="stopped">
+                    </div>
+
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                        <button type="submit" class="btn-primary">Save Project</button>
+                        <button type="button" class="btn-secondary" onclick="location.href='index.html'">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card" data-t-if="project.id">
+                <span class="section-label">Operations</span>
+                <h3>Project Control</h3>
+                <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                    Manage the server lifecycle and build process for this project.
+                </p>
+
+                <div class="form-group">
+                    <button class="btn-primary" style="width: 100%; margin-bottom: 1rem;"
+                        onclick="fetch('/_sys/api/open-project', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:this.dataset.path})}).then(() => alert('Server project switched to: ' + this.dataset.path))"
+                        data-path="{project.path}">
+                        Activate this Project
+                    </button>
+
+                    <button class="btn-secondary" style="width: 100%;"
+                        onclick="location.href='data/index.html?project=' + encodeURIComponent(this.dataset.id)"
+                        data-id="{project.id}">
+                        Manage Data Entities &rarr;
+                    </button>
+                </div>
+
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Current Status:</span>
+                        <span class="status-dot {project.status}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

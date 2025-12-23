@@ -1,0 +1,15 @@
+{
+    "name": "att-app-engine",
+    "version": "1.0.0",
+    "description": "Core engine for att-app framework",
+    "type": "module",
+    "main": "core.js",
+    "dependencies": {
+        "body-parser": "^2.2.1",
+        "cors": "^2.8.5",
+        "express": "^5.2.1",
+        "jsdom": "^22.1.0",
+        "sqlite3": "^5.1.7"
+    },
+    "private": true
+}

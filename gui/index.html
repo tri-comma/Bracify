@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>att-app Launcher</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f7;
+      color: #333;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: #555;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
+    input[type="number"] {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      width: 80px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button.primary {
+      background: #007aff;
+      color: white;
+    }
+
+    button.primary:hover {
+      background: #0062cc;
+    }
+
+    button.danger {
+      background: #ff3b30;
+      color: white;
+    }
+
+    button.danger:hover {
+      background: #d63028;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      background: #ccc;
+    }
+
+    .status-dot.active {
+      background: #34c759;
+    }
+
+    .dashboard-link {
+      margin-top: 10px;
+      padding: 10px;
+      background: #eef;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dashboard-link a {
+      color: #007aff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    #logs {
+      width: 100%;
+      height: 200px;
+      background: #222;
+      color: #0f0;
+      font-family: monospace;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      resize: vertical;
+      box-sizing: border-box;
+      font-size: 0.8rem;
+      display: none;
+      margin-top: 10px;
+    }
+
+    .toggle-logs {
+      font-size: 0.8rem;
+      color: #888;
+      cursor: pointer;
+      text-decoration: underline;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>1. Project Selection</h1>
+    <div style="margin-bottom: 10px; padding: 10px; background: #f0f0f5; border-radius: 6px; font-size: 0.85rem; word-break: break-all;" id="project-path-display">
+      No project selected.
+    </div>
+    <div class="control-group">
+      <button class="primary" onclick="selectProject()">Select Project Folder</button>
+      <button onclick="buildProject()" id="manual-build-btn" disabled>Build Manual</button>
+    </div>
+    <div style="margin-top: 10px; font-size: 0.8em; color: #666;" id="build-status">Ready.</div>
+  </div>
+
+  <div class="card">
+    <h1>2. Server Control</h1>
+    <div class="control-group">
+      <span id="status-dot" class="status-dot"></span>
+      <span id="status-text">Stopped</span>
+    </div>
+    <div class="control-group">
+      <label>Port:</label>
+      <input type="number" id="port-input" value="3000">
+      <button id="start-btn" class="primary" disabled title="Please select a project first">Start Server</button>
+      <button id="stop-btn" class="danger" disabled>Stop</button>
+    </div>
+
+    <div id="dashboard-area" class="dashboard-link" style="display: none;">
+      <span id="dashboard-url">http://localhost:3000/</span>
+      <button onclick="openLink()">Open in Browser</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>Logs</h1>
+    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 5px;">
+      <button class="toggle-logs" onclick="toggleLogs()">Show/Hide Logs</button>
+    </div>
+    <textarea id="logs" readonly></textarea>
+  </div>
+
+  <div class="card">
+    <h1>Data Tools (Debug)</h1>
+    <div class="control-group">
+      <button onclick="listData()">List Data</button>
+      <span id="db-status"></span>
+    </div>
+    <ul id="data-list" style="max-height: 100px; overflow-y: auto; background: #eee; padding: 10px; list-style: none;">
+    </ul>
+    <div style="margin-top: 10px; display: flex; gap: 10px;">
+      <input type="text" id="new-data-name" placeholder="Name">
+      <button onclick="createData()">Create Dummy</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+  <script>
+    function toggleLogs() {
+      const el = document.getElementById('logs');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+  </script>
+</body>
+
+</html>
