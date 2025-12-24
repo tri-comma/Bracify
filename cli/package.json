@@ -1,13 +1,13 @@
 {
-    "name": "att-app-cli",
+    "name": "@bracify/cli",
     "version": "1.0.0",
-    "description": "CLI build tool for att-app",
+    "description": "CLI build tool for Bracify",
     "main": "index.js",
     "bin": {
-        "att-app": "./index.js"
+        "bracify": "./index.js"
     },
     "dependencies": {
-        "att-app-engine": "file:../engine",
+        "@bracify/engine": "file:../engine",
         "yargs": "^17.7.0"
     },
     "private": true

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
-const { processHTML } = require('../engine/core');
+const { processHTML } = require('@bracify/engine/server/renderer.cjs');
 
 // Simple args parsing: node index.js <input-dir> <output-dir>
 const args = process.argv.slice(2);
 if (args.length < 2) {
-    console.error("Usage: att-app-cli <input-dir> <output-dir>");
+    console.error("Usage: bracify-cli <input-dir> <output-dir>");
     process.exit(1);
 }
 

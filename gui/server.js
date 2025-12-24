@@ -1,4 +1,4 @@
-const EngineServer = require('@att-app/engine/server/index.cjs');
+const EngineServer = require('@bracify/engine/server/index.cjs');
 const sqlite3 = require('sqlite3'); // Use Electron-compatible sqlite3
 
 class SystemServer {

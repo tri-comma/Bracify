@@ -1,6 +1,6 @@
 const { JSDOM } = require('jsdom');
-const AttApp = require('../lib/engine.cjs');
-const { Engine } = AttApp;
+const Bracify = require('../lib/engine.cjs');
+const { Engine } = Bracify;
 
 /**
  * Server-side wrapper to process HTML string using JSDOM.

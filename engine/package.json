@@ -1,9 +1,9 @@
 {
-    "name": "att-app-engine",
+    "name": "@bracify/engine",
     "version": "1.0.0",
-    "description": "Core engine for att-app framework",
+    "description": "Core engine for Bracify framework",
     "type": "module",
-    "main": "core.js",
+    "main": "lib/engine.cjs",
     "dependencies": {
         "body-parser": "^2.2.1",
         "cors": "^2.8.5",

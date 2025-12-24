@@ -1,18 +1,20 @@
 {
-  "name": "att-app-gui",
+  "name": "@bracify/gui",
   "version": "1.0.0",
-  "description": "GUI Launcher for att-app",
+  "description": "GUI Launcher for Bracify",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "postinstall": "electron-rebuild -f -w sqlite3",
     "copy-engine": "rm -rf engine && cp -R ../engine engine",
     "package": "npm run package:x64 && npm run package:arm64",
-    "package:x64": "npm run copy-engine && electron-packager . att-app-studio --platform=darwin --arch=x64 --overwrite",
-    "package:arm64": "npm run copy-engine && electron-packager . att-app-studio --platform=darwin --arch=arm64 --overwrite"
+    "package:x64": "npm run copy-engine && electron-packager . bracify-studio --platform=darwin --arch=x64 --overwrite",
+    "package:arm64": "npm run copy-engine && electron-packager . bracify-studio --platform=darwin --arch=arm64 --overwrite"
   },
-  "author": "att-app Team",
+  "author": "Bracify Team",
   "license": "MIT",
   "dependencies": {
+    "@bracify/engine": "file:../engine",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "electron": "^30.0.0",
-    "electron-packager": "^17.1.2"
+    "electron-packager": "^17.1.2",
+    "electron-rebuild": "^3.2.9"
   }
 }

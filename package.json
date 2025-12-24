@@ -1,0 +1,13 @@
+{
+  "name": "bracify-root",
+  "private": true,
+  "workspaces": [
+    "engine",
+    "gui",
+    "cli"
+  ],
+  "scripts": {
+    "setup": "npm install",
+    "start": "npm start --workspace=gui"
+  }
+}

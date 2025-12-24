@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const SystemServer = require('./server');
-const Builder = require('@att-app/engine/server/builder.cjs');
+const Builder = require('@bracify/engine/server/builder.cjs');
 
 let mainWindow;
 let systemServer = null;

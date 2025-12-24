@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
-const AttApp = require('../lib/engine.cjs');
-const { Engine } = AttApp;
+const Bracify = require('../lib/engine.cjs');
+const { Engine } = Bracify;
 
 class Builder {
     constructor(logger = console.log) {
