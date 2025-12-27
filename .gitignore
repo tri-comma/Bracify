@@ -1,12 +1,9 @@
 # Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Build output
-_dist/
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
 
 # Electron
 *.exe
@@ -19,11 +16,19 @@ _dist/
 .env.*
 
 # OS / Editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+**/.DS_Store
+**/Thumbs.db
+**/.vscode/
+**/.idea/
 
 # Logs
-logs/
-*.log
+**/logs/
+**/*.log
+
+# Bracify
+gui/engine/
+gui/dist/
+**/package-lock.json
+!/package-lock.json
+**/_sys/data.db
+**/_dist/

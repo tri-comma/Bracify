@@ -2,15 +2,15 @@
     {
         "id": "studio",
         "name": "Bracify Studio",
-        "path": "/Users/kimura.manabu/Documents/Antigravity/att-app/studio",
+        "path": "./studio",
         "status": "active",
         "port": 3000
     },
     {
         "id": "test-project",
         "name": "Test Project",
-        "path": "/Users/kimura.manabu/Documents/Antigravity/att-app/test-project",
+        "path": "./test-project",
         "status": "stopped",
-        "port": 8080
+        "port": 3001
     }
 ]
