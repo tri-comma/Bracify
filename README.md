@@ -1,16 +1,38 @@
-# Bracify(ブレイシファイ)
+[English](./README.en.md) | [Español](./README.es.md) | [Português](./README.pt.md) | [简体中文](./README.zh.md) | [한국어](./README.kr.md) | [日本語](./README.md)
 
-`Bracify` は、HTMLのマークアップだけでWebアプリケーションを構築できるフレームワークです。
+<p align="center">
+  <img src="./logo.png" alt="Bracify Logo" width="200">
+</p>
 
-## コンセプト
+# Bracify 🚀
 
-- **HTML Markup Only**: ユーザーはプログラムを書かず、HTMLをマークアップするだけでアプリを作成します。
-- **Zero Configuration**: コマンドライン操作（npm installなど）を排除し、GUIアプリひとつで開発を開始できます。
-- **Isomorphic (Universal)**: ローカル（file://）でもサーバー（http://）でも、同じエンジンが動作し、同じ結果を生成します。
+> **The HTML-only web framework. No CLI, Just Markup.**
 
-## はじめに (Getting Started)
+Bracifyは、HTMLのマークアップだけでWebアプリケーションを構築できるフレームワークです。
+プログラミングや複雑な環境構築の壁をゼロにすることを目指した「HTML-first」な開発体験を提供します。
 
-まずは簡単なページの作成から始めてみましょう。
+## Bracifyとは
+
+Bracifyは「マークアップだけでアプリが作れる」というシンプルさを追求しています。
+
+- **React/Vueに疲れたエンジニアへ**: 複雑なビルド設定や重厚なフレームワークの学習から解放されます。
+- **マークアップエンジニアへ**: プログラミング不要、あなたのHTMLスキルだけでデータ連携からデプロイまで、フル機能のWebアプリが作れます。
+
+## Demo
+
+![Demo Animation](./demo.gif)
+
+## Key Concepts
+
+- **HTML Markup Only**: プログラムを書かず、HTMLをマークアップするだけでアプリを作成。
+- **No CLI Required**: 黒い画面（ターミナル）は不要です。専用のGUIランチャーがすべてを解決します。
+- **Hybrid Rendering**: `file://` (CSR) で開発し、本番はそのままサーバー `https://` (SSR) として公開可能。
+- **Zero Configuration**: 複雑な `npm install` 等は一切不要。
+- **Portable**: プロジェクトはただのHTML。どこへでも持ち運べ、すぐに動かせます。
+
+## Quick Start
+
+まずは簡単なページの作成から始めてみましょう。たったの4ステップで完了します。
 
 ### 1. 準備
 
@@ -45,8 +67,10 @@
 
 ### 4. 実行
 
-GUIアプリでプレビューボタンを押すと、ブラウザが立ち上がり `Hello Bracify!` と表示されます。
-JavaScriptを書かずに、HTML属性だけでデータが表示される体験です。
+GUIアプリで `Start Server` ボタンを押すと、作業フォルダに `_dist` フォルダが生成されます。`_dist` フォルダ内の `index.html` をブラウザで開くと、 `Hello Bracify!` と表示されます。`localhost:3000` を開いても同じ表示がされます。
+JavaScriptを書かずに、HTMLだけでデータが表示される体験を楽しんでください。
+
+---
 
 ## Development Tools (Bracify Studio)
 
@@ -593,5 +617,5 @@ project/
 
 1. 公式サイトから `Bracify` GUIアプリをダウンロード＆インストール。
 2. アプリを起動し、作業フォルダを作成・選択。
-3. `index.html` `parts/header.html` などを編集。GUIアプリがリアルタイムプレビューを提供。
+3. `index.html` `_parts/header.html` などを編集。GUIアプリがリアルタイムプレビューを提供。
 4. 完成したらZip化して公開。
