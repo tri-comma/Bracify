@@ -257,7 +257,7 @@ project/
     ```
 
 - **展示多条数据 (`data-t-list`)**：
-    若要展示多条数据，必须在需要重复的范围（元素）上指定 `data-t-list="数据源名称"`。
+    若要展示多条数据，您必须在需要重复的范围（元素）上指定 `data-t-list="数据源名称"`。
 
     ```html
     <link data-t-source="articles" href="/_sys/data/articles.json">
@@ -630,3 +630,10 @@ project/
 2. 启动应用，并创建·选择工作文件夹。
 3. 编辑 `index.html`, `_parts/header.html` 等。GUI 应用将提供实时预览。
 4. 完成后打包为 Zip 并发布。
+
+## 安全性
+
+Bracify 内置了多项保护功能，以支持安全的前端开发。
+
+- **自动转义**：通过 `{placeholder}` 展开的数据会自动进行 HTML 转义（作为纯文本处理），从而防止 XSS（跨站脚本攻击）。
+- **安全数据注入**：在 SSR 或构建过程中将数据注入 HTML 时，会自动进行转义以防止脚本标签干扰（例如 `</script>` 造成的截断）。

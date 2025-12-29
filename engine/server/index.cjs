@@ -206,9 +206,12 @@ class EngineServer {
                     // Inject Client State Script
                     // window._sys provides context (query/params)
                     // window.__BRACIFY_DATA__ provides pre-fetched sources to avoid double-fetching
+                    // Security: Escape < to \u003c to prevent XSS (script breakout like </script>)
+                    const safeSys = JSON.stringify(_sysData).replace(/</g, '\\u003c');
+                    const safeData = JSON.stringify(data).replace(/</g, '\\u003c');
                     const stateScript = `<script>
-                        window._sys = ${JSON.stringify(_sysData)};
-                        window.__BRACIFY_DATA__ = ${JSON.stringify(data)};
+                        window._sys = ${safeSys};
+                        window.__BRACIFY_DATA__ = ${safeData};
                     </script>`;
 
                     if (processed.includes('</head>')) {

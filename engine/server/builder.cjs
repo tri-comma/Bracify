@@ -123,9 +123,11 @@ class Builder {
         try {
             const content = fs.readFileSync(srcPath, 'utf-8');
             JSON.parse(content);
+            // Security: Escape < to \u003c to prevent script injection in the generated JS file
+            const safeContent = content.replace(/</g, '\\u003c');
             // Safe IIFE to ensure data is loaded even if Bracify isn't ready yet
             const jsContent = `(function(){
-    const data = ${content};
+    const data = ${safeContent};
     if (typeof window !== 'undefined') {
         if (!window.__BRACIFY_DATA__) window.__BRACIFY_DATA__ = {};
         window.__BRACIFY_DATA__['${name}'] = data;

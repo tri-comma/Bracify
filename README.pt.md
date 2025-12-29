@@ -257,7 +257,7 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
     ```
 
 - **Exibindo Múltiplos Itens (`data-t-list`)**:
-    Se houver vários itens para exibir, você deve usar `data-t-list="nome_da_fonte"` no elemento que deseja repetir.
+    Se houver vários itens de dados que você deseja exibir, você deve especificar `data-t-list="Nome da Fonte de Dados"` no elemento (intervalo) que deseja repetir.
 
     ```html
     <link data-t-source="articles" href="/_sys/data/articles.json">
@@ -630,3 +630,10 @@ Este modo é indicado para testes rápidos de design e funcionalidade, e seu com
 2. Inicie o app e crie ou selecione uma pasta de projeto.
 3. Edite seu `index.html`, `_parts/header.html`, etc. O app GUI fornece preview em tempo real.
 4. Quando terminar, gere o Zip e publique!
+
+## Segurança
+
+O Bracify inclui várias funcionalidades de proteção integradas para apoiar o desenvolvimento frontend seguro.
+
+- **Auto-Escape**: A expansão de dados via `{placeholder}` é automaticamente escapada para HTML (tratada como texto simples), prevenindo XSS (Cross-Site Scripting).
+- **Injeção Segura de Dados**: Ao injetar dados em HTML durante processos de SSR ou build, eles são escapados automaticamente para prevenir a interferência de tags de script (como quebras com `</script>`).

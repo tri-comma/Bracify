@@ -257,7 +257,7 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
     ```
 
 - **Displaying Multiple Items (`data-t-list`)**:
-    If there are multiple data items you want to display, you must specify `data-t-list="datasource_name"` on the element (range) you want to repeat.
+    If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.
 
     ```html
     <link data-t-source="articles" href="/_sys/data/articles.json">
@@ -630,3 +630,10 @@ This mode is intended for design confirmation and simple functional checks, and 
 2. Launch the app and create/select a workspace folder.
 3. Edit `index.html`, `_parts/header.html`, etc. The GUI app provides a real-time preview.
 4. Once complete, Zip and publish.
+
+## Security
+
+Bracify includes several built-in protection features to support safe frontend development.
+
+- **Auto-Escaping**: Data expansion via `{placeholder}` is automatically HTML-escaped (treated as plain text), preventing XSS (Cross-Site Scripting).
+- **Secure Data Injection**: When injecting data into HTML during SSR or build processes, it is automatically escaped to prevent script tag interference (such as `</script>` breakouts).

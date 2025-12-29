@@ -256,8 +256,8 @@ Puedes mostrar datos escribiendo `{nombre_fuente_datos.nombre_item}` en el texto
     <p>{article.body}</p>
     ```
 
-- **Mostrar múltiples ítems (`data-t-list`)**:
-    Si hay múltiples ítems de datos que deseas mostrar, debes especificar `data-t-list="nombre_fuente_datos"` en el elemento (rango) que deseas repetir.
+- **Mostrar múltiples elementos (`data-t-list`)**:
+    Si hay múltiples elementos de datos que deseas mostrar, debes especificar `data-t-list="Nombre de la Fuente de Datos"` en el elemento (rango) que deseas repetir.
 
     ```html
     <link data-t-source="articles" href="/_sys/data/articles.json">
@@ -630,3 +630,10 @@ Este modo está destinado a la confirmación del diseño y comprobaciones funcio
 2. Inicia la aplicación y crea/selecciona una carpeta de espacio de trabajo.
 3. Edita `index.html`, `_parts/header.html`, etc. La aplicación GUI proporciona una previsualización en tiempo real.
 4. Una vez completado, comprime en Zip y publica.
+
+## Seguridad
+
+Bracify incluye varias funciones de protección integradas para apoyar el desarrollo frontend seguro.
+
+- **Auto-Escape**: La expansión de datos mediante `{placeholder}` se escapa automáticamente a HTML (se trata como texto plano), previniendo XSS (Cross-Site Scripting).
+- **Inyección Segura de Datos**: Al inyectar datos en HTML durante los procesos de SSR o construcción, estos se escapan automáticamente para prevenir la interferencia de etiquetas de script (como rupturas con `</script>`).
