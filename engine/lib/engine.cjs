@@ -96,7 +96,12 @@ const factory = function () {
             return getNestedValue(data, exprStr);
         }
 
-        return exprStr.replace(/\{\s*([^}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, key, pipeExpr) => {
+        // Security: Block nested placeholders {...{...}...}
+        if (/\{[^{}]*\{/.test(exprStr)) {
+            return exprStr;
+        }
+
+        return exprStr.replace(/\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, key, pipeExpr) => {
             let lookupKey = key.trim();
             if (lookupKey.startsWith('?')) lookupKey = '_sys.query.' + lookupKey.substring(1);
             let val = getNestedValue(data, lookupKey);
