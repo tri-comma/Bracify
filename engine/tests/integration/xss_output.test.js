@@ -94,6 +94,27 @@ test('Integration: XSS Output Prevention', async (t) => {
         // and acknowledge the SSR logic is identical.
     });
 
+    await t.test('Integration: URL Sanitization (Builder & SSR)', async () => {
+        // Since we use the same engine in Builder and SSR, testing the renderer covers both.
+        const html = `
+            <div>
+                <a id="link" href="{url1}">Link</a>
+                <img id="img" src="{url2}">
+            </div>
+        `;
+        const data = {
+            url1: 'javascript:alert("XSS")',
+            url2: 'http://safe.com/logo.png'
+        };
+
+        const result = await Renderer.processHTML(html, data);
+        const dom = new JSDOM(result);
+        const doc = dom.window.document;
+
+        assert.strictEqual(doc.querySelector('#link').getAttribute('href'), 'about:blank', 'javascript: should be blocked');
+        assert.strictEqual(doc.querySelector('#img').getAttribute('src'), 'http://safe.com/logo.png', 'Safe URL should be preserved');
+    });
+
     // Cleanup
     fs.rmSync(projectRoot, { recursive: true, force: true });
 });

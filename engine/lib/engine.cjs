@@ -5,7 +5,7 @@
 const factory = function () {
     // --- Utilities ---
     function isTruthy(val) {
-        if (val === undefined || val === null || val === false || val === 0 || val === "") return false;
+        if (val === undefined || null === val || false === val || 0 === val || "" === val) return false;
         if (Array.isArray(val)) return val.length > 0;
         if (typeof val === 'object') {
             const proto = Object.getPrototypeOf(val);
@@ -15,6 +15,18 @@ const factory = function () {
         }
         return true;
     }
+
+    function sanitizeUrl(url) {
+        if (typeof url !== 'string') return url;
+        const trimmed = url.trim();
+        // Block javascript: and other dangerous schemes that can execute code
+        if (/^(javascript:|vbscript:|data:text\/html)/i.test(trimmed)) {
+            return 'about:blank';
+        }
+        return url;
+    }
+
+    const URL_ATTRIBUTES = ['href', 'src', 'action', 'formaction'];
 
     function getNestedValue(data, path, noExpand = false) {
         if (!path) return undefined;
@@ -255,8 +267,12 @@ const factory = function () {
             if (attr.name.startsWith('on')) continue;
 
             if (attr.value && attr.value.indexOf('{') !== -1) {
-                const val = resolveValue(attr.value, data);
+                let val = resolveValue(attr.value, data);
                 if (val !== undefined) {
+                    // Sanitize URL attributes
+                    if (URL_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                        val = sanitizeUrl(val);
+                    }
                     el.setAttribute(attr.name, val);
                     if (el.tagName === 'SELECT' && attr.name === 'value') updateSelectOptions(el, val);
                 }

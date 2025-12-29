@@ -637,3 +637,4 @@ Bracify includes several built-in protection features to support safe frontend d
 
 - **Auto-Escaping**: Data expansion via `{placeholder}` is automatically HTML-escaped (treated as plain text), preventing XSS (Cross-Site Scripting).
 - **Secure Data Injection**: When injecting data into HTML during SSR or build processes, it is automatically escaped to prevent script tag interference (such as `</script>` breakouts).
+- **URL Sanitization**: When embedding data into `href` or `src` attributes, any dangerous protocols such as `javascript:` are automatically detected and disabled to prevent unexpected script execution.

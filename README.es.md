@@ -637,3 +637,4 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
 
 - **Auto-Escape**: La expansión de datos mediante `{placeholder}` se escapa automáticamente a HTML (se trata como texto plano), previniendo XSS (Cross-Site Scripting).
 - **Inyección Segura de Datos**: Al inyectar datos en HTML durante los procesos de SSR o construcción, estos se escapan automáticamente para prevenir la interferencia de etiquetas de script (como rupturas con `</script>`).
+- **Sanitización de URL**: Al incrustar datos en los atributos `href` o `src`, se detectan y desactivan automáticamente los protocolos peligrosos como `javascript:` para evitar la ejecución inesperada de scripts.

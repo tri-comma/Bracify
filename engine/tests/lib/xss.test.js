@@ -58,6 +58,40 @@ test('Security: XSS Prevention (Unit)', async (t) => {
         assert.strictEqual(div.getElementsByTagName('script').length, 0);
     });
 
+    await t.test('Should sanitize dangerous URL attributes (javascript:)', async () => {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <a id="l1" href="{url1}">Link</a>
+            <img id="i1" src="{url2}">
+            <form id="f1" action="{url3}">
+                <button formaction="{url4}">Submit</button>
+            </form>
+        `;
+
+        const data = {
+            url1: 'javascript:alert(1)',
+            url2: ' javascript:alert(2) ', // with spaces
+            url3: 'data:text/html,<html>',
+            url4: 'http://example.com' // safe
+        };
+
+        await engine.processElement(div, data);
+
+        assert.strictEqual(div.querySelector('#l1').getAttribute('href'), 'about:blank');
+        assert.strictEqual(div.querySelector('#i1').getAttribute('src'), 'about:blank');
+        assert.strictEqual(div.querySelector('#f1').getAttribute('action'), 'about:blank');
+        assert.strictEqual(div.querySelector('button').getAttribute('formaction'), 'http://example.com');
+    });
+
+    await t.test('Should allow safe data: URLs (images)', async () => {
+        const div = document.createElement('div');
+        div.innerHTML = '<img src="{url}">';
+        const data = { url: 'data:image/png;base64,123' };
+
+        await engine.processElement(div, data);
+        assert.strictEqual(div.querySelector('img').getAttribute('src'), 'data:image/png;base64,123');
+    });
+
     // Clean up
     delete global.window;
     delete global.document;
