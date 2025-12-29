@@ -619,6 +619,61 @@ Este modo é indicado para testes rápidos de design e funcionalidade, e seu com
   - `_sort`: Escolher campo para ordenar.
   - `_order`: `asc` ou `desc`.
 
+## Configuração da Base de Dados
+
+Por padrão, o Bracify utiliza o SQLite integrado (`_sys/data.db`), mas você pode se conectar a bases de dados externas como MySQL ou PostgreSQL definindo as configurações de conexão.
+
+### Como funciona
+
+Ao iniciar, o Bracify sempre consulta o arquivo `_sys/data.db` (SQLite) dentro do projeto para verificar as configurações do sistema. As configurações de conexão e roteamento da base de dados são armazenadas na tabela `config` dentro deste arquivo.
+
+Isso elimina a necessidade de gerenciar ou cometer informações sensíveis (como credenciais) como arquivos de texto, garantindo uma operação segura mantendo os segredos fora do repositório.
+
+### Comportamento padrão (Sem configuração)
+
+Se a tabela `config` não existir ou não houver configuração para uma entidade específica, **o SQLite integrado (`_sys/data.db`) é usado automaticamente.** Nenhuma configuração é necessária para projetos simples.
+
+### Como configurar
+
+Você pode configurar isso através da interface gráfica (Bracify Studio) ou inserindo valores diretamente na tabela `config` da base de dados no seguinte formato:
+
+- **Tabela de destino**: `config`
+- **Colunas**: `name` = 'db', `value` = (array JSON de informações de conexão abaixo)
+
+**Formato de informações de conexão (JSON):**
+
+```json
+[
+  {
+    "target_entity": "users",
+    "engine": "mysql",
+    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
+  },
+  {
+    "target_entity": "logs_*",
+    "engine": "mongodb",
+    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
+  },
+  {
+    "target_entity": "*",
+    "engine": "postgresql",
+    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
+  }
+]
+```
+
+#### Prioridade de Roteamento (target_entity)
+
+O destino da conexão é selecionado automaticamente com base no nome da entidade, de acordo com as seguintes regras:
+
+1. **Correspondência Exata**: As configurações que coincidem perfeitamente com o nome têm a prioridade mais alta.
+2. **Correspondência de Padrão**: Para configurações contendo um curinga `*`, prioriza-se aquela com a "parte fixa mais longa (caracteres)" (ex: `data_*` tem precedência sobre `*`).
+3. **Ordem de Definição**: Se vários padrões corresponderem com o mesmo comprimento da parte fixa, prioriza-se o que estiver **definido mais acima no array JSON**.
+4. **SQLite integrado**: Usado como fallback se nenhuma das regras acima corresponder.
+
+- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb`, etc. (implementados sequencialmente).
+- **option**: Configurações de conexão específicas do driver. Suporta variáveis de ambiente usando o formato `${ENV_VAR}`.
+
 ## Implantação (Deployment)
 
 - **Serverless**: Preparado para implantação em serviços como Vercel ou Netlify.

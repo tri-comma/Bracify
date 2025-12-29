@@ -3,7 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
-const db = require('./db.cjs');
+const db = require('./db/index.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
@@ -58,8 +58,8 @@ class EngineServer {
             this.logger(`[Engine] Data API: ${req.method} ${entity} filters=${JSON.stringify(filters)}`);
 
             // Security Check
-            if (!/^[a-zA-Z0-9_-]+$/.test(entity)) {
-                this.logger(`[Security] Blocked invalid entity: ${entity}`);
+            if (!/^[a-zA-Z0-9_-]+$/.test(entity) || entity.startsWith('_')) {
+                this.logger(`[Security] Blocked invalid or system entity: ${entity}`);
                 return res.status(400).json({ error: 'Invalid entity name' });
             }
 
@@ -175,8 +175,9 @@ class EngineServer {
                         // Data fetcher for SSR
                         // Security Validation
                         const validHrefPattern = /^\/?_sys\/data\/([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
-                        if (!validHrefPattern.test(href)) {
-                            this.logger(`[Security] SSR blocked invalid href: ${href}`);
+                        const match = href.match(validHrefPattern);
+                        if (!match || match[1].startsWith('_')) {
+                            this.logger(`[Security] SSR blocked invalid or system href: ${href}`);
                             return null;
                         }
 

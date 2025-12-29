@@ -619,6 +619,61 @@ project/
   - `_sort`：排序对象键
   - `_order`：`asc` (升序) 或 `desc` (降序)
 
+## 数据库配置 (Database Configuration)
+
+Bracify 默认使用内置的 SQLite (`_sys/data.db`)，但您可以通过配置连接设置来连接到外部数据库，如 MySQL 或 PostgreSQL。
+
+### 工作原理
+
+在启动时，Bracify 始终会引用项目内的 `_sys/data.db` (SQLite) 来检查系统配置。数据库连接和路由设置存储在该文件内的 `config` 表中。
+
+这消除了以文本文件形式管理或提交敏感信息（如凭据）的需求，通过将这些信息排除在代码库之外来确保安全操作。
+
+### 默认行为（无配置）
+
+如果 `config` 表不存在或没有针对特定实体的配置，**将自动使用内置的 SQLite (`_sys/data.db`)。** 对于简单项目，不需要进行任何配置。
+
+### 如何配置
+
+您可以通过图形界面 (Bracify Studio) 或直接按照以下格式向数据库的 `config` 表插入值来进行配置：
+
+- **目标表**: `config`
+- **列**: `name` = 'db', `value` = (下面的连接信息 JSON 数组)
+
+**连接信息格式 (JSON):**
+
+```json
+[
+  {
+    "target_entity": "users",
+    "engine": "mysql",
+    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
+  },
+  {
+    "target_entity": "logs_*",
+    "engine": "mongodb",
+    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
+  },
+  {
+    "target_entity": "*",
+    "engine": "postgresql",
+    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
+  }
+]
+```
+
+#### 路由优先级 (target_entity)
+
+连接目标将根据实体名称按照以下规则自动选择：
+
+1. **完全匹配**: 与名称完全匹配的设置优先级最高。
+2. **模式匹配**: 对于包含通配符 `*` 的设置，优先考虑“固定部分（字符）最长”的设置（例如，`data_*` 优先于 `*`）。
+3. **定义顺序**: 如果有多个模式匹配且固定部分长度相同，则优先考虑 **JSON 数组中定义靠前**的设置。
+4. **内置 SQLite**: 如果以上规则均不匹配，则作为备用选项。
+
+- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb` 等（逐步实现）。
+- **option**: 驱动程序特定的连接设置。支持使用 `${ENV_VAR}` 格式的环境变量。
+
 ## 部署 (Deployment)
 
 - **Serverless**：计划支持部署至 Vercel 或 Netlify。

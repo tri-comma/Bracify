@@ -619,6 +619,61 @@ Este modo está destinado a la confirmación del diseño y comprobaciones funcio
   - `_sort`: Clave por la cual ordenar.
   - `_order`: `asc` (ascendente) o `desc` (descendente).
 
+## Configuración de la Base de Datos
+
+Por defecto, Bracify utiliza SQLite integrado (`_sys/data.db`), pero puede conectarse a bases de datos externas como MySQL o PostgreSQL configurando los ajustes de conexión.
+
+### Cómo funciona
+
+Al iniciarse, Bracify siempre consulta el archivo `_sys/data.db` (SQLite) dentro del proyecto para verificar los ajustes del sistema. Los ajustes de conexión y enrutamiento de la base de datos se almacenan en la tabla `config` dentro de este archivo.
+
+Esto elimina la necesidad de gestionar o confirmar información sensible (como credenciales) en archivos de texto, garantizando una operación segura al mantener los ajustes fuera del repositorio.
+
+### Comportamiento por defecto (Sin configuración)
+
+Si la tabla `config` no existe o no hay configuración para una entidad específica, **se utiliza automáticamente el SQLite integrado (`_sys/data.db`).** No se requiere configuración para proyectos sencillos.
+
+### Cómo configurar
+
+Puede configurar esto a través de la interfaz gráfica (Bracify Studio) o insertando directamente los valores en la tabla `config` de la base de datos con el siguiente formato:
+
+- **Tabla objetivo**: `config`
+- **Columnas**: `name` = 'db', `value` = (matriz JSON de información de conexión a continuación)
+
+**Formato de información de conexión (JSON):**
+
+```json
+[
+  {
+    "target_entity": "users",
+    "engine": "mysql",
+    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
+  },
+  {
+    "target_entity": "logs_*",
+    "engine": "mongodb",
+    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
+  },
+  {
+    "target_entity": "*",
+    "engine": "postgresql",
+    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
+  }
+]
+```
+
+#### Prioridad de Enrutamiento (target_entity)
+
+El destino de la conexión se selecciona automáticamente en función del nombre de la entidad según las siguientes reglas:
+
+1. **Coincidencia Exacta**: Se da la máxima prioridad a los ajustes que coinciden perfectamente con el nombre.
+2. **Coincidencia de Patrón**: Para los ajustes que contienen un comodín `*`, se prioriza el que tenga la "parte fija más larga (caracteres)" (por ejemplo, `data_*` tiene prioridad sobre `*`).
+3. **Orden de Definición**: Si coinciden varios patrones con la misma longitud de parte fija, se prioriza el que esté **definido más arriba en la matriz JSON**.
+4. **SQLite integrado**: Se utiliza como respaldo si ninguna de las reglas anteriores coincide.
+
+- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb`, etc. (implementados secuencialmente).
+- **option**: Ajustes de conexión específicos del controlador. Admite variables de entorno mediante el formato `${ENV_VAR}`.
+
 ## Despliegue
 
 - **Serverless**: Destinado al despliegue en Vercel o Netlify.

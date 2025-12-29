@@ -112,6 +112,7 @@ class Builder {
                     const destPath = path.join(distDir, item);
                     await this.processHTML(srcPath, destPath, srcRoot, realDistRoot);
                 } else if (item.endsWith('.json') && currentSub.includes('_sys/data')) {
+                    if (item.startsWith('_')) continue;
                     const destPath = path.join(distDir, item.replace('.json', '.js'));
                     this.convertData(srcPath, destPath, item.replace('.json', ''));
                 }

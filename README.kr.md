@@ -619,6 +619,61 @@ project/
   - `_sort`: 정렬 기준 키
   - `_order`: `asc` (오름차순) 또는 `desc` (내림차순)
 
+## 데이터베이스 설정 (Database Configuration)
+
+Bracify는 기본적으로 내장된 SQLite(`_sys/data.db`)를 사용하지만, 연결 설정을 구성하여 MySQL이나 PostgreSQL과 같은 외부 데이터베이스에 연결할 수 있습니다.
+
+### 작동 방식
+
+시작 시 Bracify는 항상 프로젝트 내의 `_sys/data.db`(SQLite)를 참조하여 시스템 설정을 확인합니다. 데이터베이스 연결 및 라우팅 설정은 이 파일 내의 `config` 테이블에 저장됩니다.
+
+ 이를 통해 자격 증명과 같은 민감한 정보를 텍스트 파일로 관리하거나 커밋할 필요가 없으며, 보안 정보를 저장소 외부에 유지하여 안전한 운영을 보장합니다.
+
+### 기본 동작 (설정 없음)
+
+`config` 테이블이 존재하지 않거나 특정 엔티티에 대한 설정이 없는 경우, **내장된 SQLite(`_sys/data.db`)가 자동으로 사용됩니다.** 간단한 프로젝트의 경우 설정이 필요하지 않습니다.
+
+### 설정 방법
+
+GUI(Bracify Studio)를 통해 설정하거나, 다음 형식으로 데이터베이스의 `config` 테이블에 값을 직접 삽입하여 설정할 수 있습니다.
+
+- **대상 테이블**: `config`
+- **컬럼**: `name` = 'db', `value` = (아래의 연결 정보 JSON 배열)
+
+**연결 정보 형식 (JSON):**
+
+```json
+[
+  {
+    "target_entity": "users",
+    "engine": "mysql",
+    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
+  },
+  {
+    "target_entity": "logs_*",
+    "engine": "mongodb",
+    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
+  },
+  {
+    "target_entity": "*",
+    "engine": "postgresql",
+    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
+  }
+]
+```
+
+#### 라우팅 우선순위 (target_entity)
+
+연결 대상은 다음 규칙에 따라 엔티티 이름을 기준으로 자동으로 선택됩니다.
+
+1. **완전 일치**: 이름과 완전히 일치하는 설정이 가장 높은 우선순위를 가집니다.
+2. **패턴 일치**: 와일드카드 `*`를 포함하는 설정의 경우, "고정된 부분(문자)이 가장 긴" 설정이 우선됩니다(예: `data_*`는 `*`보다 우선됨).
+3. **정의 순서**: 고정된 부분의 길이가 같은 여러 패턴이 일치하는 경우, **JSON 배열에서 더 상단에 정의된** 설정이 우선됩니다.
+4. **내장 SQLite**: 위의 규칙 중 어느 것도 일치하지 않는 경우 폴백으로 사용됩니다.
+
+- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb` 등(순차적으로 구현됨).
+- **option**: 드라이버별 연결 설정. `${ENV_VAR}` 형식을 사용하여 환경 변수를 지원합니다.
+
 ## 배포 (Deployment)
 
 - **Serverless**: Vercel이나 Netlify로의 배포를 권장합니다.
