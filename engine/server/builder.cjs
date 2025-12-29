@@ -206,7 +206,19 @@ class Builder {
 
                 // Inject mock script for file:// support
                 const cleanHref = href.split('?')[0];
+
+                // Security Validation
+                // Allowed: /_sys/data/{entity}.json OR _sys/data/{entity}.json (relative or absolute-like)
+                // Entity: alphanumeric, underscore, hyphen
+                const validHrefPattern = /^\/?_sys\/data\/([a-zA-Z0-9_-]+)\.json$/;
+
                 if (cleanHref.includes('_sys/data/') && !processedEntities.has(name)) {
+                    // Validate strictly
+                    if (!validHrefPattern.test(cleanHref)) {
+                        this.logger(`[Security] Skipped script injection for invalid href: ${cleanHref}`);
+                        return;
+                    }
+
                     const entity = path.basename(cleanHref, '.json');
                     const targetDataPath = path.join(distRoot, '_sys', 'data', entity + '.js');
                     const relDataPath = path.relative(currentDir, targetDataPath);

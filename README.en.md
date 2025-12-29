@@ -219,17 +219,28 @@ Loads a common "framework (layout)" and fills specific areas within it with its 
 
 #### `data-t-source`
 
-Fetches data to be output to the HTML and gives that data a name.
+Fetch data to display in HTML and give it a name.
 
-- **Specification**: Specify any name, and specify the data acquisition URL in the `href` attribute.
-- **Data Acquisition URL**: `/_sys/data/{data_definition_name}.json`
-  - **Tip**: When checking on a PC, place a JSON file in the above directory. It can be used as sample data for HTML output.
-- **Constraint**: Can only be specified on `<link>` tags.
+- **Usage**: Specify the data URL in the `href` attribute and check any name.
+- **Data URL Specification**:
+  - **Recommended Format**: `_sys/data/{DataName}.json` (Relative Path)
+    - This format, omitting the leading `/`, is recommended as it works in local preview (`file://`).
+  - **Keys Allowed Format**: `/_sys/data/{DataName}.json` (Absolute-like Path)
+    - In CSR (browser), the leading `/` is automatically ignored and treated as a relative path.
+- **Data Name Restrictions**: Only **alphanumeric characters, underscores `_`, and hyphens `-`** are allowed.
+  - Paths containing `..` or `/` (Directory Traversal) are **prohibited** and will not be loaded.
+- **Constraint**: Can only be specified in `<link>` tags.
 - **Example**:
 
     ```html
-    <link data-t-source="articles" href="/_sys/data/article.json">
+    <!-- OK (Recommended): Relative Path -->
+    <link data-t-source="articles" href="_sys/data/article.json">
+
+    <!-- OK: With leading slash (treated as relative internally) -->
     <link data-t-source="users" href="/_sys/data/user.json?status=active">
+
+    <!-- NG: Directory traversal is prohibited -->
+    <link data-t-source="invalid" href="_sys/data/../../conf.json">
     ```
 
 #### Data Display (Universal Placeholder)

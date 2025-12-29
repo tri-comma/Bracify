@@ -221,15 +221,26 @@ project/
 
 获取要在 HTML 中展示的数据，并为该数据命名。
 
-- **指定方法**：指定任意名称，通过 `href` 属性指定数据获取 URL。
-- **数据获取 URL**：`/_sys/data/{数据定义名称}.json`
-  - **提示**：在电脑上确认时，请将 JSON 文件放置在上述目录。它可作为 HTML 输出的样本数据。
+- **指定方法**：在 `href` 属性指定数据获取 URL，并指定任意名称。
+- **数据获取 URL 规范**：
+  - **推荐格式**：`_sys/data/{数据定义名称}.json` （相对路径）
+    - 为确保在本地预览 (`file://`) 中也能运行，推荐省略开头的 `/`。
+  - **允许格式**：`/_sys/data/{数据定义名称}.json` （绝对路径风格）
+    - 在 CSR (浏览器) 环境下，开头的 `/` 会被自动忽略并作为相对路径处理。
+- **数据定义名称限制**：仅允许使用 **字母、数字、下划线 `_` 和连字符 `-`**。
+  - **禁止**包含 `..` 或 `/` 的路径指定（目录遍历），此类指定将不会被加载。
 - **约束**：仅限在 `<link>` 标签中指定。
 - **示例**：
 
     ```html
-    <link data-t-source="articles" href="/_sys/data/article.json">
+    <!-- OK (推荐)：相对路径 -->
+    <link data-t-source="articles" href="_sys/data/article.json">
+
+    <!-- OK：包含开头斜杠（内部作为相对路径处理） -->
     <link data-t-source="users" href="/_sys/data/user.json?status=active">
+
+    <!-- NG：禁止目录遍历 -->
+    <link data-t-source="invalid" href="_sys/data/../../conf.json">
     ```
 
 #### 数据展示（通用占位符 Universal Placeholder）

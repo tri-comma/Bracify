@@ -219,17 +219,28 @@ Carrega uma estrutura comum ("layout") e preenche áreas específicas dentro del
 
 #### `data-t-source`
 
-Busca dados para serem exibidos no HTML e atribui um nome a esses dados.
+Buscar dados para exibir no HTML e dar um nome a eles.
 
-- **Especificação**: Defina um nome qualquer e indique a URL de busca no atributo `href`.
-- **URL de Busca**: `/_sys/data/{nome_da_definicao}.json`
-  - **Dica**: Ao testar localmente, coloque um arquivo JSON no diretório acima. Ele será usado como dado de exemplo.
-- **Restrição**: Só pode ser usado em tags `<link>`.
+- **Uso**: Especifique a URL dos dados no atributo `href` e atribua qualquer nome.
+- **Especificação da URL de Dados**:
+  - **Formato Recomendado**: `_sys/data/{NomeDados}.json` (Caminho Relativo)
+    - Recomenda-se omitir a barra inicial `/`, pois este formato funciona na visualização local (`file://`).
+  - **Formato Permitido**: `/_sys/data/{NomeDados}.json` (Aparência de Caminho Absoluto)
+    - No CSR (navegador), a barra inicial `/` é ignorada automaticamente e tratada como caminho relativo.
+- **Restrições de Nome**: Apenas **caracteres alfanuméricos, underscores `_` e hifens `-`** são permitidos.
+  - Caminhos contendo `..` ou `/` (Directory Traversal) são **proibidos** e não serão carregados.
+- **Restrição**: Pode ser especificado apenas em tags `<link>`.
 - **Exemplo**:
 
     ```html
-    <link data-t-source="articles" href="/_sys/data/article.json">
+    <!-- OK (Recomendado): Caminho Relativo -->
+    <link data-t-source="articles" href="_sys/data/article.json">
+
+    <!-- OK: Com barra inicial (tratada internamente como relativa) -->
     <link data-t-source="users" href="/_sys/data/user.json?status=active">
+
+    <!-- NG: Directory traversal proibido -->
+    <link data-t-source="invalid" href="_sys/data/../../conf.json">
     ```
 
 #### Exibição de Dados (Placeholder Universal)

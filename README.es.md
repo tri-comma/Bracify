@@ -219,17 +219,28 @@ Carga un "marco (diseño)" común y rellena áreas específicas dentro de él co
 
 #### `data-t-source`
 
-Obtiene datos para ser mostrados en el HTML y les asigna un nombre.
+Obtener datos para mostrar en HTML y asignarles un nombre.
 
-- **Especificación**: Especifica cualquier nombre y la URL de obtención de datos en el atributo `href`.
-- **URL de obtención de datos**: `/_sys/data/{nombre_de_definicion_de_datos}.json`
-  - **Consejo**: Cuando pruebes en un PC, coloca un archivo JSON en el directorio mencionado. Se puede usar como datos de muestra para la salida HTML.
+- **Uso**: Especifica la URL de los datos en el atributo `href` y asigna cualquier nombre.
+- **Especificación de URL de datos**:
+  - **Formato recomendado**: `_sys/data/{NombreDatos}.json` (Ruta relativa)
+    - Se recomienda omitir la barra inicial `/` ya que este formato funciona también en vista previa local (`file://`).
+  - **Formato permitido**: `/_sys/data/{NombreDatos}.json` (Ruta absoluta aparente)
+    - En CSR (navegador), la barra inicial `/` se ignora automáticamente y se trata como una ruta relativa.
+- **Restricciones del nombre**: Solo se permiten **caracteres alfanuméricos, guiones bajos `_` y guiones `-`**.
+  - Las rutas que contengan `..` o `/` (Directory Traversal) están **prohibidas** y no se cargarán.
 - **Restricción**: Solo se puede especificar en etiquetas `<link>`.
 - **Ejemplo**:
 
     ```html
-    <link data-t-source="articles" href="/_sys/data/article.json">
+    <!-- OK (Recomendado): Ruta relativa -->
+    <link data-t-source="articles" href="_sys/data/article.json">
+
+    <!-- OK: Con barra inicial (tratada internamente como relativa) -->
     <link data-t-source="users" href="/_sys/data/user.json?status=active">
+
+    <!-- NG: Directory traversal prohibido -->
+    <link data-t-source="invalid" href="_sys/data/../../conf.json">
     ```
 
 #### Visualización de datos (Marcador de posición universal)

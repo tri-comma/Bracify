@@ -149,6 +149,20 @@ const factory = function () {
 
     const pendingLoads = {};
     async function browserLocalFetcher(href, name) {
+        // Security & Format Validation (CSR)
+        // Allowed: /_sys/data/{entity}.json OR _sys/data/{entity}.json
+        // Entity: alphanumeric, underscore, hyphen
+        const validHrefPattern = /^\/?_sys\/data\/([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
+        if (!validHrefPattern.test(href)) {
+            // console.warn(`[Bracify Security Block] Invalid data-t-source href rejected: ${href}`);
+            return null;
+        }
+
+        // CSR Normalization: Remove leading slash to ensure relative path resolution works on file://
+        if (href.startsWith('/')) {
+            href = href.substring(1);
+        }
+
         const globalData = (typeof window !== 'undefined' ? window.__BRACIFY_DATA__ : null) || {};
         const entityName = href.split('?')[0].split('/').pop().replace(/\.json$/i, '');
 

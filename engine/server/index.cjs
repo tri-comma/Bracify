@@ -57,6 +57,12 @@ class EngineServer {
             const filters = req.query || {};
             this.logger(`[Engine] Data API: ${req.method} ${entity} filters=${JSON.stringify(filters)}`);
 
+            // Security Check
+            if (!/^[a-zA-Z0-9_-]+$/.test(entity)) {
+                this.logger(`[Security] Blocked invalid entity: ${entity}`);
+                return res.status(400).json({ error: 'Invalid entity name' });
+            }
+
             try {
                 switch (req.method) {
                     case 'GET':
@@ -167,6 +173,13 @@ class EngineServer {
                         return null;
                     }, async (href) => {
                         // Data fetcher for SSR
+                        // Security Validation
+                        const validHrefPattern = /^\/?_sys\/data\/([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
+                        if (!validHrefPattern.test(href)) {
+                            this.logger(`[Security] SSR blocked invalid href: ${href}`);
+                            return null;
+                        }
+
                         if (href.includes('_sys/data/')) {
                             try {
                                 const urlStr = href.startsWith('http') ? href : `http://localhost/${href.replace(/^\//, '')}`;
