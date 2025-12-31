@@ -47,7 +47,8 @@
 
                     <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                         <button type="submit" class="btn-primary">Save Project</button>
-                        <button type="button" class="btn-secondary" onclick="location.href='index.html'">Cancel</button>
+                        <button type="button" class="btn-secondary"
+                            onclick="Bracify.navigate('index.html')">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -67,7 +68,7 @@
                     </button>
 
                     <button class="btn-secondary" style="width: 100%;"
-                        onclick="location.href='data/index.html?project=' + encodeURIComponent(this.dataset.id)"
+                        onclick="Bracify.navigate('data/index.html?project=' + encodeURIComponent(this.dataset.id))"
                         data-id="{project.id}">
                         Manage Data Entities &rarr;
                     </button>

@@ -393,7 +393,7 @@ You can send data (create/update) to the API using standard `<form>` tags.
 
 - **Automatic API Submission**: If you specify the API URL in the `action` attribute and `POST` or `PUT` in the `method` attribute, data is automatically sent in JSON format.
 - **Page Transition**: You can specify the page to move to after saving is complete (relative path) using the `data-t-redirect` attribute. If not specified, the current page is reloaded.
-- **Data Binding (Initial Values)**: By specifying `data-t-bind` on the `<form>` tag, you can set existing data as initial values for the input fields (useful for edit screens, etc.).
+- **Data Binding (Initial Values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as initial values for the input fields (useful for edit screens, etc.).
 - **Input Items**: The `name` attribute of `<input>` and `<textarea>` becomes the data item name (property).
 
 #### Example: Article Editing (Update) Form
@@ -402,7 +402,7 @@ You can send data (create/update) to the API using standard `<form>` tags.
 <!-- Binds article data to the entire form (sets initial values) -->
 <!-- Sends with PUT method to the API specified in action -->
 <!-- Returns to the list page (../list.html) after saving is complete -->
-<form method="PUT" action="/_sys/data/article" data-t-bind="article" data-t-redirect="../list.html">
+<form method="PUT" action="/_sys/data/article" data-t-scope="article" data-t-redirect="../list.html">
 
   <label>Title</label>
   <input type="text" name="title"> <!-- Populated with article.title -->
@@ -449,6 +449,18 @@ Outputs date data (date type) as text in the specified format.
   - `yyyy`: 4-digit year
   - `mm`: 2-digit month
   - `dd`: 2-digit day
+
+#### `number`
+
+Outputs numbers in "3-digit comma separated" format.
+
+- **Syntax**: `{ item_name | number }`
+
+#### `json`
+
+Outputs data as a formatted JSON string. Useful for debugging or using data directly in JavaScript.
+
+- **Syntax**: `{ item_name | json }`
 
 ## Data Access API
 
@@ -602,22 +614,57 @@ project/
 ]
 ```
 
-### Data Restrictions in Local Preview ("Zero Server" Mode)
+### Local Development Mode (True Zero Server Mode)
 
-When previewing as a local file (`file://`) without starting a server (e.g., double-clicking `index.html`), data acquisition operates as a simple mock within the browser.
-This mode is intended for design confirmation and simple functional checks, and its behavior differs somewhat from a server environment (SSR).
+The mode where you develop by directly opening `index.html` as a local file (`file://`) in a browser without starting a server.
 
-- **Filter-related Restrictions**:
+#### Build-less Development via File System Access API
+
+By utilizing the **File System Access API** provided by modern browsers (Chrome, Edge, etc.), the traditional build process (converting JSON files to JS files) becomes unnecessary.
+
+1. **Select Project Folder**: When opening a page via `file://`, a folder selection prompt appears during initialization. By selecting the project's root directory, the browser can directly fetch and operate on files.
+2. **Build-less Preview**: Since `_sys/data/*.json` and `_parts/*.html` are read directly by the browser, any edits and saves are instantly reflected upon browser reload (or transition).
+
+#### Page Transitions and SPA Routing
+
+In a `file://` environment, browser reloads reset folder access permissions, so Bracify treats all transitions as SPA (Single Page Application).
+
+- **Automatic Link Interception**: Internal transitions via `<a>` tags are automatically detected, replacing only the DOM without reloading the page (Full DOM Replacement).
+- **JavaScript Navigation API**: When navigating programmatically via script, use `Bracify.navigate('/path/to/page.html')` instead of `location.href`.
+- **Browser History**: Supports the browser's "Back" and "Forward" buttons, allowing navigation between history states without reloads.
+
+#### Limitations in Unsupported Browsers
+
+If the browser does not support the File System Access API or if folder selection is not performed, it operates in the following restricted "Read-only Mock Mode":
+
+- **Filter Limitations**: Exact match only. Operators like `:gt` or `:lt` will not work.
+- **No Updates**: Data saving via form submission is not performed.
+- **Partial Display**: Loading external files (`data-t-include`) may be restricted.
+
+#### Data Filtering and Control (Common Specs)
+
+In local development mode (both True Zero Server and Mock Mode), simple data processing occurs within the browser with the following limitations and specifications:
+
+- **Filter Limitations**:
   - **Exact Match Only**: Returns data only when the specified key and value match exactly.
-  - **Ignore Empty Values**: If the search parameter value is an empty string (`?name=`), that filter condition itself is ignored (all items are displayed).
-  - **Advanced Operators Not Supported**: Operators like `:gt` or `:lt` do not function and are ignored or do not work as expected.
+  - **Ignore Empty Values**: If the filter value is an empty string (`?name=`), that condition is ignored (all items are displayed).
+  - **Advanced Operators Not Supported**: Operators like `:gt` or `:lt` do not function and are ignored.
 
 - **Supported Control Parameters**:
-    The following parameters operate simply even in local preview:
-  - `_limit`: Limit the number of items displayed
-  - `_offset`: Skip data
-  - `_sort`: Key to sort by
+  The following parameters operate simply even in local environments:
+  - `_limit`: Display limit
+  - `_offset`: Data skip
+  - `_sort`: Sort key
   - `_order`: `asc` (ascending) or `desc` (descending)
+
+#### JavaScript Behavior in SPA Mode
+
+In Local Development Mode (True Zero Server Mode), when transitioning without a page reload, JavaScript execution follows these rules:
+
+- **Scope Isolation (IIFE Wrapping)**: To prevent conflicts with variable declarations (`const`, `let`) from previous pages, page-specific scripts (inside `<body>` and newly loaded scripts in `<head>`) are automatically wrapped and executed as Immediately Invoked Function Expressions (IIFE) by Bracify.
+- **Prevention of Duplicate Execution**: Among scripts in `<head>`, those already loaded (like `engine.js` or common libraries) are not re-executed in the navigation destination.
+- **Persistence of Global Variables**: Data explicitly attached to the `window` object or `var` variables defined outside of IIFEs persist after navigation.
+- **Event Listeners**: Event listeners added directly to `window` or `document` are not automatically cleaned up upon navigation. It is recommended to attach page-specific events to elements within `<body>` or design them with navigation in mind.
 
 ## Database Configuration
 

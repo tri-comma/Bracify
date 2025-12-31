@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "setup": "npm install",
-    "start": "npm start --workspace=gui"
+    "start": "npm start --workspace=gui",
+    "test": "npm test --workspace=@bracify/engine"
   }
 }

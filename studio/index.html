@@ -20,12 +20,12 @@
             <div>
                 <p style="color: var(--text-muted); margin: 0;">You have {projects._length} projects registered.</p>
             </div>
-            <button class="btn-primary" onclick="location.href='project.html'">+ Create New Project</button>
+            <button class="btn-primary" onclick="Bracify.navigate('project.html')">+ Create New Project</button>
         </div>
 
         <div class="grid">
             <!-- Project Card List -->
-            <div data-t-list="projects" class="card" onclick="location.href='project.html?id=' + this.dataset.id"
+            <div data-t-list="projects" class="card" onclick="Bracify.navigate('project.html?id=' + this.dataset.id)"
                 data-id="{projects.id}">
                 <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">

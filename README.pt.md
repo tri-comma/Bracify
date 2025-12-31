@@ -393,7 +393,7 @@ Você pode enviar dados (criar/atualizar) para a API usando tags `<form>` padrã
 
 - **Envio Automático para API**: Se você definir a URL no atributo `action` e `POST` ou `PUT` no `method`, os dados serão enviados automaticamente em formato JSON.
 - **Transição de Página**: Use `data-t-redirect` para definir para onde ir após salvar. Se não definido, a página atual será recarregada.
-- **Data Binding (Valores Iniciais)**: Use `data-t-bind` no `<form>` para preencher os campos com dados existentes (útil para telas de edição).
+- **Data Binding (Valores Iniciais)**: Use `data-t-scope` no `<form>` para preencher os campos com dados existentes (útil para telas de edição).
 - **Nomes dos Campos**: O atributo `name` de `<input>` e `<textarea>` corresponde à propriedade (campo) no objeto de dados.
 
 #### Exemplo: Formulário de Edição de Artigo
@@ -402,7 +402,7 @@ Você pode enviar dados (criar/atualizar) para a API usando tags `<form>` padrã
 <!-- Vincula os dados de article ao form, preenchendo os valores iniciais -->
 <!-- Envia via PUT para a URL especificada no action -->
 <!-- Redireciona para a lista (../list.html) após salvar -->
-<form method="PUT" action="/_sys/data/article" data-t-bind="article" data-t-redirect="../list.html">
+<form method="PUT" action="/_sys/data/article" data-t-scope="article" data-t-redirect="../list.html">
 
   <label>Título</label>
   <input type="text" name="title"> <!-- Preenchido com article.title -->
@@ -449,6 +449,18 @@ Gera texto a partir de um objeto de data no formato especificado.
   - `yyyy`: Ano com 4 dígitos
   - `mm`: Mês com 2 dígitos
   - `dd`: Dia com 2 dígitos
+
+#### `number`
+
+Exibe números no formato de "separação de milhar com vírgula".
+
+- **Sintaxe**: `{ nome_item | number }`
+
+#### `json`
+
+Exibe os dados como uma string JSON formatada. Útil para depuração ou para usar dados diretamente em JavaScript.
+
+- **Sintaxe**: `{ nome_item | json }`
 
 ## API de Acesso a Dados
 
@@ -602,22 +614,57 @@ projeto/
 ]
 ```
 
-### Restrições no Preview Local (Modo "Zero Server")
+### Modo de Desenvolvimento Local (True Zero Server Mode)
 
-Ao visualizar como arquivo local (`file://`) sem iniciar o servidor (ex: clicando duas vezes no `index.html`), a busca de dados funciona como um mock simples dentro do navegador.
-Este modo é indicado para testes rápidos de design e funcionalidade, e seu comportamento difere do ambiente de servidor (SSR).
+O modo em que você desenvolve abrindo diretamente o `index.html` como um arquivo local (`file://`) em um navegador, sem iniciar um servidor.
 
-- **Restrições de filtros**:
-  - **Apenas Correspondência Exata**: Só retorna dados quando a chave e o valor são idênticos.
-  - **Ignora Valores Vazios**: Se o parâmetro de busca estiver vazio (`?name=`), o filtro será ignorado e todos os itens serão exibidos.
-  - **Operadores Avançados não suportados**: Operadores como `:gt` ou `:lt` não funcionam no preview local.
+#### Desenvolvimento sem compilação via File System Access API
+
+Ao utilizar a **File System Access API** fornecida pelos navegadores modernos (Chrome, Edge, etc.), o processo de compilação tradicional (converter arquivos JSON em arquivos JS) torna-se desnecessário.
+
+1. **Seleção da Pasta do Projeto**: Ao abrir uma página via `file://`, um prompt de seleção de pasta aparece durante a inicialização. Ao selecionar o diretório raiz do projeto, o navegador pode ler e operar diretamente nos arquivos.
+2. **Visualização sem compilação**: Como `_sys/data/*.json` e `_parts/*.html` são lidos diretamente pelo navegador, quaisquer edições e salvamentos são refletidos instantaneamente ao recarregar o navegador (ou ao realizar uma transição).
+
+#### Transições de Página e Roteamento SPA
+
+Em um ambiente `file://`, os recarregamentos do navegador redefinem as permissões de acesso às pastas, portanto o Bracify trata todas as transições como SPA (Single Page Application).
+
+- **Interceptação Automática de Links**: Transições internas via tags `<a>` são detectadas automaticamente, substituindo apenas o DOM sem recarregar a página (Full DOM Replacement).
+- **API de Navegação JavaScript**: Ao navegar programaticamente via script, use `Bracify.navigate('/caminho/para/pagina.html')` em vez de `location.href`.
+- **Histórico do Navegador**: Suporta os botões "Voltar" e "Avançar" do navegador, permitindo a navegação entre estados do histórico sem recarregamentos.
+
+#### Limitações em Navegadores não compatíveis
+
+Se o navegador não suportar a File System Access API ou se a seleção da pasta não for realizada, o sistema operará no seguinte "Modo de simulação somente leitura" restrito:
+
+- **Limitações de Filtragem**: Apenas correspondência exata. Operadores como `:gt` o `:lt` não funcionarão.
+- **Sem Atualizações**: O salvamento de dados via envio de formulários não será realizado.
+- **Exibição Parcial**: O carregamento de arquivos externos (`data-t-include`) pode ser restrito.
+
+#### Filtragem e Controle de Dados (Especificações Comuns)
+
+No modo de desenvolvimento local (tanto True Zero Server quanto Modo de simulação), o processamento simples de dados ocorre dentro do navegador com as seguintes limitações e especificações:
+
+- **Limitações de Filtragem**:
+  - **Apenas Correspondência Exata**: Retorna dados apenas quando a chave e o valor especificados correspondem exatamente.
+  - **Ignorar Valores Vazios**: Se o valor do filtro for uma string vazia (`?nome=`), essa condição será ignorada (todos os itens serão exibidos).
+  - **Operadores Avançados não suportados**: Operadores como `:gt` ou `:lt` não funcionam e serão ignorados.
 
 - **Parâmetros de Controle Suportados**:
-    Estes parâmetros operam de forma simplificada no preview local:
-  - `_limit`: Limitar quantidade exibida.
-  - `_offset`: Pular dados.
-  - `_sort`: Escolher campo para ordenar.
-  - `_order`: `asc` ou `desc`.
+  Os seguintes parâmetros funcionam de forma simples mesmo em ambientes locais:
+  - `_limit`: Limite de exibição
+  - `_offset`: Pular dados
+  - `_sort`: Chave de ordenação
+  - `_order`: `asc` (ascendente) ou `desc` (descendente)
+
+#### Comportamento do JavaScript no modo SPA
+
+No Modo de Desenvolvimento Local (True Zero Server Mode), ao realizar uma transição sem recarregar a página, a execução do JavaScript segue estas regras:
+
+- **Isolamento de Escopo (Envolvimento IIFE)**: Para evitar conflitos com declarações de variáveis (`const`, `let`) de páginas anteriores, scripts específicos da página (dentro de `<body>` e scripts recém-carregados no `<head>`) são automaticamente envolvidos e executados como Expressões de Função Invocadas Imediatamente (IIFE) pelo Bracify.
+- **Prevenção de Execução Duplicada**: Entre os scripts no `<head>`, aqueles que já foram carregados (como `engine.js` ou bibliotecas comuns) não são executados novamente no destino de navegação.
+- **Persistência de Variáveis Globais**: Dados explicitamente anexados ao objeto `window` ou variáveis `var` definidas fora das IIFEs persistem após a navegação.
+- **Ouvintes de Eventos**: Ouvintes de eventos adicionados diretamente ao `window` ou `document` não são limpos automaticamente na navegação. Recomenda-se anexar eventos específicos da página a elementos dentro do `<body>` ou projetá-los considerando a navegação.
 
 ## Configuração da Base de Dados
 

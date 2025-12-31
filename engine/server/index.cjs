@@ -69,7 +69,10 @@ class EngineServer {
                         const records = await db.find(entity, filters);
                         // Compatibility: if specific ID requested, return object?
                         // Or if exactly one result with id='__default__', return object (legacy file mode)
-                        if (filters.id && records.length > 0) {
+                        // Or if _limit=1 is specified (Consistent with SSR)
+                        if (filters._limit === '1' && records.length === 1) {
+                            res.json(records[0]);
+                        } else if (filters.id && records.length > 0) {
                             res.json(records[0]);
                         } else if (records.length === 1 && records[0].id === '__default__') {
                             res.json(records[0]);
@@ -196,6 +199,12 @@ class EngineServer {
                                 if (results && results.length > 0) {
                                     this.logger(`[Bracify] SSR Data Sample: ${JSON.stringify(results[0]).substring(0, 100)}...`);
                                 }
+
+                                // Unwrap single item if limit=1
+                                if (filters._limit === '1' && results && Array.isArray(results) && results.length === 1) {
+                                    return results[0];
+                                }
+
                                 return results;
                             } catch (e) {
                                 this.logger(`[Bracify] SSR Fetch Error: ${e.message}`);
