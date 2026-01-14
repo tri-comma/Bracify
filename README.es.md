@@ -256,6 +256,32 @@ Puedes mostrar datos escribiendo `{nombre_fuente_datos.nombre_item}` en el texto
     <p>{article.body}</p>
     ```
 
+- **Visualización de datos anidados**:
+  Puedes acceder a propiedades anidadas dentro de un objeto usando la notación de punto `.`. Puedes describir jerarquías profundas de la misma manera.
+
+  ```json
+   {
+    "user": {
+      "name": "Juan Pérez",
+      "address": {
+        "city": "Madrid"
+      }
+    }
+  }
+  ```
+
+  ```html
+  <p>Nombre de usuario: {user.name}</p>
+  <p>Ciudad: {user.address.city}</p>
+  ```
+
+- **Escape de marcadores de posición**:
+  Si deseas mostrar la notación del marcador de posición tal cual sin evaluarla, coloca una barra invertida `\` antes de la llave de apertura.
+
+  ```html
+  <code>\{user.name\}</code> <!-- Resultado: {user.name} -->
+  ```
+
 - **Mostrar múltiples elementos (`data-t-list`)**:
     Si hay múltiples elementos de datos que deseas mostrar, debes especificar `data-t-list="Nombre de la Fuente de Datos"` en el elemento (rango) que deseas repetir.
 

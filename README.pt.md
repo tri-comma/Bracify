@@ -256,6 +256,32 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
     <p>{article.body}</p>
     ```
 
+- **Exibição de Dados Aninhados**:
+  Você pode acessar propriedades aninhadas dentro de um objeto usando a notação de ponto `.`. Você pode descrever hierarquias profundas da mesma maneira.
+
+  ```json
+   {
+    "user": {
+      "name": "João Silva",
+      "address": {
+        "city": "São Paulo"
+      }
+    }
+  }
+  ```
+
+  ```html
+  <p>Nome de Usuário: {user.name}</p>
+  <p>Cidade: {user.address.city}</p>
+  ```
+
+- **Escapando Placeholders**:
+  Se você quiser exibir a notação do placeholder como está sem avaliá-la, coloque uma barra invertida `\` antes da chave de abertura.
+
+  ```html
+  <code>\{user.name\}</code> <!-- Resultado: {user.name} -->
+  ```
+
 - **Exibindo Múltiplos Itens (`data-t-list`)**:
     Se houver vários itens de dados que você deseja exibir, você deve especificar `data-t-list="Nome da Fonte de Dados"` no elemento (intervalo) que deseja repetir.
 

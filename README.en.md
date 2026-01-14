@@ -256,6 +256,32 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
     <p>{article.body}</p>
     ```
 
+- **Displaying Nested Data**:
+  You can access nested properties within an object using dot notation `.`. You can describe deep hierarchies in the same way.
+
+  ```json
+   {
+    "user": {
+      "name": "John Doe",
+      "address": {
+        "city": "New York"
+      }
+    }
+  }
+  ```
+
+  ```html
+  <p>User Name: {user.name}</p>
+  <p>City: {user.address.city}</p>
+  ```
+
+- **Escaping Placeholders**:
+  If you want to display the placeholder notation as is without evaluating it, place a backslash `\` before the opening curly brace.
+
+  ```html
+  <code>\{user.name\}</code> <!-- Result: {user.name} -->
+  ```
+
 - **Displaying Multiple Items (`data-t-list`)**:
     If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.
 
