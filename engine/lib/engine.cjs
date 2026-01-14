@@ -41,7 +41,18 @@ const factory = function () {
         let value = data;
 
         for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
+            let key = keys[i];
+
+            // Try to match the longest possible key from current segments (for dotted keys from data-t-list)
+            for (let j = keys.length - 1; j > i; j--) {
+                const combined = keys.slice(i, j + 1).join('.');
+                if (value && typeof value === 'object' && combined in value) {
+                    key = combined;
+                    i = j;
+                    break;
+                }
+            }
+
             if (value === undefined || value === null) break;
 
             // Security: Prevent accessing prototype properties
@@ -50,9 +61,10 @@ const factory = function () {
                 break;
             }
 
-            // Handle automatic expansion of single-item arrays
+            // Handle automatic expansion of single-item arrays for traversal
             // Skip if key starts with '_' (meta properties like _length) or is a number index
-            if (Array.isArray(value) && !noExpand && !key.startsWith('_') && isNaN(parseInt(key)) && !['map', 'filter', 'forEach', 'reduce', 'slice'].includes(key)) {
+            const isNumericKey = !isNaN(parseInt(key));
+            if (Array.isArray(value) && !key.startsWith('_') && !isNumericKey && !['map', 'filter', 'forEach', 'reduce', 'slice'].includes(key)) {
                 if (value.length === 1) {
                     value = value[0];
                 } else if (value.length > 1) {
@@ -109,7 +121,7 @@ const factory = function () {
             return exprStr;
         }
 
-        return exprStr.replace(/\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, key, pipeExpr) => {
+        return exprStr.replace(/(^|[^\\])\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, prefix, key, pipeExpr) => {
             let lookupKey = key.trim();
             if (lookupKey.startsWith('?')) lookupKey = '_sys.query.' + lookupKey.substring(1);
             let val = getNestedValue(data, lookupKey);
@@ -119,8 +131,14 @@ const factory = function () {
                 const args = parts.slice(1).map(arg => arg.replace(/^['"]|['"]$/g, ''));
                 if (pipes[pipeName]) val = pipes[pipeName](val, ...args);
             }
+            // If the final value is still an array (and no pipe was used), treat it as undefined
+            // to avoid rendering "item1,item2" in the UI.
+            if (Array.isArray(val) && !pipeExpr) val = undefined;
+
+            // Return empty string if value is null
+            if (val === null) return prefix + '';
             // Return original match if value is undefined (preserves template for SSR/CSR later)
-            return val !== undefined ? val : match;
+            return val !== undefined ? prefix + val : match;
         });
     }
 
@@ -537,6 +555,22 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         const engine = new BracifyLib.Engine(options);
         await engine.processElement(document.body, { ...data, _sys: window._sys }, { requireScope: true, ...initOptions });
+
+        // Final unescape
+        unescapeNodes(document.body);
+    }
+
+    function unescapeNodes(node) {
+        if (node.nodeType === 3) { // Text node
+            node.nodeValue = node.nodeValue.replace(/\\\{/g, '{').replace(/\\\}/g, '}');
+        } else if (node.nodeType === 1) { // Element node
+            for (const attr of Array.from(node.attributes)) {
+                if (attr.value.indexOf('\\{') !== -1 || attr.value.indexOf('\\}') !== -1) {
+                    node.setAttribute(attr.name, attr.value.replace(/\\\{/g, '{').replace(/\\\}/g, '}'));
+                }
+            }
+            for (const child of Array.from(node.childNodes)) unescapeNodes(child);
+        }
     }
     BracifyLib.initializeBracify = initializeBracify;
 
