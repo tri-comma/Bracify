@@ -401,6 +401,32 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
   </div>
   ```
 
+  **比較演算と論理演算（Data APIスタイル）**:
+  Data APIのクエリパラメータと同じ構文を使って、より詳細な条件を指定できます。
+
+  - **比較演算子**: [データアクセスAPIの演算子](#演算子)と同じ記法（`=`, `:ne=`, `:gt=` など）が使えます。
+  - **論理演算（AND/OR）**: スペースで区切ると **AND**、値にカンマを使うと **OR** になります。
+  - **変数の使用**: `{ }` で囲むことで、データの値を条件に使えます。
+  - **単独キー**: 演算子を使わずキーのみを書いた場合は、従来通りその値の有無（真偽）を判定します。
+
+  ```html
+  <!-- ステータスが公開中 (status == 'published') -->
+  <span data-t-if="status=published">公開中</span>
+
+  <!-- 価格が1000以上 かつ 在庫がある (price >= 1000 AND stock > 0) -->
+  <div data-t-if="price:gte=1000 stock:gt=0">
+    人気商品（在庫あり）
+  </div>
+
+  <!-- 役割が admin または editor (role == 'admin' OR role == 'editor') -->
+  <button data-t-if="role=admin,editor">編集</button>
+
+  <!-- ユーザーIDが記事の作者と一致する場合 (user.id == post.author_id) -->
+  <div data-t-if="user.id={post.author_id}">
+    <a href="/edit">記事を編集</a>
+  </div>
+  ```
+
 #### `data-t-redirect`
 
 処理（フォーム送信など）が正常に完了した後の、画面遷移先URLを指定します。

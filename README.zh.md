@@ -400,6 +400,32 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
     </div>
     ```
 
+    **比较运算与逻辑运算 (Data API 风格)**：
+    您可以使用与 Data API 查询参数相同的语法来指定更详细的条件。
+
+    - **比较运算符**：使用与 [数据访问 API 运算符](#运算符) 相同的记法（`=`, `:ne=`, `:gt=` 等）。
+    - **逻辑运算 (AND/OR)**：空格分隔表示 **AND**，值中的逗号分隔表示 **OR**。
+    - **使用变量**：通过用 `{ }` 包围，可以在条件中使用数据的值。
+    - **单键**：如果只写键而不使用运算符，则与以前一样判断该值的存在（真假）。
+
+    ```html
+    <!-- 状态为已发布 (status == 'published') -->
+    <span data-t-if="status=published">已发布</span>
+
+    <!-- 价格为 1000 或以上 且 库存大于 0 (price >= 1000 AND stock > 0) -->
+    <div data-t-if="price:gte=1000 stock:gt=0">
+      热门商品 (有货)
+    </div>
+
+    <!-- 角色为 admin 或 editor (role == 'admin' OR role == 'editor') -->
+    <button data-t-if="role=admin,editor">编辑</button>
+
+    <!-- 用户 ID 与文章作者 ID 一致 (user.id == post.author_id) -->
+    <div data-t-if="user.id={post.author_id}">
+      <a href="/edit">编辑文章</a>
+    </div>
+    ```
+
 #### `data-t-redirect`
 
 指定处理（如表单提交）正常完成后页面跳转的目标 URL。

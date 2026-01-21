@@ -400,6 +400,32 @@ Bracify의 플레이스홀더 `{ }`는 HTML 속성이나 텍스트 노드에서 
     </div>
     ```
 
+    **비교 연산 및 논리 연산 (Data API 스타일)**:
+    Data API의 쿼리 파라미터와 동일한 구문을 사용하여 더욱 상세한 조건을 지정할 수 있습니다.
+
+    - **비교 연산자**: [데이터 액세스 API의 연산자](#연산자)와 동일한 표기법(`=`, `:ne=`, `:gt=` 등)을 사용할 수 있습니다.
+    - **논리 연산(AND/OR)**: 공백으로 구분하면 **AND**, 값에 쉼표를 사용하면 **OR**가 됩니다.
+    - **변수 사용**: `{ }`로 감싸면 데이터 값을 조건에 사용할 수 있습니다.
+    - **단일 키**: 연산자를 사용하지 않고 키만 적은 경우, 기존과 같이 해당 값의 존재 여부(참/거짓)를 판정합니다.
+
+    ```html
+    <!-- 상태가 공개 중 (status == 'published') -->
+    <span data-t-if="status=published">공개 중</span>
+
+    <!-- 가격이 1000 이상 이고 재고가 있음 (price >= 1000 AND stock > 0) -->
+    <div data-t-if="price:gte=1000 stock:gt=0">
+      인기 상품 (재고 있음)
+    </div>
+
+    <!-- 역할이 admin 또는 editor (role == 'admin' OR role == 'editor') -->
+    <button data-t-if="role=admin,editor">편집</button>
+
+    <!-- 사용자 ID가 기사 작성자 ID와 일치할 경우 (user.id == post.author_id) -->
+    <div data-t-if="user.id={post.author_id}">
+      <a href="/edit">기사 편집</a>
+    </div>
+    ```
+
 #### `data-t-redirect`
 
 처리(폼 전송 등)가 정상적으로 완료된 후의 페이지 이동 URL을 지정합니다.

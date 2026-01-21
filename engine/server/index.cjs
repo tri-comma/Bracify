@@ -177,9 +177,9 @@ class EngineServer {
                     }, async (href) => {
                         // Data fetcher for SSR
                         // Security Validation
-                        const validHrefPattern = /^\/?_sys\/data\/([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
+                        const validHrefPattern = /^(\/|\\)?_sys(\/|\\)data(\/|\\)([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
                         const match = href.match(validHrefPattern);
-                        if (!match || match[1].startsWith('_')) {
+                        if (!match || match[4].startsWith('_')) {
                             this.logger(`[Security] SSR blocked invalid or system href: ${href}`);
                             return null;
                         }

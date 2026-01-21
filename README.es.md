@@ -400,6 +400,32 @@ Muestra u oculta elementos en función de condiciones. El elemento se muestra si
     </div>
     ```
 
+    **Operaciones de comparación y lógica (Estilo Data API)**:
+    Puede especificar condiciones más detalladas utilizando la misma sintaxis que los parámetros de consulta de Data API.
+
+    - **Operadores de comparación**: Utiliza la misma notación que los [Operadores de API de acceso a datos](#operadores) (`=`, `:ne=`, `:gt=`, etc.).
+    - **Operaciones lógicas (AND/OR)**: La separación por espacios representa **AND**, y la separación por comas en los valores representa **OR**.
+    - **Uso de variables**: Al encerrar en `{ }`, puede utilizar valores de datos en las condiciones.
+    - **Clave única**: Si escribe solo una clave sin operadores, determina la presencia (verdad) de ese valor como antes.
+
+    ```html
+    <!-- El estado es publicado (status == 'published') -->
+    <span data-t-if="status=published">Publicado</span>
+
+    <!-- El precio es 1000 o más Y el stock es mayor que 0 (price >= 1000 AND stock > 0) -->
+    <div data-t-if="price:gte=1000 stock:gt=0">
+      Artículo popular (En stock)
+    </div>
+
+    <!-- El rol es admin O editor (role == 'admin' OR role == 'editor') -->
+    <button data-t-if="role=admin,editor">Editar</button>
+
+    <!-- El ID de usuario coincide con el ID del autor del artículo (user.id == post.author_id) -->
+    <div data-t-if="user.id={post.author_id}">
+      <a href="/edit">Editar artículo</a>
+    </div>
+    ```
+
 #### `data-t-redirect`
 
 Especifica la URL de destino de la transición después de que un proceso (como el envío de un formulario) se complete con éxito.

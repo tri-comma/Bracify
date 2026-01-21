@@ -142,6 +142,115 @@ const factory = function () {
         });
     }
 
+    // --- Conditional Logic (Data API Style) ---
+    function evaluateCondition(conditionStr, data) {
+        if (!conditionStr) return false;
+
+        // 1. Resolve variables in the condition string first (e.g., "id={user.id}")
+        // Only resolve if braces are present to avoid 'resolveValue' interpreting keys without braces as direct lookups
+        let resolvedStr = conditionStr;
+        if (conditionStr.indexOf('{') !== -1) {
+            resolvedStr = resolveValue(conditionStr, data);
+        }
+
+        // Ensure we have a string to parse for multiple conditions
+        // If resolveValue returns a non-string (e.g. boolean/number from a direct placeholder like {isActive}), convert to string
+        if (typeof resolvedStr !== 'string') {
+            resolvedStr = String(resolvedStr);
+        }
+
+        // 2. Parse into AND groups (space separated)
+        // We need to be careful about spaces inside values, but for now assuming simple space separation
+        // 2. Parse into AND groups (space separated)
+        // We need to be careful about spaces inside values, but for now assuming simple space separation
+        // or we could split by space but recombine if quotes... simplifying to space split for MVP.
+        const conditions = resolvedStr.split(/\s+/).filter(c => c.trim() !== '');
+
+        for (const cond of conditions) {
+            // Each condition is an AND component. If any fails, the whole thing is false.
+            if (!evaluateSingleCondition(cond, data)) return false;
+        }
+
+        return true;
+    }
+
+    function evaluateSingleCondition(cond, data) {
+        // Handle single key (existence check) - e.g. "is_published"
+        // Also handle negation - e.g. "!is_published"
+        if (cond.indexOf('=') === -1) {
+            let key = cond;
+            let isNegation = false;
+            if (key.startsWith('!')) {
+                isNegation = true;
+                key = key.substring(1);
+            }
+            const val = getNestedValue(data, key);
+            const truthy = isTruthy(val);
+            return isNegation ? !truthy : truthy;
+        }
+
+        // Handle logical operators
+        // key=val, key:ne=val, key:gt=val, etc.
+        let operator = '=';
+        let key = '';
+        let valueStr = '';
+
+        // Check for longest operators first
+        const ops = [':ne=', ':gte=', ':lte=', ':gt=', ':lt=', '='];
+        for (const op of ops) {
+            const idx = cond.indexOf(op);
+            if (idx !== -1) {
+                operator = op;
+                key = cond.substring(0, idx);
+                valueStr = cond.substring(idx + op.length);
+                break;
+            }
+        }
+
+        const dataVal = getNestedValue(data, key);
+
+        // Handle OR values (comma separated)
+        const targetValues = valueStr.split(',');
+
+        // For :ne, ALL targets must not match (AND logic for negation)
+        // For others, ANY target must match (OR logic)
+        if (operator === ':ne=') {
+            for (const target of targetValues) {
+                if (compareValues(dataVal, target, '=')) return false; // If matches any, then :ne is false
+            }
+            return true;
+        } else {
+            for (const target of targetValues) {
+                if (compareValues(dataVal, target, operator)) return true;
+            }
+            return false;
+        }
+    }
+
+    function compareValues(a, bStr, operator) {
+        // Simple type coercion
+        let b = bStr;
+        if (!isNaN(bStr) && bStr.trim() !== '') {
+            b = parseFloat(bStr);
+        }
+
+        let aVal = a;
+        if (typeof b === 'number' && (typeof a === 'string' || a === null || a === undefined)) {
+            // If target is number, try to convert data value
+            const parsed = parseFloat(a);
+            if (!isNaN(parsed)) aVal = parsed;
+        }
+
+        switch (operator) {
+            case '=': return String(a) === String(bStr); // Exact string match for equality to be safe
+            case ':gt=': return aVal > b;
+            case ':lt=': return aVal < b;
+            case ':gte=': return aVal >= b;
+            case ':lte=': return aVal <= b;
+            default: return false;
+        }
+    }
+
     // --- Data Fetching (Browser/Local) ---
     function filterLocalData(data, href) {
         if (!Array.isArray(data) || !href || !href.includes('?')) return data;
@@ -157,6 +266,8 @@ const factory = function () {
             // Filter
             for (const [key, val] of Object.entries(params)) {
                 if (val === undefined || val === null || val === '' || val === '{?}') continue;
+                // Ignore unresolved placeholders to avoid filtering out everything (e.g. content="{_sys.query.q}" -> val="{_sys.query.q}")
+                if (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1) continue;
 
                 if (key === '_limit') limit = parseInt(val, 10);
                 else if (key === '_offset') offset = parseInt(val, 10);
@@ -392,7 +503,7 @@ const factory = function () {
                 if (await this.processList(element, data, localConfig)) return;
             }
             if (localConfig.processBindings && element.hasAttribute('data-t-if')) {
-                if (!isTruthy(resolveValue(element.getAttribute('data-t-if'), data))) { element.remove(); return; }
+                if (!evaluateCondition(element.getAttribute('data-t-if'), data)) { element.remove(); return; }
                 if (localConfig.stripAttributes) element.removeAttribute('data-t-if');
             }
             if (localConfig.processIncludes && element.hasAttribute('data-t-include')) {
@@ -499,7 +610,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, resolvePathHandle, readFileContent,
+        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, resolvePathHandle, readFileContent, evaluateCondition, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
@@ -924,7 +1035,28 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
             e.preventDefault();
             const formData = new FormData(form);
-            const body = Object.fromEntries(formData.entries());
+            let body = {};
+
+            // Unflatten dot-notation keys
+            for (const [key, value] of formData.entries()) {
+                const parts = key.split('.');
+                let current = body;
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i];
+                    const nextPart = parts[i + 1];
+                    const isArrayIndex = !isNaN(nextPart);
+
+                    if (i === parts.length - 1) {
+                        current[part] = value;
+                    } else {
+                        if (!current[part]) {
+                            current[part] = isArrayIndex ? [] : {};
+                        }
+                        current = current[part];
+                    }
+                }
+            }
+
             const method = (form.getAttribute('method') || 'POST').toUpperCase();
             const redirect = form.getAttribute('data-t-redirect');
 
