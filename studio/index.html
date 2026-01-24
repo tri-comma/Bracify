@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Bracify Studio</title>
-    <link data-t-source="projects" href="/_sys/data/projects.json">
+    <link data-t-source="projects" href="_sys/data/projects.json">
     <link rel="stylesheet" href="common.css">
     <script src="../engine/lib/engine.cjs"></script>
 </head>
@@ -20,13 +20,12 @@
             <div>
                 <p style="color: var(--text-muted); margin: 0;">You have {projects._length} projects registered.</p>
             </div>
-            <button class="btn-primary" onclick="Bracify.navigate('project.html')">+ Create New Project</button>
+            <a href="project.html" class="btn-primary">+ Create New Project</a>
         </div>
 
         <div class="grid">
             <!-- Project Card List -->
-            <div data-t-list="projects" class="card" onclick="Bracify.navigate('project.html?id=' + this.dataset.id)"
-                data-id="{projects.id}">
+            <a data-t-list="projects" class="card" href="project.html?id={projects.id}">
                 <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
                     <h3>{projects.name}</h3>
@@ -40,8 +39,9 @@
                     <span style="color: var(--text-muted);">Port: {projects.port}</span>
                     <span style="color: var(--accent); font-weight: 500;">Manage &rarr;</span>
                 </div>
-            </div>
+            </a>
         </div>
+    </div>
     </div>
 
 </body>

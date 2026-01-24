@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Details | Bracify Studio</title>
     <!-- Data Source: Fetch single project if ID exists -->
-    <link data-t-source="project" href="/_sys/data/projects.json?id={?id}&_limit=1">
+    <link data-t-source="project" href="_sys/data/projects.json?id={?id}&_limit=1">
     <link rel="stylesheet" href="common.css">
     <script src="../engine/lib/engine.cjs"></script>
 </head>
@@ -26,7 +26,7 @@
             <div class="card">
                 <span class="section-label">General Info</span>
                 <!-- Form: Automagically binds to 'project' data if editing, or creates new if POST -->
-                <form data-t-scope="project" method="POST" action="/_sys/data/projects.json"
+                <form data-t-scope="project" method="POST" action="_sys/data/projects.json"
                     data-t-redirect="index.html">
                     <input type="hidden" name="id">
                     <div class="form-group">
@@ -47,8 +47,7 @@
 
                     <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                         <button type="submit" class="btn-primary">Save Project</button>
-                        <button type="button" class="btn-secondary"
-                            onclick="Bracify.navigate('index.html')">Cancel</button>
+                        <a href="index.html" class="btn-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -67,11 +66,10 @@
                         Activate this Project
                     </button>
 
-                    <button class="btn-secondary" style="width: 100%;"
-                        onclick="Bracify.navigate('data/index.html?project=' + encodeURIComponent(this.dataset.id))"
-                        data-id="{project.id}">
+                    <a href="data/index.html?project={project.id}" class="btn-secondary"
+                        style="width: 100%; text-align: center; box-sizing: border-box;">
                         Manage Data Entities &rarr;
-                    </button>
+                    </a>
                 </div>
 
                 <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">

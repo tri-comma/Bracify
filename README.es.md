@@ -137,6 +137,14 @@ Se ejecuta mediante el protocolo `file://` abriendo la carpeta directamente en u
 - **Inclusión en tiempo de ejecución**: Cuando el navegador carga el HTML, obtiene y fusiona los archivos especificados por `data-t-include` al vuelo usando la File System Access API.
 - **Consistencia**: Tanto SSR como CSR usan exactamente el mismo motor de vinculación (`engine.js`), garantizando resultados idénticos en cualquier entorno.
 
+#### 3. Transiciones de página y enrutamiento SPA (Unified SPA)
+Bracify trata **todas las transiciones de página como SPA por defecto** tanto en modo SSR como CSR.
+
+- **Experiencia sin interrupciones**: Evitando las recargas completas de la página, Bracify utiliza Ajax (Fetch) para obtener el HTML de la siguiente página y reemplaza dinámicamente el `<body>` y otros elementos del DOM. Esto evita el parpadeo de pantalla en blanco y proporciona una sensación de aplicación rápida y fluida.
+- **Persistencia de permisos**: Crucial para el modo CSR. En un entorno `file://`, una recarga completa de la página restablece los permisos de acceso a las carpetas del navegador. El enfoque SPA permite mantener los permisos durante toda la sesión.
+- **Intercepción automática**: Los enlaces internos mediante etiquetas `<a>` estándar se detectan automáticamente y se promueven a transiciones SPA. Los desarrolladores pueden crear aplicaciones SPA sin escribir una sola línea de JavaScript.
+- **Soporte del historial del navegador**: Utiliza la API `history.pushState` para que las actualizaciones de URL y los botones de "Atrás/Adelante" funcionen exactamente como se espera, incluso durante las transiciones SPA.
+
 ---
 
 ## Referencia
@@ -654,11 +662,7 @@ Al utilizar la **File System Access API** proporcionada por los navegadores mode
 
 #### Transiciones de página y enrutamiento SPA
 
-En un entorno `file://`, las recargas del navegador restablecen los permisos de acceso a las carpetas, por lo que Bracify trata todas las transiciones como SPA (Single Page Application).
-
-- **Intercepción automática de enlaces**: Las transiciones internas a través de etiquetas `<a>` se detectan automáticamente, reemplazando solo el DOM sin recargar la página (Full DOM Replacement).
-- **API de navegación JavaScript**: Cuando navegue mediante programación a través de un script, use `Bracify.navigate('/ruta/a/pagina.html')` en lugar de `location.href`.
-- **Historial del navegador**: Admite los botones de "Atrás" y "Adelante" del navegador, lo que permite la navegación entre los estados del historial sin recargas.
+Como se describe en [Transiciones de página y enrutamiento SPA (Unified SPA)](#3-transiciones-de-página-y-enrutamiento-spa-unified-spa), todas las transiciones en modo CSR se manejan como SPA. Esto resuelve el gran desafío de perder los permisos de acceso a las carpetas al recargar en un entorno `file://`.
 
 #### Limitaciones en navegadores no compatibles
 

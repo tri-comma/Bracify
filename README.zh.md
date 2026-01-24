@@ -137,6 +137,14 @@ Bracify 允许您在“SSR 模式”（作为 Web 服务器）和“CSR 模式�
 - **运行时包含**：当浏览器加载 HTML 时，利用 File System Access API 即时获取并合并 `data-t-include` 指定的文件。
 - **一致性**：SSR 和 CSR 使用完全相同的绑定引擎 (`engine.js`)，确保在任何环境下结果一致。
 
+#### 3. 页面跳转与 SPA 路由 (Unified SPA)
+Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处理**。
+
+- **无缝体验**：通过避免完整的页面重新加载，Bracify 使用 Ajax (Fetch) 获取下一页的 HTML，并动态替换 `<body>` 等 DOM 元素。这消除了白屏（闪烁）现象，提供了快速流畅的操作感。
+- **权限持久性**：对 CSR 模式至关重要。在 `file://` 环境下，页面重载会重置浏览器的文件夹访问权限。SPA 方式允许在整个会话期间保持该权限。
+- **自动拦截链接**：自动检测标准 `<a>` 标签的内部链接，并将其提升为 SPA 跳转。开发者无需编写 JavaScript 即可构建 SPA 应用。
+- **浏览器历史记录支持**：利用 `history.pushState` API，确保 URL 更新以及浏览器的“后退/前进”按钮在 SPA 跳转过程中仍能按预期工作。
+
 ---
 
 ## 参考文档 (Reference)
@@ -609,11 +617,7 @@ project/
 
 #### 页面跳转与 SPA 路由
 
-在 `file://` 环境下，刷新会重置权限，因此 Bracify 将跳转作为 SPA 处理。
-
-- **自动拦截链接**：自动检测 `<a>` 跳转，仅替换 DOM。
-- **JavaScript 跳转 API**：使用 `Bracify.navigate('/path/to/page.html')`。
-- **浏览器历史记录**：支持前进/后退，无需刷新刷新。
+如前文“[页面跳转与 SPA 路由 (Unified SPA)](#3-页面跳转与-spa-路由-unified-spa)”所述，CSR 模式下的所有跳转均由 SPA 处理。这解决了 `file://` 环境下“重载导致文件夹访问权限丢失”的核心难题。
 
 #### 不支持环境的限制
 

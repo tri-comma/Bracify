@@ -137,6 +137,14 @@ Runs via the `file://` protocol by opening the folder directly in a browser.
 - **Runtime Include**: When the browser loads the HTML, it fetches and merges files specified by `data-t-include` on the fly using the File System Access API.
 - **Consistency**: Both SSR and CSR use the exact same binding engine (`engine.js`), ensuring identical results across environments.
 
+#### 3. Page Transitions and SPA Routing (Unified SPA)
+Bracify treats **all page transitions as SPA by default** in both SSR and CSR modes.
+
+- **Seamless Experience**: By avoiding full page reloads, Bracify uses Ajax (Fetch) to retrieve the next page's HTML and dynamically replaces the `<body>` and other DOM elements. This prevents the "blank screen" (flicker) and provides a fast, smooth app-like feel.
+- **Permission Persistence**: Crucial for CSR mode. In a `file://` environment, a full page reload resets browser folder access permissions. The SPA approach allows you to maintain permission throughout the session.
+- **Automatic Interception**: Standard `<a>` tags for internal links are automatically detected and promoted to SPA transitions. Developers can build SPA apps without writing a single line of JavaScript.
+- **Browser History Support**: Utilizes the `history.pushState` API so that URL updates and "Back/Forward" buttons work exactly as expected even during SPA transitions.
+
 ---
 
 ## Reference
@@ -654,11 +662,7 @@ By utilizing the **File System Access API** provided by modern browsers (Chrome,
 
 #### Page Transitions and SPA Routing
 
-In a `file://` environment, browser reloads reset folder access permissions, so Bracify treats all transitions as SPA (Single Page Application).
-
-- **Automatic Link Interception**: Internal transitions via `<a>` tags are automatically detected, replacing only the DOM without reloading the page (Full DOM Replacement).
-- **JavaScript Navigation API**: When navigating programmatically via script, use `Bracify.navigate('/path/to/page.html')` instead of `location.href`.
-- **Browser History**: Supports the browser's "Back" and "Forward" buttons, allowing navigation between history states without reloads.
+As described in [Page Transitions and SPA Routing (Unified SPA)](#3-page-transitions-and-spa-routing-unified-spa), all transitions in CSR mode are handled as SPA. This solves the major challenge of losing folder access permissions upon reload in a `file://` environment.
 
 #### Limitations in Unsupported Browsers
 

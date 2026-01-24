@@ -161,6 +161,7 @@ h1 {
 
 /* Tools */
 .btn-primary {
+    display: inline-block;
     background: var(--accent);
     color: white;
     padding: 0.8rem 1.5rem;
@@ -208,6 +209,7 @@ input:focus {
 }
 
 .btn-secondary {
+    display: inline-block;
     background: transparent;
     border: 1px solid var(--card-border);
     color: var(--text-main);

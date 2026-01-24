@@ -1016,10 +1016,32 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
             // Conditions for SPA transition
             if (!href.startsWith('http') && !href.startsWith('#') && target !== '_blank' && cleanPath.endsWith('.html')) {
-                if (location.protocol === 'file:' || BracifyLib.rootHandle) {
-                    e.preventDefault();
-                    BracifyLib.navigate(href);
+                e.preventDefault();
+                BracifyLib.navigate(href);
+            }
+        });
+
+        // --- SPA Form Interception (GET) ---
+        document.addEventListener('submit', (e) => {
+            const form = e.target.closest('form');
+            if (!form || form.method.toUpperCase() !== 'GET') return;
+
+            const action = form.getAttribute('action') || (typeof window !== 'undefined' ? window.location.pathname : '/');
+            const target = form.getAttribute('target');
+
+            const cleanAction = action.split('?')[0].split('#')[0];
+            if (!action.startsWith('http') && target !== '_blank' && cleanAction.endsWith('.html')) {
+                e.preventDefault();
+                // Serialize form data to query string
+                const formData = new FormData(form);
+                const params = new URLSearchParams();
+                for (const [key, value] of formData.entries()) {
+                    if (value) params.append(key, value);
                 }
+                const qs = params.toString();
+                const separator = action.includes('?') ? '&' : '?';
+                const href = action + (qs ? separator + qs : '');
+                BracifyLib.navigate(href);
             }
         });
 

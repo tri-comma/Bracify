@@ -137,6 +137,14 @@ Funciona via protocolo `file://` abrindo a pasta diretamente em um navegador.
 - **Inclusão em Tempo de Execução**: Quando o navegador carrega o HTML, ele busca e mescla os arquivos especificados por `data-t-include` dinamicamente usando a File System Access API.
 - **Consistência**: Tanto o SSR quanto o CSR usam exatamente o mesmo motor de vinculação (`engine.js`), garantindo resultados idênticos em qualquer ambiente.
 
+#### 3. Navegação SPA Unificada (Unified SPA)
+Bracify trata **todas as transições de página como SPA por padrão**, tanto no modo SSR quanto no CSR.
+
+- **Experiência Fluida**: Ao evitar o carregamento completo da página, o Bracify utiliza Ajax (Fetch) para buscar o HTML da próxima página e substitui dinamicamente o `<body>` e outros elementos do DOM. Isso elimina o "flash" de tela branca e oferece uma sensação de aplicativo rápido e moderno.
+- **Persistência de Permissões**: Crucial para o modo CSR. No ambiente `file://`, um recarregamento total da página redefine as permissões de acesso à pasta do navegador. A abordagem SPA permite manter essas permissões durante toda a sessão.
+- **Interceptação Automática**: Links internos através de tags `<a>` padrão são detectados automaticamente e promovidos a transições SPA. Desenvolvedores podem criar apps SPA sem escrever uma única linha de JavaScript.
+- **Suporte ao Histórico**: Utiliza a API `history.pushState` para que as atualizações de URL e os botões de "Voltar/Avançar" funcionem exatamente como o esperado, mesmo em transições SPA.
+
 ---
 
 ## Referência
@@ -601,11 +609,7 @@ Desenvolvimento abrindo o `index.html` via `file://` sem necessidade de servidor
 
 #### Navegação SPA
 
-Em `file://`, recarregamentos resetam permissões, então o Bracify trata tudo como SPA.
-
-- **Interceptação de Links**: Detecta `<a>` e troca apenas o DOM.
-- **Navegação via JS**: Use `Bracify.navigate('/caminho/para/pagina.html')`.
-- **Histórico**: Suporta os botões de voltar/avançar.
+Conforme descrito em [Navegação SPA Unificada (Unified SPA)](#3-navegação-spa-unificada-unified-spa), todas as transições no modo CSR são tratadas como SPA. Isso resolve o grande desafio de perder as permissões de acesso à pasta ao recarregar um ambiente `file://`.
 
 #### Limitações em Navegadores Não Compatíveis
 
