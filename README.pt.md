@@ -67,8 +67,9 @@ Crie um arquivo chamado `/_sys/data/info.json` e escreva o seguinte:
 
 ### 4. Executar
 
-Pressione o botão `Start Server` no aplicativo GUI. Uma pasta `_dist` será gerada no seu projeto. Abra o arquivo `index.html` dentro da pasta `_dist` no seu navegador e você verá `Olá Bracify!`. Acessar `localhost:3000` mostrará o mesmo resultado.
-Aproveite a experiência de exibir dados apenas com HTML, sem escrever uma única linha de JavaScript.
+Pressione o botão `Start Server` no aplicativo GUI e abra `localhost:3000`. Você verá `Olá Bracify!`.
+O servidor lê o `index.html` e o `info.json` ao iniciar, resolve o SSI (Server Side Includes) em memória e retorna a resposta.
+Ao editar e salvar um arquivo, o monitoramento a nível de sistema operacional atualiza instantaneamente o template na memória.
 
 ---
 
@@ -95,50 +96,46 @@ Uma tela de gerenciamento integrada que consolida todas as operações.
   - Edição de JSON, estimativa de esquema.
 - **Monitor de API**:
   - Verificação de logs de comunicação.
-- **Build Estático**:
-  - Execução de geração de site estático.
 
 ---
 
 ## Estrutura do Projeto (File System Structure)
 
-Um projeto `Bracify` consiste em uma pasta de edição (root) e uma pasta de saída (`_dist`).
+Um projeto `Bracify` consiste em uma única pasta de origem. Nenhuma pasta de build física é necessária para a execução.
 
 ### Estrutura de Diretórios Recomendada
 
 ```text
 projeto/
-├── index.html          # Ponto de entrada (arquivo para editar)
+├── index.html          # Ponto de entrada
 ├── style.css           # Recurso estático
-├── img/                # Assets como imagens
+├── img/                # Qualquer pasta que não comece com underscore é pública
 │   └── logo.png
-├── _parts/             # Componentes para inclusão (não incluídos no build final)
+├── _parts/             # [Privado] Componentes para inclusão
 │   ├── header.html
 │   └── footer.html
-├── _sys/               # Dados do sistema e configurações (não incluídos no build final)
-│   └── data/
-│       └── articles.json
-└── _dist/              # [Gerado Automaticamente] Destino do build (o produto final fica aqui)
-    ├── index.html
-    ├── style.css
-    └── img/
-        └── logo.png
+└── _sys/               # [Privado] Dados do sistema e configurações
+    ├── data.db         # Arquivo do banco de dados
+    └── data/           # Dados JSON para entidades
+        └── articles.json
 ```
 
-### Especificações de Build
+### Especificações de Renderização
 
-Ao executar um "Build" via GUI ou linha de comando, a saída é gerada na pasta `_dist` seguindo estas regras:
+Bracify permite alternar facilmente entre o "Modo SSR" (agindo como servidor web) e o "Modo CSR" (rodando diretamente no navegador).
 
-1. **Processamento de Arquivos HTML**:
-    - Arquivos `.html` na raiz são enviados para `_dist` com as tags `data-t-include` resolvidas (componentes mesclados).
-2. **Cópia de Recursos Estáticos**:
-    - Imagens, CSS, JS, etc., são copiados para `_dist` sem alterações.
-3. **Regras de Exclusão**:
-    - Arquivos e pastas iniciados com underscore `_` (`_parts`, `_sys`, etc.) são considerados arquivos de sistema ou de build e **não são copiados para a pasta `_dist`**.
-4. **Conversão de Dados do Sistema (`_sys/data`)**:
-    - Arquivos `.json` na pasta `_sys/data` são convertidos automaticamente para `.js` (formato Mock) para CSR e enviados para `_dist/_sys/data`.
-    - **Nota**: Mesmo que exista um arquivo `.js` com o mesmo nome na pasta de origem, ele será **ignorado**. A fonte oficial de dados é o arquivo `.json`.
-    - Esta conversão (build) é necessária para exibir dados via CSR, mesmo que você não use `data-t-include`.
+#### 1. Modo SSR (Lado do Servidor)
+O servidor constrói dinamicamente o HTML em resposta às requisições.
+
+- **Build em Memória**: Resolve o `data-t-include` e armazena em **memória** o template HTML combinado ao iniciar ou salvar arquivos.
+- **Monitoramento de Arquivos**: Quando o `index.html` ou arquivos em `_parts/` são atualizados, o servidor detecta eventos do SO e reconstrói automaticamente o cache em memória.
+- **Alta Performance**: As respostas são servidas a partir dos templates já combinados na memória, minimizando o I/O de disco.
+
+#### 2. Modo CSR (Lado do Cliente)
+Funciona via protocolo `file://` abrindo a pasta diretamente em um navegador.
+
+- **Inclusão em Tempo de Execução**: Quando o navegador carrega o HTML, ele busca e mescla os arquivos especificados por `data-t-include` dinamicamente usando a File System Access API.
+- **Consistência**: Tanto o SSR quanto o CSR usam exatamente o mesmo motor de vinculação (`engine.js`), garantindo resultados idênticos em qualquer ambiente.
 
 ---
 
@@ -148,7 +145,7 @@ Ao executar um "Build" via GUI ou linha de comando, a saída é gerada na pasta 
 
 #### `data-t-include`
 
-Carrega um arquivo HTML externo e o expande como conteúdo do elemento. Este atributo possui dois modos: **Snippet Include** (Inclusão de Fragmento) e **Layout Application** (Aplicação de Layout).
+Carrega um arquivo HTML externo e o expande como conteúdo do elemento. Este atributo possui dois modos: **Snippet Include** e **Layout Application**.
 
 Em ambos os modos, **a tag que contém o atributo `data-t-include` não é removida; seu conteúdo interno (innerHTML) é substituído pelo resultado da expansão.**
 
@@ -215,7 +212,7 @@ Carrega uma estrutura comum ("layout") e preenche áreas específicas dentro del
     </body>
     ```
 
-- **Nota**: A mesclagem ocorre no lado do servidor durante o uso do servidor de desenvolvimento ou no processo de build. Não funciona ao visualizar o arquivo diretamente no navegador via `file://`.
+- **Nota**: A mesclagem ocorre no lado do servidor durante o uso do servidor de desenvolvimento ou via File System Access API no navegador.
 
 #### `data-t-source`
 
@@ -282,17 +279,18 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
   <code>\{user.name\}</code> <!-- Resultado: {user.name} -->
   ```
 
-- **Exibindo Múltiplos Itens (`data-t-list`)**:
-    Se houver vários itens de dados que você deseja exibir, você deve especificar `data-t-list="Nome da Fonte de Dados"` no elemento (intervalo) que deseja repetir.
+### Exibindo Listas (`data-t-list`)
 
-    ```html
-    <link data-t-source="articles" href="/_sys/data/articles.json">
-    <ul>
-      <li data-t-list="articles">
-        <h3>{articles.title}</h3>
-      </li>
-    </ul>
-    ```
+Se houver vários itens de dados que você deseja exibir, você deve especificar `data-t-list="Nome da Fonte de Dados"` no elemento (intervalo) que deseja repetir.
+
+```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <ul>
+    <li data-t-list="articles">
+      <h3>{articles.title}</h3>
+    </li>
+  </ul>
+```
 
 #### Inserindo Dados em Atributos (Placeholder Universal)
 
@@ -306,11 +304,11 @@ Em todos os atributos padrão (`href`, `src`, `class`, `value`, `style`, etc.), 
     <div style="background-color: {user.color}; height: {progress}%;"></div>
     ```
 
-- **Limitação**: Para evitar interferência com a sintaxe do JavaScript, **não é possível usar placeholders dentro de atributos de eventos (`onclick`, `onchange`, etc.).** Veja a seção abaixo sobre interferências.
+- **Limitação**: Para evitar interferência com a sintaxe do JavaScript, **não é possível usar placeholders dentro de atributos de eventos (`onclick`, `onchange`, etc.).**
 
 #### Evitando Interferências e Limitações
 
-Os placeholders `{ }` do Bracify podem ser usados em atributos HTML e nós de texto. No entanto, para evitar conflitos com códigos JavaScript ou CSS (que também usam chaves), a **expansão é desativada** nos seguintes locais:
+Os placeholders `{ }` do Bracify podem ser usados em atributos HTML e nós de texto. No entanto, para evitar conflitos com códigos JavaScript ou CSS, a **expansão é desativada** nos seguintes locais:
 
 - **Onde a expansão NÃO ocorre**:
   - Dentro de tags `<script>`.
@@ -337,10 +335,7 @@ Se um atributo `name` for definido em elementos `input`, `select` ou `textarea`,
 
 - **Prioridade de Vinculação**:
     1. **Contexto de dados atual**: Define o valor baseado em propriedades de dados especificados por `data-t-scope`, etc.
-    2. **Parâmetros de URL (`_sys.query`)**: Se houver um item na URL com o mesmo nome do atributo `name`, esse valor será usado.
-
-- **Definindo o Escopo com `data-t-scope`**:
-    Ao usar `data-t-scope="article"` em um elemento pai (`div`, `form`, etc.), você define a fonte de dados padrão para todos os elementos internos. Assim, um `name="title"` interno referenciará automaticamente `article.title`.
+    2. **Parámetros de URL (`_sys.query`)**: Se houver um item na URL com o mesmo nome do atributo `name`, esse valor será usado.
 
 - **Exemplo (Formulário de Busca)**:
 
@@ -353,7 +348,7 @@ Se um atributo `name` for definido em elementos `input`, `select` ou `textarea`,
 
     ```html
     <!-- title e content do objeto article serão preenchidos nos campos correspondentes -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article">
+    <form data-t-scope="article" method="PUT" action="/_sys/data/article.json">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -412,15 +407,15 @@ Exibe ou esconde elementos baseado em condições. O elemento é exibido se o va
     <!-- Status for publicado (status == 'published') -->
     <span data-t-if="status=published">Publicado</span>
 
-    <!-- Preço for 1000 ou mais E estoque for maior que 0 (price >= 1000 AND stock > 0) -->
+    <!-- Preço for 1000 ou mais E estoque for maior que 0 -->
     <div data-t-if="price:gte=1000 stock:gt=0">
       Item Popular (Em Estoque)
     </div>
 
-    <!-- Função for admin OU editor (role == 'admin' OR role == 'editor') -->
+    <!-- Função for admin OU editor -->
     <button data-t-if="role=admin,editor">Editar</button>
 
-    <!-- ID do usuário for igual ao ID do autor do artigo (user.id == post.author_id) -->
+    <!-- ID do usuário for igual ao ID do autor do artigo -->
     <div data-t-if="user.id={post.author_id}">
       <a href="/edit">Editar Artigo</a>
     </div>
@@ -431,40 +426,17 @@ Exibe ou esconde elementos baseado em condições. O elemento é exibido se o va
 Define a URL para onde o usuário será redirecionado após um processo (como envio de formulário) ser concluído com sucesso.
 
 - **Especificação**: Indique o caminho relativo ou absoluto.
-- **Alvo**: Principalmente tags `form` (expansão para botões está planejada).
-- **Exemplo**:
+- **Alvo**: Tag `form`.
+- **Funcionamento**: Após o servidor completar o processamento, redireciona com status 302 para o caminho especificado. Caso contrário, recarrega a página atual.
 
-    ```html
-    <!-- Volta para a home após o envio -->
-    <form method="POST" action="/_sys/data/contact" data-t-redirect="/">
-    ```
+### Formulários e Salvamento de Dados (Postback)
 
-### Formulários e Salvamento de Dados
+Você pode criar e atualizar dados usando tags `<form>` padrão. O Bracify utiliza **postbacks padrão do navegador (envios que envolvem transição de página)**, sem o uso de JavaScript assíncrono (fetch).
 
-Você pode enviar dados (criar/atualizar) para a API usando tags `<form>` padrão.
-
-- **Envio Automático para API**: Se você definir a URL no atributo `action` e `POST` ou `PUT` no `method`, os dados serão enviados automaticamente em formato JSON.
-- **Transição de Página**: Use `data-t-redirect` para definir para onde ir após salvar. Se não definido, a página atual será recarregada.
-- **Data Binding (Valores Iniciais)**: Use `data-t-scope` no `<form>` para preencher os campos com dados existentes (útil para telas de edição).
-- **Nomes dos Campos**: O atributo `name` de `<input>` e `<textarea>` corresponde à propriedade (campo) no objeto de dados.
-
-#### Exemplo: Formulário de Edição de Artigo
-
-```html
-<!-- Vincula os dados de article ao form, preenchendo os valores iniciais -->
-<!-- Envia via PUT para a URL especificada no action -->
-<!-- Redireciona para a lista (../list.html) após salvar -->
-<form method="PUT" action="/_sys/data/article" data-t-scope="article" data-t-redirect="../list.html">
-
-  <label>Título</label>
-  <input type="text" name="title"> <!-- Preenchido com article.title -->
-
-  <label>Conteúdo</label>
-  <textarea name="content"></textarea> <!-- Preenchido com article.content -->
-
-  <button>Salvar</button>
-</form>
-```
+- **Tratamento Automático**: Defina o destino no atributo `action` (ex: `/_sys/data/xxxxx.json`) e envie via `method="POST"` ou `PUT`.
+- **Redirecionamento (Padrão PRG)**: Após salvar no servidor, redireciona automaticamente para a URL definida em `data-t-redirect` ou para a página original. Isso evita o "reenvio de formulário" e permite uma navegação segura.
+- **Data Binding (Valores Iniciais)**: Ao usar `data-t-scope` na tag `<form>`, você pode preencher os campos com dados existentes.
+- **Nomes dos Campos**: O atributo `name` de `<input>` e `<textarea>` corresponde à propriedade no objeto de dados.
 
 ### Filtros de Processamento (Pipes)
 
@@ -494,145 +466,116 @@ Você pode usar filtros de processamento (nome oficial: pipes) `|` ao exibir dad
 
 #### `date`
 
-Gera texto a partir de um objeto de data no formato especificado.
+Gera texto a partir de uma data no formato especificado.
 
 - **Sintaxe**: `{ item | date: 'formato' }`
-- **Opções de Formato**:
-  - `yyyy`: Ano com 4 dígitos
-  - `mm`: Mês com 2 dígitos
-  - `dd`: Dia com 2 dígitos
+- **Opções**:
+  - `yyyy`: Ano (4 dígitos)
+  - `mm`: Mês (2 dígitos)
+  - `dd`: Dia (2 dígitos)
 
 #### `number`
 
-Exibe números no formato de "separação de milhar com vírgula".
+Exibe números com separação de milhar.
 
 - **Sintaxe**: `{ nome_item | number }`
 
 #### `json`
 
-Exibe os dados como uma string JSON formatada. Útil para depuração ou para usar dados diretamente em JavaScript.
+Exibe os dados como uma string JSON formatada. Útil para depuração.
 
 - **Sintaxe**: `{ nome_item | json }`
 
-## API de Acesso a Dados
+## Processamento de Salvamento (Form Handler)
 
-### Especificação de Endpoint (Data API)
-
-Você pode não apenas ler, mas também atualizar e deletar dados (arquivos JSON, etc.) no servidor.
+O Bracify não fornece APIs de dados externas. Todos os recursos sob `/_sys` são ocultados, exceto os seguintes endpoints que funcionam como receptores de formulários.
 
 ```text
-/_sys/data/{entity}.json?{prop}={val}
+POST /_sys/data/{entity}.json
 ```
 
-#### Métodos de Operação
+Este endpoint não pode ser acessado via `GET` pelo navegador (403 Forbidden). Ele só está disponível como o `action` de um formulário.
+
+#### Operações de Dados
+As operações são feitas via HTTP, mas a resposta é sempre um "redirecionamento para uma página".
 
 | Método | Ação | Descrição |
 | :--- | :--- | :--- |
-| `GET` | Ler | Busca dados de acordo com as condições. |
 | `POST` | Criar | Cria novos dados. |
-| `PUT` | Atualizar | Substitui dados que atendem às condições pelos novos valores. |
-| `DELETE` | Deletar | Remove dados que atendem às condições. |
+| `PUT` | Atualizar | Substitui informações existentes pelos dados enviados. |
+| `DELETE`| Deletar | Remove os dados especificados. |
 
 ### Especificação de Endpoint (File API)
 
-Uma API para gerenciar arquivos estáticos (como imagens) no servidor.
+API para gerenciar arquivos estáticos (como imagens) no servidor.
 
 ```text
 /_sys/file/{filename}.{ext}
 ```
 
-#### Métodos de Operação de Arquivos
+#### Métodos de Arquivos
 
 | Método | Ação | Descrição |
 | :--- | :--- | :--- |
 | `GET` | Ler | Busca o arquivo. |
-| `POST` | Criar | Faz o upload/cria um novo arquivo. |
-| `PUT` | Atualizar | Sobrescreve e atualiza o conteúdo de um arquivo existente. |
-| `DELETE` | Deletar | Remove o arquivo especificado. |
+| `POST` | Criar | Upload de novo arquivo. |
+| `PUT` | Atualizar | Sobrescreve um arquivo. |
+| `DELETE` | Deletar | Deleta um arquivo. |
 
 #### Parâmetros
 
-- **`{entity}`**: O tipo de dado (nome da entidade). Ex: `article`, `user`.
-- **`{prop}`**: O nome do campo usado para filtrar.
-- **`{val}`**: O valor usado na condição do filtro.
+- **`{entity}`**: Tipo de dado (entidade). Ex: `article`, `user`.
+- **`{prop}`**: Campo usado para filtrar.
+- **`{val}`**: Valor para a condição.
 
 #### Operadores
 
-Adicionando símbolos (operadores) após o nome do campo, você pode refinar as condições de busca.
-
-| Operador | Significado | Exemplo | Descrição do Exemplo |
+| Operador | Significado | Exemplo | Descrição |
 | :--- | :--- | :--- | :--- |
 | (nenhum) | Igual | `?status=active` | Status é `active` |
-| `:ne` | Diferente de | `?status:ne=draft` | Status **NÃO** é `draft` |
-| `:gt` | Maior que | `?price:gt=1000` | Preço é **maior que** 1000 (1001 em diante) |
-| `:gte` | Maior ou igual | `?price:gte=1000` | Preço é 1000 **ou maior** |
-| `:lt` | Menor que | `?stock:lt=10` | Estoque é **menor que** 10 |
-| `:lte` | Menor ou igual | `?stock:lte=10` | Estoque é 10 **ou menor** |
+| `:ne` | Diferente | `?status:ne=draft` | Status NÃO é `draft` |
+| `:gt` | Maior que | `?price:gt=1000` | Maior que 1000 |
+| `:gte` | Maior ou igual | `?price:gte=1000` | 1000 ou maior |
+| `:lt` | Menor que | `?stock:lt=10` | Menor que 10 |
+| `:lte` | Menor ou igual | `?stock:lte=10` | 10 ou menor |
 
-### Variável Reservada do Sistema (`_sys`)
-
-A variável `_sys` é usada para acessar o contexto da aplicação e informações da requisição.
+### Variável Reservada (`_sys`)
 
 | Nome | Descrição | Exemplo |
 | :--- | :--- | :--- |
-| `_sys.query` | Parâmetros GET da URL. Acessa valores como `?id=123`. | `{_sys.query.id}` |
+| `_sys.query` | Parâmetros GET da URL. | `{_sys.query.id}` |
 
-#### Uso no `data-t-source` (Dynamic Parameter Binding)
-
-No atributo `href` do `data-t-source`, você pode usar placeholders `{ }` para embutir parâmetros da URL dinamicamente. Existe também uma versão curta `{?}` específica para parâmetros de URL.
+#### Uso no `data-t-source`
 
 | Notação | Significado | Exemplo |
 | :--- | :--- | :--- |
-| `{_sys.query.xxx}` | Embutir o campo especificado (formato padrão) | `?id={_sys.query.id}` |
-| `{?}` | **Auto Binding**. Busca na URL um valor com o mesmo nome da chave à esquerda | `?title={?}` |
-| `{?xxx}` | **Atalho**. Equivalente a `_sys.query.xxx` | `?title={?q}` |
+| `{_sys.query.xxx}` | Embutir campo (padrão) | `?id={_sys.query.id}` |
+| `{?}` | **Auto Binding**. Busca valor na URL com mesmo nome da chave | `?title={?}` |
+| `{?xxx}` | **Atalho**. | `?title={?q}` |
 
-#### Exemplos no Data Source
+#### Exemplo
 
 ```html
 <!-- Se a URL for ?title=Web&_limit=10 -->
-
-<!-- 1. Auto Binding: Melhor quando os nomes da chave e do parâmetro da URL são iguais -->
 <link data-t-source="articles" href="/_sys/data/articles.json?title={?}&_limit={?}&_sort=created_at">
-
-<!-- 2. Atalho: Quando os nomes na URL (ex: q) e na API (ex: title) são diferentes -->
-<link data-t-source="search" href="/_sys/data/articles.json?title={?q}">
-
-<!-- 3. Formato Padrão: Para ser mais explícito -->
-<link data-t-source="items" href="/_sys/data/items.json?category={_sys.query.cat}">
 ```
 
-### Informações Detalhadas (Propriedades de Sistema)
-
-Além dos valores dos dados em si (títulos, IDs), você pode acessar informações como "quantidade" de itens.
-No `Bracify`, você acessa essas informações especiais adicionando um nome prefixado com underscore `_` após o nome da fonte.
+### Detalhes dos Dados (Propriedades de Sistema)
 
 | Propriedade | Descrição | Exemplo |
 | :--- | :--- | :--- |
-| `_length` | Mostra a quantidade de itens em uma lista ou o tamanho de uma string. | `{articles._length} artigos` |
+| `_length` | Quantidade de itens em uma lista ou tamanho de string. | `{articles._length} artigos` |
 
 #### Parâmetros de Controle (Ordenação e Paginação)
 
-Para controlar a quantidade e a ordem dos dados buscados, use parâmetros reservados iniciados com underscore `_`. Isso evita conflitos com nomes de campos reais dos seus dados.
-
 | Parâmetro | Descrição | Exemplo |
 | :--- | :--- | :--- |
-| `_limit` | Quantidade máxima de itens para buscar | `?_limit=20` |
-| `_offset` | Pular N itens (para paginação) | `?_offset=20` (começa a partir do 21º) |
-| `_sort` | O campo pelo qual ordenar | `?_sort=created_at` |
-| `_order` | Ordem (`asc`: crescente, `desc`: decrescente) | `?_order=desc` (padrão é `asc`) |
+| `_limit` | Limite de busca | `?_limit=20` |
+| `_offset` | Pular N itens | `?_offset=20` |
+| `_sort` | Campo para ordenar | `?_sort=created_at` |
+| `_order` | Ordem (`asc`, `desc`) | `?_order=desc` |
 
-#### Exemplos de Parâmetros de Controle
-
-```html
-<!-- Busca/ordenação baseada em parâmetros da URL -->
-<link data-t-source="articles" href="/_sys/data/articles.json?title={_sys.query.title}&_sort={_sys.query._sort}&_order={_sys.query._order}&_limit={_sys.query._limit}">
-
-<!-- Categoria fixa, mas página definida por parâmetro -->
-<link data-t-source="techArticles" href="/_sys/data/articles.json?category=Tech&_limit=10&_offset={_sys.query._offset}">
-```
-
-#### Exemplo de Estrutura Local
+#### Exemplo de Estrutura de Diretórios
 
 ```text
 projeto/
@@ -647,99 +590,45 @@ projeto/
     └── footer.html
 ```
 
-**Exemplo de Arquivo JSON** (`_sys/data/article.json`):
-
-```json
-[
-  {
-    "id": 1,
-    "title": "Título do Artigo 1",
-    "summary": "Resumo do artigo...",
-    "published_at": "2025-12-01T10:00:00Z"
-  },
-  {
-    "id": 2,
-    "title": "Título do Artigo 2",
-    "summary": "Resumo do artigo...",
-    "published_at": "2025-12-05T15:30:00Z"
-  }
-]
-```
-
 ### Modo de Desenvolvimento Local (True Zero Server Mode)
 
-O modo em que você desenvolve abrindo diretamente o `index.html` como um arquivo local (`file://`) em um navegador, sem iniciar um servidor.
+Desenvolvimento abrindo o `index.html` via `file://` sem necessidade de servidor.
 
-#### Desenvolvimento sem compilação via File System Access API
+#### Desenvolvimento sem build via File System Access API
 
-Ao utilizar a **File System Access API** fornecida pelos navegadores modernos (Chrome, Edge, etc.), o processo de compilação tradicional (converter arquivos JSON em arquivos JS) torna-se desnecessário.
+1. **Seleção de Pasta**: Ao abrir via `file://`, selecione a pasta raiz para que o navegador opere nos arquivos.
+2. **Preview Instantâneo**: Como os arquivos são lidos diretamente, as mudanças aparecem ao recarregar ou navegar.
 
-1. **Seleção da Pasta do Projeto**: Ao abrir uma página via `file://`, um prompt de seleção de pasta aparece durante a inicialização. Ao selecionar o diretório raiz do projeto, o navegador pode ler e operar diretamente nos arquivos.
-2. **Visualização sem compilação**: Como `_sys/data/*.json` e `_parts/*.html` são lidos diretamente pelo navegador, quaisquer edições e salvamentos são refletidos instantaneamente ao recarregar o navegador (ou ao realizar uma transição).
+#### Navegação SPA
 
-#### Transições de Página e Roteamento SPA
+Em `file://`, recarregamentos resetam permissões, então o Bracify trata tudo como SPA.
 
-Em um ambiente `file://`, os recarregamentos do navegador redefinem as permissões de acesso às pastas, portanto o Bracify trata todas as transições como SPA (Single Page Application).
+- **Interceptação de Links**: Detecta `<a>` e troca apenas o DOM.
+- **Navegação via JS**: Use `Bracify.navigate('/caminho/para/pagina.html')`.
+- **Histórico**: Suporta os botões de voltar/avançar.
 
-- **Interceptação Automática de Links**: Transições internas via tags `<a>` são detectadas automaticamente, substituindo apenas o DOM sem recarregar a página (Full DOM Replacement).
-- **API de Navegação JavaScript**: Ao navegar programaticamente via script, use `Bracify.navigate('/caminho/para/pagina.html')` em vez de `location.href`.
-- **Histórico do Navegador**: Suporta os botões "Voltar" e "Avançar" do navegador, permitindo a navegação entre estados do histórico sem recarregamentos.
+#### Limitações em Navegadores Não Compatíveis
 
-#### Limitações em Navegadores não compatíveis
+Opera em modo "Mock Somente Leitura" com filtros limitados e sem salvamento.
 
-Se o navegador não suportar a File System Access API ou se a seleção da pasta não for realizada, o sistema operará no seguinte "Modo de simulação somente leitura" restrito:
+#### Filtros e Controle (Especificações Comuns)
 
-- **Limitações de Filtragem**: Apenas correspondência exata. Operadores como `:gt` o `:lt` não funcionarão.
-- **Sem Atualizações**: O salvamento de dados via envio de formulários não será realizado.
-- **Exibição Parcial**: O carregamento de arquivos externos (`data-t-include`) pode ser restrito.
+- **Filtros**: Apenas correspondência exata.
+- **Parâmetros**: `_limit`, `_offset`, `_sort`, `_order` funcionam de forma simples.
 
-#### Filtragem e Controle de Dados (Especificações Comuns)
+#### Comportamento do JavaScript
 
-No modo de desenvolvimento local (tanto True Zero Server quanto Modo de simulação), o processamento simples de dados ocorre dentro do navegador com as seguintes limitações e especificações:
+- **Isolamento**: Bracify usa IIFE nos scripts para evitar conflitos de variáveis entre páginas.
+- **Não Duplicação**: Scripts do `<head>` já carregados não são reexecutados.
+- **Variáveis Globais**: Dados no `window` persistem.
 
-- **Limitações de Filtragem**:
-  - **Apenas Correspondência Exata**: Retorna dados apenas quando a chave e o valor especificados correspondem exatamente.
-  - **Ignorar Valores Vazios**: Se o valor do filtro for uma string vazia (`?nome=`), essa condição será ignorada (todos os itens serão exibidos).
-  - **Operadores Avançados não suportados**: Operadores como `:gt` ou `:lt` não funcionam e serão ignorados.
+## Configuração do Banco de Dados
 
-- **Parâmetros de Controle Suportados**:
-  Os seguintes parâmetros funcionam de forma simples mesmo em ambientes locais:
-  - `_limit`: Limite de exibição
-  - `_offset`: Pular dados
-  - `_sort`: Chave de ordenação
-  - `_order`: `asc` (ascendente) ou `desc` (descendente)
-
-#### Comportamento do JavaScript no modo SPA
-
-No Modo de Desenvolvimento Local (True Zero Server Mode), ao realizar uma transição sem recarregar a página, a execução do JavaScript segue estas regras:
-
-- **Isolamento de Escopo (Envolvimento IIFE)**: Para evitar conflitos com declarações de variáveis (`const`, `let`) de páginas anteriores, scripts específicos da página (dentro de `<body>` e scripts recém-carregados no `<head>`) são automaticamente envolvidos e executados como Expressões de Função Invocadas Imediatamente (IIFE) pelo Bracify.
-- **Prevenção de Execução Duplicada**: Entre os scripts no `<head>`, aqueles que já foram carregados (como `engine.js` ou bibliotecas comuns) não são executados novamente no destino de navegação.
-- **Persistência de Variáveis Globais**: Dados explicitamente anexados ao objeto `window` ou variáveis `var` definidas fora das IIFEs persistem após a navegação.
-- **Ouvintes de Eventos**: Ouvintes de eventos adicionados diretamente ao `window` ou `document` não são limpos automaticamente na navegação. Recomenda-se anexar eventos específicos da página a elementos dentro do `<body>` ou projetá-los considerando a navegação.
-
-## Configuração da Base de Dados
-
-Por padrão, o Bracify utiliza o SQLite integrado (`_sys/data.db`), mas você pode se conectar a bases de dados externas como MySQL ou PostgreSQL definindo as configurações de conexão.
-
-### Como funciona
-
-Ao iniciar, o Bracify sempre consulta o arquivo `_sys/data.db` (SQLite) dentro do projeto para verificar as configurações do sistema. As configurações de conexão e roteamento da base de dados são armazenadas na tabela `config` dentro deste arquivo.
-
-Isso elimina a necessidade de gerenciar ou cometer informações sensíveis (como credenciais) como arquivos de texto, garantindo uma operação segura mantendo os segredos fora do repositório.
-
-### Comportamento padrão (Sem configuração)
-
-Se a tabela `config` não existir ou não houver configuração para uma entidade específica, **o SQLite integrado (`_sys/data.db`) é usado automaticamente.** Nenhuma configuração é necessária para projetos simples.
+Usa SQLite (`_sys/data.db`) por padrão, mas pode conectar a MySQL/PostgreSQL via configurações na tabela `config`. As credenciais ficam fora do código-fonte.
 
 ### Como configurar
 
-Você pode configurar isso através da interface gráfica (Bracify Studio) ou inserindo valores diretamente na tabela `config` da base de dados no seguinte formato:
-
-- **Tabela de destino**: `config`
-- **Colunas**: `name` = 'db', `value` = (array JSON de informações de conexão abaixo)
-
-**Formato de informações de conexão (JSON):**
+Via GUI (Bracify Studio) ou inserindo o JSON de conexão na tabela `config`.
 
 ```json
 [
@@ -747,48 +636,32 @@ Você pode configurar isso através da interface gráfica (Bracify Studio) ou in
     "target_entity": "users",
     "engine": "mysql",
     "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
-  },
-  {
-    "target_entity": "logs_*",
-    "engine": "mongodb",
-    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
-  },
-  {
-    "target_entity": "*",
-    "engine": "postgresql",
-    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
   }
 ]
 ```
 
-#### Prioridade de Roteamento (target_entity)
+#### Prioridade de Roteamento
 
-O destino da conexão é selecionado automaticamente com base no nome da entidade, de acordo com as seguintes regras:
-
-1. **Correspondência Exata**: As configurações que coincidem perfeitamente com o nome têm a prioridade mais alta.
-2. **Correspondência de Padrão**: Para configurações contendo um curinga `*`, prioriza-se aquela com a "parte fixa mais longa (caracteres)" (ex: `data_*` tem precedência sobre `*`).
-3. **Ordem de Definição**: Se vários padrões corresponderem com o mesmo comprimento da parte fixa, prioriza-se o que estiver **definido mais acima no array JSON**.
-4. **SQLite integrado**: Usado como fallback se nenhuma das regras acima corresponder.
-
-- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb`, etc. (implementados sequencialmente).
-- **option**: Configurações de conexão específicas do driver. Suporta variáveis de ambiente usando o formato `${ENV_VAR}`.
+Seleciona o banco por nome da entidade: Correspondência Exata > Padrão Mais Longo > Ordem de Definição.
 
 ## Implantação (Deployment)
 
-- **Serverless**: Preparado para implantação em serviços como Vercel ou Netlify.
-- **Upload de Zip**: Basta gerar o Zip do projeto no aplicativo GUI e arrastar para o dashboard do serviço escolhido.
+- **Serverless**: Vercel ou Netlify.
+- **Upload de Zip**: Gere o Zip na GUI e arraste para o dashboard do seu provedor.
 
 ## Fluxo de Desenvolvimento
 
-1. Baixe e instale o aplicativo GUI do `Bracify` pelo site oficial.
-2. Inicie o app e crie ou selecione uma pasta de projeto.
-3. Edite seu `index.html`, `_parts/header.html`, etc. O app GUI fornece preview em tempo real.
-4. Quando terminar, gere o Zip e publique!
+1. Instale o app GUI.
+2. Crie ou selecione uma pasta.
+3. Edite e veja o preview real.
+4. Gere o Zip e publique!
 
 ## Segurança
 
-O Bracify inclui várias funcionalidades de proteção integradas para apoiar o desenvolvimento frontend seguro.
-
-- **Auto-Escape**: A expansão de dados via `{placeholder}` é automaticamente escapada para HTML (tratada como texto simples), prevenindo XSS (Cross-Site Scripting).
-- **Injeção Segura de Dados**: Ao injetar dados em HTML durante processos de SSR ou build, eles são escapados automaticamente para prevenir a interferência de tags de script (como quebras com `</script>`).
-- **Sanitização de URL**: Ao inserir dados nos atributos `href` ou `src`, quaisquer protocolos perigosos como `javascript:` são detectados e desativados automaticamente para prevenir a execução inesperada de scripts.
+- **Auto-Escape**: Previne XSS.
+- **Injeção Segura**: Previne quebras de scripts.
+- **Sanitização de URL**: Bloqueia protocolos perigosos.
+- **Guarda de Underscore (Apenas SSR)**:
+  Quando rodando como servidor, nega todo acesso externo direto (403 Forbidden) a recursos onde o nome do diretório ou arquivo na raiz começa com underscore (`_`).
+  Isso protege dados internos como `data.db` ou componentes de inclusão (`_parts/`) a nível de servidor web.
+  * Nota: Endpoints oficiais de formulário (ex: `POST /_sys/data/*.json`) estão isentos.

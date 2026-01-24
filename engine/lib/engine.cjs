@@ -336,10 +336,13 @@ const factory = function () {
         if (globalData[entityName]) return filterLocalData(globalData[entityName], href);
 
         // 3. Try fetch (Production / Standard HTTP)
-        try {
-            const res = await fetch(href);
-            if (res.ok) return filterLocalData(await res.json(), href);
-        } catch (e) { }
+        // Skip fetch on file:// protocol as it triggers CORS errors for local files
+        if (typeof window !== 'undefined' && window.location.protocol !== 'file:') {
+            try {
+                const res = await fetch(href);
+                if (res.ok) return filterLocalData(await res.json(), href);
+            } catch (e) { }
+        }
 
         // 4. Fallback to script injection (file:// compatibility for non-FSA browsers)
         return new Promise((resolve) => {
@@ -1027,72 +1030,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             }
         });
 
-        // --- Zero JS Form Interception ---
-        document.addEventListener('submit', async (e) => {
-            const form = e.target;
-            const action = form.getAttribute('action');
-            if (!action || !action.includes('/_sys/data/')) return;
-
-            e.preventDefault();
-            const formData = new FormData(form);
-            let body = {};
-
-            // Unflatten dot-notation keys
-            for (const [key, value] of formData.entries()) {
-                const parts = key.split('.');
-                let current = body;
-                for (let i = 0; i < parts.length; i++) {
-                    const part = parts[i];
-                    const nextPart = parts[i + 1];
-                    const isArrayIndex = !isNaN(nextPart);
-
-                    if (i === parts.length - 1) {
-                        current[part] = value;
-                    } else {
-                        if (!current[part]) {
-                            current[part] = isArrayIndex ? [] : {};
-                        }
-                        current = current[part];
-                    }
-                }
-            }
-
-            const method = (form.getAttribute('method') || 'POST').toUpperCase();
-            const redirect = form.getAttribute('data-t-redirect');
-
-            try {
-                // For now, on file:// rootHandle mode, we just simulate success if it's data API
-                let result = { ok: true };
-                if (location.protocol !== 'file:' || !BracifyLib.rootHandle) {
-                    const res = await fetch(action, {
-                        method: method,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-                    result = await res.json();
-                } else {
-                    console.log('[Bracify] Mock Submit in Developer Mode:', body);
-                }
-
-                if (result.ok || result.id) {
-                    if (redirect) {
-                        if (location.protocol === 'file:' && BracifyLib.rootHandle) {
-                            BracifyLib.navigate(redirect);
-                        } else {
-                            window.location.assign(redirect);
-                        }
-                    } else {
-                        window.location.reload();
-                    }
-                } else {
-                    alert('Error: ' + (result.error || 'Submit failed'));
-                }
-            } catch (err) {
-                console.error('[Bracify] Submit error:', err);
-                alert('Submit error: ' + err.message);
-            }
-        });
     });
-
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = BracifyLib;

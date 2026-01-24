@@ -67,8 +67,9 @@ Crea un archivo llamado `/_sys/data/info.json` y escribe lo siguiente:
 
 ### 4. Ejecutar
 
-Al presionar el botón `Start Server` en la aplicación GUI, se genera una carpeta `_dist` en tu espacio de trabajo. Al abrir el archivo `index.html` dentro de la carpeta `_dist` en tu navegador, se mostrará `¡Hola Bracify!`. Al abrir `localhost:3000` se mostrará lo mismo.
-Disfruta de la experiencia de mostrar datos solo con HTML, sin escribir nada de JavaScript.
+Al presionar el botón `Start Server` en la aplicación GUI y abrir `localhost:3000`, se mostrará `¡Hola Bracify!`.
+El servidor lee `index.html` e `info.json` al iniciarse, resuelve SSI (Server Side Includes) en memoria y devuelve la respuesta.
+Al editar y guardar un archivo, el monitoreo a nivel de OS actualiza instantáneamente la plantilla en memoria.
 
 ---
 
@@ -95,50 +96,46 @@ Una pantalla de gestión integrada que consolida todas las operaciones.
   - Edición de JSON, estimación de esquemas.
 - **Monitor de API**:
   - Consultar registros de comunicación.
-- **Construcción estática**:
-  - Ejecutar la generación de sitios estáticos.
 
 ---
 
 ## Estructura del proyecto (File System Structure)
 
-Un proyecto de `Bracify` consiste en una carpeta de edición de código fuente (raíz) y una carpeta de salida (`_dist`).
+Un proyecto de `Bracify` consiste en una única carpeta de origen. No se requiere de un directorio de construcción físico para la ejecución.
 
 ### Estructura de directorios recomendada
 
 ```text
 proyecto/
-├── index.html          # Punto de entrada (objetivo de edición)
+├── index.html          # Punto de entrada
 ├── style.css           # Recurso estático
-├── img/                # Activos como imágenes
+├── img/                # Cualquier carpeta que no empiece por guion bajo es pública
 │   └── logo.png
-├── _parts/             # Componentes para incluir (no incluidos en los resultados de construcción)
+├── _parts/             # [Privado] Componentes para incluir
 │   ├── header.html
 │   └── footer.html
-├── _sys/               # Datos del sistema y configuración (no incluidos en los resultados de construcción)
-│   └── data/
-│       └── articles.json
-└── _dist/              # [Auto-generado] Destino de salida de construcción (el producto final va aquí)
-    ├── index.html
-    ├── style.css
-    └── img/
-        └── logo.png
+└── _sys/               # [Privado] Datos del sistema y configuración
+    ├── data.db         # Archivo de base de datos
+    └── data/           # Datos JSON para entidades
+        └── articles.json
 ```
 
-### Especificaciones de construcción
+### Especificaciones de renderizado
 
-Cuando ejecutas una "Construcción" (Build) a través de la GUI o la línea de comandos, la salida se genera en la carpeta `_dist` según las siguientes reglas:
+Bracify permite alternar sin problemas entre el "Modo SSR" (actuando como servidor web) y el "Modo CSR" (ejecutándose directamente en el navegador).
 
-1. **Procesamiento de archivos HTML**:
-    - Los archivos `.html` en el directorio raíz se envían a `_dist` con `data-t-include` resuelto (componentes fusionados).
-2. **Copiar recursos estáticos**:
-    - Las imágenes, archivos CSS, JS, etc., se copian a `_dist` tal cual.
-3. **Reglas de exclusión**:
-    - Los archivos y directorios que comienzan con un guion bajo `_` (`_parts`, `_sys`, etc.) se consideran solo para la construcción o la gestión del sistema y **no se copian a `_dist`**.
-4. **Conversión de datos del sistema (`_sys/data`)**:
-    - Los archivos `.json` en la carpeta `_sys/data` se convierten automáticamente a `.js` (formato Mock) para CSR y se envían a `_dist/_sys/data`.
-    - **Nota**: Incluso si hay un archivo `.js` con el mismo nombre en la carpeta de origen, se **ignora**. La fuente de verdad para los datos es el archivo `.json` para evitar conflictos.
-    - Esta conversión (construcción) es necesaria incluso si no estás usando `data-t-include`, para poder mostrar datos con CSR.
+#### 1. Modo SSR (Lado del servidor)
+El servidor construye dinámicamente el HTML en respuesta a las peticiones.
+
+- **Construcción en memoria**: Resuelve `data-t-include` y almacena en **memoria** la plantilla HTML combinada al iniciar o guardar archivos.
+- **Monitoreo de archivos**: Cuando se actualiza `index.html` o archivos bajo `_parts/`, el servidor detecta eventos del OS y reconstruye automáticamente la caché en memoria.
+- **Alto rendimiento**: Las respuestas se sirven desde las plantillas ya combinadas en memoria, minimizando el I/O de disco.
+
+#### 2. Modo CSR (Lado del cliente)
+Se ejecuta mediante el protocolo `file://` abriendo la carpeta directamente en un navegador.
+
+- **Inclusión en tiempo de ejecución**: Cuando el navegador carga el HTML, obtiene y fusiona los archivos especificados por `data-t-include` al vuelo usando la File System Access API.
+- **Consistencia**: Tanto SSR como CSR usan exactamente el mismo motor de vinculación (`engine.js`), garantizando resultados idénticos en cualquier entorno.
 
 ---
 
@@ -148,7 +145,7 @@ Cuando ejecutas una "Construcción" (Build) a través de la GUI o la línea de c
 
 #### `data-t-include`
 
-Carga un archivo HTML externo y lo expande como el contenido del elemento. Este atributo tiene dos modos de operación: **Snippet Include** (Inclusión de fragmento) y **Layout Application** (Aplicación de diseño).
+Carga un archivo HTML externo y lo expande como el contenido del elemento. Este atributo tiene dos modos de operación: **Snippet Include** y **Layout Application**.
 
 En cualquier modo, **la etiqueta que contiene `data-t-include` no se elimina; sus elementos hijos (innerHTML) son reemplazados por el resultado expandido.**
 
@@ -215,7 +212,7 @@ Carga un "marco (diseño)" común y rellena áreas específicas dentro de él co
     </body>
     ```
 
-- **Nota**: La fusión ocurre en el lado del servidor durante el uso del servidor de desarrollo o el proceso de construcción. No funciona cuando se visualiza el archivo directamente en un navegador (`file://`).
+- **Nota**: La fusión ocurre en el lado del servidor durante el uso del servidor de desarrollo o mediante la File System Access API en el navegador.
 
 #### `data-t-source`
 
@@ -282,17 +279,18 @@ Puedes mostrar datos escribiendo `{nombre_fuente_datos.nombre_item}` en el texto
   <code>\{user.name\}</code> <!-- Resultado: {user.name} -->
   ```
 
-- **Mostrar múltiples elementos (`data-t-list`)**:
-    Si hay múltiples elementos de datos que deseas mostrar, debes especificar `data-t-list="Nombre de la Fuente de Datos"` en el elemento (rango) que deseas repetir.
+### Visualización de lista (`data-t-list`)
 
-    ```html
-    <link data-t-source="articles" href="/_sys/data/articles.json">
-    <ul>
-      <li data-t-list="articles">
-        <h3>{articles.title}</h3>
-      </li>
-    </ul>
-    ```
+Si hay múltiples elementos de datos que deseas mostrar, debes especificar `data-t-list="Nombre de la Fuente de Datos"` en el elemento (rango) que deseas repetir.
+
+```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <ul>
+    <li data-t-list="articles">
+      <h3>{articles.title}</h3>
+    </li>
+  </ul>
+```
 
 #### Incrustar datos en atributos (Marcador de posición universal)
 
@@ -306,7 +304,7 @@ En todos los atributos estándar (`href`, `src`, `class`, `value`, `style`, etc.
     <div style="background-color: {user.color}; height: {progress}%;"></div>
     ```
 
-- **Límite**: Para evitar interferencias con la sintaxis de JavaScript, **los marcadores de posición no se pueden usar dentro de los atributos de manejadores de eventos (`onclick`, `onchange`, etc.).** Consulta "Evitar la interferencia de marcadores de posición" a continuación.
+- **Límite**: Para evitar interferencias con la sintaxis de JavaScript, **los marcadores de posición no se pueden usar dentro de los atributos de manejadores de eventos (`onclick`, `onchange`, etc.).**
 
 #### Evitar la interferencia de marcadores de posición y limitaciones
 
@@ -384,7 +382,7 @@ Muestra u oculta elementos en función de condiciones. El elemento se muestra si
     </div>
     ```
 
-    ↓ **Resultado (si `user.is_login` es false)**
+    ↓ **Resultado (si `user.is_login` is false)**
 
     ```html
     <!-- El elemento en sí no se genera en la salida -->
@@ -431,40 +429,17 @@ Muestra u oculta elementos en función de condiciones. El elemento se muestra si
 Especifica la URL de destino de la transición después de que un proceso (como el envío de un formulario) se complete con éxito.
 
 - **Especificación**: Especifica la ruta relativa o absoluta del destino.
-- **Etiqueta de destino**: Principalmente etiquetas `form` (se planea la expansión a botones, etc., en el futuro).
-- **Ejemplo**:
+- **Etiqueta de destino**: Etiqueta `form`.
+- **Operación**: Después de que el servidor complete el proceso, redirecciona con un estado 302 a la ruta especificada. Si no se especifica, recarga la página actual.
 
-    ```html
-    <!-- Volver a la página principal después del envío -->
-    <form method="POST" action="/_sys/data/contact" data-t-redirect="/">
-    ```
+### Formularios y guardado de datos (Postback)
 
-### Formularios y guardado de datos
+Puedes enviar datos (crear/actualizar) usando etiquetas `<form>` estándar. Bracify funciona con **postbacks estándar del navegador (envíos que implican transiciones de página)** sin usar JavaScript asíncrono (fetch).
 
-Puedes enviar datos (crear/actualizar) a la API usando etiquetas `<form>` estándar.
-
-- **Envío automático a la API**: Si especificas la URL de la API en el atributo `action` y `POST` o `PUT` en el atributo `method`, los datos se envían automáticamente en formato JSON.
-- **Transición de página**: Puedes especificar la página a la que dirigirse después de completar el guardado (ruta relativa) usando el atributo `data-t-redirect`. Si no se especifica, se recarga la página actual.
-- **Vinculación de datos (Valores iniciales)**: Al especificar `data-t-scope` en la etiqueta `<form>`, puedes establecer datos existentes como valores iniciales para los campos de entrada (útil para pantallas de edición, etc.).
+- **Manejo automático**: Especifica el destino en el atributo `action` (ej., `/_sys/data/xxxxx.json`) y envía usando `method="POST"` o `PUT`.
+- **Redirección (Patrón PRG)**: Una vez guardado en el servidor, redirecciona automáticamente a la URL especificada por `data-t-redirect` o a la página original. Esto evita el "reenvío de formularios" y permite una navegación segura.
+- **Vinculación de datos (Valores iniciales)**: Al especificar `data-t-scope` en la etiqueta `<form>`, puedes establecer datos existentes como valores predeterminados para los campos de entrada.
 - **Ítems de entrada**: El atributo `name` de `<input>` y `<textarea>` se convierte en el nombre del ítem de datos (propiedad).
-
-#### Ejemplo: Formulario de edición (actualización) de artículos
-
-```html
-<!-- Vincula los datos de article a todo el formulario (establece los valores iniciales) -->
-<!-- Envía con el método PUT a la API especificada en action -->
-<!-- Vuelve a la página de la lista (../list.html) después de que se complete el guardado -->
-<form method="PUT" action="/_sys/data/article" data-t-scope="article" data-t-redirect="../list.html">
-
-  <label>Título</label>
-  <input type="text" name="title"> <!-- Rellenado con article.title -->
-
-  <label>Cuerpo</label>
-  <textarea name="content"></textarea> <!-- Rellenado con article.content -->
-
-  <button>Guardar</button>
-</form>
-```
 
 ### Filtros de procesamiento (Pipes)
 
@@ -514,24 +489,24 @@ Muestra los datos como una cadena JSON formateada. Útil para depuración o para
 
 - **Sintaxis**: `{ nombre_item | json }`
 
-## API de acceso a datos
+## Procesamiento de guardado de datos (Form Handler)
 
-### Especificación de punto final (API de datos)
-
-Puedes no solo leer, sino también actualizar y eliminar datos (archivos JSON, etc.) en el servidor.
+Bracify no proporciona datos externamente (API). Todos los recursos bajo `/_sys` están ocultos, excepto los siguientes puntos finales que actúan como manejadores para los envíos de formularios.
 
 ```text
-/_sys/data/{entity}.json?{prop}={val}
+POST /_sys/data/{entity}.json
 ```
 
-#### Métodos de operación de datos
+Este punto final no puede ser accedido directamente vía `GET` desde un navegador (403 Forbidden). Solo está disponible como un `action` de formulario.
+
+#### Operaciones de datos
+Las operaciones de datos se realizan a través de peticiones HTTP, pero la respuesta es siempre una "redirección a una página".
 
 | Método | Acción | Descripción |
 | :--- | :--- | :--- |
-| `GET` | Leer | Obtiene datos según las condiciones. |
 | `POST` | Crear | Crea nuevos datos. |
-| `PUT` | Actualizar | Reemplaza los datos que coinciden con las condiciones con los valores especificados. |
-| `DELETE` | Eliminar | Elimina los datos que coinciden con las condiciones. |
+| `PUT` | Actualizar | Reemplaza la información existente con los datos enviados. |
+| `DELETE`| Eliminar | Elimina los datos especificados. |
 
 ### Especificación de punto final (API de archivos)
 
@@ -792,3 +767,7 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
 - **Auto-Escape**: La expansión de datos mediante `{placeholder}` se escapa automáticamente a HTML (se trata como texto plano), previniendo XSS (Cross-Site Scripting).
 - **Inyección Segura de Datos**: Al inyectar datos en HTML durante los procesos de SSR o construcción, estos se escapan automáticamente para prevenir la interferencia de etiquetas de script (como rupturas con `</script>`).
 - **Sanitización de URL**: Al incrustar datos en los atributos `href` o `src`, se detectan y desactivan automáticamente los protocolos peligrosos como `javascript:` para evitar la ejecución inesperada de scripts.
+- **Guardia de Guion Bajo (Solo SSR)**:
+  Cuando se ejecuta como servidor, rechaza todo acceso directo externo (403 Forbidden) a los recursos donde el nombre del directorio o archivo en la raíz comienza con un guion bajo (`_`).
+  Esto bloquea el acceso no autorizado a información interna como `data.db` o componentes de inclusión (`_parts/`) a nivel de servidor web.
+  * Nota: Los puntos finales de formulario oficiales (como `POST /_sys/data/*.json`) están exentos de esta restricción.

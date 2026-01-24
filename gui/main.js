@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const SystemServer = require('./server');
-const Builder = require('@bracify/engine/server/builder.cjs');
 
 let mainWindow;
 let systemServer = null;
@@ -154,23 +153,4 @@ ipcMain.handle('stop-system-server', () => {
 ipcMain.handle('open-dashboard', (event, url) => {
     shell.openExternal(url);
     return true;
-});
-
-ipcMain.handle('build-project', async (event, projectPath) => {
-    try {
-        const pPath = projectPath || (systemServer && systemServer.engine ? systemServer.engine.currentProjectPath : null);
-        if (!pPath) throw new Error('No project opened.');
-
-        const distPath = path.join(pPath, '_dist');
-        const logger = (msg) => {
-            console.log(msg);
-            if (mainWindow) mainWindow.webContents.send('server-log', msg);
-        };
-
-        const builder = new Builder(logger);
-        await builder.build(projectPath, distPath);
-        return { ok: true };
-    } catch (e) {
-        return { ok: false, error: e.message };
-    }
 });

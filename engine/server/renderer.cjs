@@ -9,14 +9,14 @@ const { Engine } = Bracify;
  * @param {Function} includeResolver - Async function to resolve includes
  * @returns {Promise<string>} Processed HTML string
  */
-async function processHTML(html, data, includeResolver, dataFetcher, logger) {
+async function processHTML(html, data, includeResolver, dataFetcher, logger, options = {}) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
     const engine = new Engine({ includeResolver, dataFetcher, logger });
 
-    // Process the entire document (to catch items in <head> like data-t-source)
-    await engine.processElement(document.documentElement, data, { stripAttributes: true });
+    // Process the entire document
+    await engine.processElement(document.documentElement, data, { stripAttributes: true, ...options });
 
     // Optimization: Remove CSR fallback scripts during SSR
     // Since we inject window.__BRACIFY_DATA__, the static scripts like _sys/data/xxx.js are not needed.

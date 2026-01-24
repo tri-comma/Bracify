@@ -185,28 +185,6 @@ test('Step 3: SPA Router and Full DOM Replacement', async (t) => {
         assert.strictEqual(title2.textContent, 'Item One', 'Data should be correctly bound to Item One on second navigation');
     });
 
-    await t.test('Form Redirect: should handle search results or POST redirect as SPA', async () => {
-        const root = new MockDirectoryHandle('root', {
-            'result.html': new MockFileHandle('result.html', '<html><body><div id="result">Success</div></body></html>')
-        });
-        Bracify.rootHandle = root;
-
-        document.body.innerHTML = `
-            <form id="my-form" data-t-redirect="result.html" action="/_sys/data/mock.json" method="POST">
-                <input name="test" value="val">
-            </form>
-        `;
-
-        const form = document.getElementById('my-form');
-        // Dispatch submit
-        const event = new dom.window.Event('submit', { cancelable: true, bubbles: true });
-        form.dispatchEvent(event);
-
-        // Wait for async form processing and navigation
-        await new Promise(r => setTimeout(r, 50));
-
-        assert.ok(document.body.innerHTML.includes('Success'), 'Should have redirected to result.html after form submit');
-    });
 
     // Cleanup
     delete global.window;

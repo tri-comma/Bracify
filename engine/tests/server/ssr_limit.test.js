@@ -12,17 +12,15 @@ const EngineServer = require('../../server/index.cjs');
 // we can't easily mock it without loader hooks or proxyquire.
 // Instead, we'll try to use a real SQLite DB in a temp folder.
 
-const TEST_DIR = path.join(process.cwd(), 'engine/tests/server/ssr_test_project');
-const DIST_DIR = path.join(TEST_DIR, '_dist');
+import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TEST_DIR = path.join(__dirname, 'ssr_test_project');
 
 test('SSR Data Fetching: Unwrapping array on _limit=1', async (t) => {
     // Setup Test Environment
     if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR, { recursive: true });
-    if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR, { recursive: true });
 
     // Create a dummy HTML that triggers SSR fetch
-    // We can't easily test the internal fetch logic without making a request.
-    // So we'll put a file in _dist and request it.
 
     // Create a dummy item in DB
     const sqlite3 = require('sqlite3').verbose();
@@ -89,6 +87,14 @@ test('SSR Data Fetching: Unwrapping array on _limit=1', async (t) => {
 
     } finally {
         await server.stop();
-        fs.rmSync(TEST_DIR, { recursive: true, force: true });
+        // Retry removal on Windows if needed
+        for (let i = 0; i < 5; i++) {
+            try {
+                fs.rmSync(TEST_DIR, { recursive: true, force: true });
+                break;
+            } catch (e) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
     }
 });

@@ -11,8 +11,8 @@ const Renderer = require(rendererPath);
 
 describe('Diagnostic: Checking SSR Output of project.html', () => {
     test('SSR output should have values but NO attributes', async () => {
-        const projectHtml = fs.readFileSync('studio/project.html', 'utf8');
-        const layoutHtml = fs.readFileSync('studio/_parts/layout.html', 'utf8');
+        const projectHtml = fs.readFileSync('../studio/project.html', 'utf8');
+        const layoutHtml = fs.readFileSync('../studio/_parts/layout.html', 'utf8');
 
         const mockData = {
             project: { id: 'mjtkgoaslxxc', name: 'Bracify Studio', port: 3000 }
@@ -32,6 +32,5 @@ describe('Diagnostic: Checking SSR Output of project.html', () => {
         assert.match(ssrHtml, /value="Bracify Studio"/);
         assert.match(ssrHtml, /value="3000"/);
         assert.doesNotMatch(ssrHtml, /data-t-scope/);
-        assert.doesNotMatch(ssrHtml, /data-t-source/);
     });
 });

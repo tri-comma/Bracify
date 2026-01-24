@@ -34,8 +34,8 @@ describe('Final Desperate Reproduction: project.html', () => {
     });
 
     test('Reproduce NG: The "Project Values are Empty" Mystery', async () => {
-        const projectHtml = fs.readFileSync('studio/project.html', 'utf8');
-        const layoutHtml = fs.readFileSync('studio/_parts/layout.html', 'utf8');
+        const projectHtml = fs.readFileSync('../studio/project.html', 'utf8');
+        const layoutHtml = fs.readFileSync('../studio/_parts/layout.html', 'utf8');
 
         // SSR Render
         const mockData = { project: { id: 'mjtkgoaslxxc', name: 'Bracify Studio', port: 3000 } };

@@ -7,7 +7,7 @@ const db = require('./db/index.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
-        this.port = port || 8080;
+        this.port = (port !== undefined && port !== null) ? port : 8080;
         this.logger = logger || console.log;
 
         // Inject dependencies
@@ -21,6 +21,10 @@ class EngineServer {
 
         // Cache loaded renderer
         this.renderer = null;
+
+        // On-memory template cache (resolved SSI)
+        this.templateCache = new Map();
+        this.watcher = null;
 
         this.setup();
     }
@@ -48,6 +52,15 @@ class EngineServer {
         // Serve Engine Libs
         this.app.use('/engine', express.static(path.join(__dirname, '../lib')));
 
+        // --- Underscore Guard (Security Issue #7) ---
+        this.app.use((req, res, next) => {
+            if (req.method === 'GET' && req.path.split('/').some(p => p.startsWith('_'))) {
+                this.logger(`[Security] Blocked direct GET access to system resource: ${req.url}`);
+                return res.status(403).send('Access Denied');
+            }
+            next();
+        });
+
         // --- Data API (Collection Support) ---
         // Route: /_sys/data/:entity.json
         // Supports GET (Find), POST (Create), PUT (Update), DELETE (Remove)
@@ -55,57 +68,69 @@ class EngineServer {
         this.app.all('/_sys/data/:entity.json', async (req, res) => {
             const entity = req.params.entity;
             const filters = req.query || {};
-            this.logger(`[Engine] Data API: ${req.method} ${entity} filters=${JSON.stringify(filters)}`);
 
             // Security Check
             if (!/^[a-zA-Z0-9_-]+$/.test(entity) || entity.startsWith('_')) {
                 this.logger(`[Security] Blocked invalid or system entity: ${entity}`);
-                return res.status(400).json({ error: 'Invalid entity name' });
+                return res.status(400).send('Invalid entity name');
+            }
+
+            if (req.method === 'GET') {
+                this.logger(`[Security] Blocked direct GET access to data entity: ${entity}`);
+                return res.status(403).send('Access Denied');
             }
 
             try {
+                const redirect = req.body['data-t-redirect'] || req.header('Referer') || '/';
+                const unflattenedBody = this.unflatten(req.body);
+
                 switch (req.method) {
-                    case 'GET':
-                        const records = await db.find(entity, filters);
-                        // Compatibility: if specific ID requested, return object?
-                        // Or if exactly one result with id='__default__', return object (legacy file mode)
-                        // Or if _limit=1 is specified (Consistent with SSR)
-                        if (filters._limit === '1' && records.length === 1) {
-                            res.json(records[0]);
-                        } else if (filters.id && records.length > 0) {
-                            res.json(records[0]);
-                        } else if (records.length === 1 && records[0].id === '__default__') {
-                            res.json(records[0]);
-                        } else {
-                            res.json(records);
-                        }
-                        break;
                     case 'POST':
-                        const newId = await db.save(entity, null, req.body);
-                        res.json({ ok: true, id: newId });
+                        await db.save(entity, null, unflattenedBody);
+                        res.redirect(redirect);
                         break;
                     case 'PUT':
-                        // Update needs an ID usually, or filter
-                        // If ?id=... is present, update that.
-                        if (!filters.id) {
-                            // If no ID in query, check body? 
-                            // But usually PUT /:entity.json?id=123
-                            return res.status(400).json({ error: 'ID required for PUT (in query ?id=...)' });
+                        if (!filters.id && !req.body.id) {
+                            return res.status(400).send('ID required for update');
                         }
-                        await db.save(entity, filters.id, req.body);
-                        res.json({ ok: true });
+                        await db.save(entity, filters.id || req.body.id, unflattenedBody);
+                        res.redirect(redirect);
                         break;
                     case 'DELETE':
                         await db.remove(entity, filters);
-                        res.json({ ok: true });
+                        res.redirect(redirect);
                         break;
                     default:
                         res.status(405).end();
                 }
             } catch (e) {
-                res.status(500).json({ error: e.message });
+                this.logger(`[Engine] Data Error: ${e.message}`);
+                res.status(500).send(e.message);
             }
         });
+
+        // Helper to unflatten dot-notation keys from form-urlencoded body
+        this.unflatten = (data) => {
+            const result = {};
+            for (const [key, value] of Object.entries(data)) {
+                if (key === 'data-t-redirect') continue;
+                const parts = key.split('.');
+                let current = result;
+                for (let i = 0; i < parts.length; i++) {
+                    const part = parts[i];
+                    if (i === parts.length - 1) {
+                        current[part] = value;
+                    } else {
+                        if (!current[part]) {
+                            const nextPart = parts[i + 1];
+                            current[part] = !isNaN(nextPart) ? [] : {};
+                        }
+                        current = current[part];
+                    }
+                }
+            }
+            return result;
+        };
 
         // Legacy API routes (for compatibility if needed, though they map to same DB logic)
         this.app.get('/_sys/api/data/list', async (req, res) => {
@@ -133,30 +158,26 @@ class EngineServer {
         this.app.use(async (req, res, next) => {
             if (!this.currentProjectPath) return next();
 
-            // Serve from _dist folder
-            const distPath = path.join(this.currentProjectPath, '_dist');
-            if (!fs.existsSync(distPath)) {
-                this.logger('[Bracify] Warning: _dist folder not found. Run build first.');
-                return next();
-            }
-
-            // Security: Block access to hidden folders (starting with _)
-            // Note: API routes (e.g. /_sys/api) are handled before this middleware.
-            if (req.path.startsWith('/_') && !req.path.startsWith('/_sys/')) {
-                return res.status(403).send('Access Denied');
-            }
-
-            // Check if file exists in _dist path
             // Handle root
             const reqPath = req.path === '/' ? '/index.html' : req.path;
-            const filePath = path.join(distPath, reqPath);
+            const filePath = path.join(this.currentProjectPath, reqPath);
 
             if (!fs.existsSync(filePath)) return next();
 
             // If HTML, Perform SSR
             if (filePath.endsWith('.html')) {
                 try {
-                    const htmlContent = fs.readFileSync(filePath, 'utf-8');
+                    let htmlContent;
+                    const cacheKey = reqPath;
+
+                    if (this.templateCache.has(cacheKey)) {
+                        htmlContent = this.templateCache.get(cacheKey);
+                    } else {
+                        // Load and resolve SSI for the first time
+                        htmlContent = fs.readFileSync(filePath, 'utf-8');
+                        this.logger(`[Bracify] SSR Cache Miss: ${reqPath}`);
+                    }
+
                     const renderer = await this.getRenderer();
 
                     // Prepare Data
@@ -230,6 +251,22 @@ class EngineServer {
                         processed = stateScript + processed;
                     }
 
+                    // Cache the resolved template if not already cached (avoid binding current data into cache)
+                    if (!this.templateCache.has(cacheKey)) {
+                        try {
+                            const rawHtml = fs.readFileSync(filePath, 'utf-8');
+                            // Resolve SSI only phase (with empty data context)
+                            const resolvedSSI = await renderer.processHTML(rawHtml, { _sys: { query: {}, params: {} } }, async (includePath) => {
+                                const incFile = path.join(this.currentProjectPath, includePath);
+                                if (fs.existsSync(incFile)) return fs.readFileSync(incFile, 'utf-8');
+                                return null;
+                            }, async () => null, null, { processBindings: false });
+                            this.templateCache.set(cacheKey, resolvedSSI);
+                        } catch (e) {
+                            this.logger(`[Bracify] Cache Warning Error: ${e.message}`);
+                        }
+                    }
+
                     this.logger(`[Bracify] SSR Done: ${req.url} (Data keys: ${Object.keys(data).filter(k => k !== '_sys')})`);
                     res.send(processed);
                 } catch (e) {
@@ -251,24 +288,30 @@ class EngineServer {
         this.currentProjectPath = projectPath;
         this.logger(`[Bracify] Setting project: ${projectPath}`);
 
-        // Auto-build before serving
-        if (projectPath) {
-            try {
-                this.logger('[Bracify] Building project...');
-                const Builder = require('./builder.cjs');
-                const builder = new Builder(this.logger);
-                const distPath = path.join(projectPath, '_dist');
-                await builder.build(projectPath, distPath);
-                this.logger('[Bracify] Build complete.');
-            } catch (e) {
-                this.logger(`[Bracify] Build failed: ${e.message}`);
-                throw e;
-            }
+        // Stop previous watcher
+        if (this.watcher) {
+            this.watcher.close();
+            this.watcher = null;
         }
+
+        // Clear cache
+        this.templateCache.clear();
 
         // Re-init DB
         if (projectPath) {
             await db.init(projectPath);
+
+            // Start watcher for hot-reload of cache (Windows-friendly recursive watch)
+            try {
+                this.watcher = fs.watch(projectPath, { recursive: true }, (eventType, filename) => {
+                    if (filename && (filename.endsWith('.html') || filename.includes('_parts'))) {
+                        // this.logger(`[Bracify] File changed: ${filename}. Clearing cache.`);
+                        this.templateCache.clear();
+                    }
+                });
+            } catch (e) {
+                this.logger(`[Bracify] Watch error: ${e.message}`);
+            }
         } else {
             await db.close();
         }
@@ -279,6 +322,8 @@ class EngineServer {
             if (this.server) return resolve(this.port);
 
             this.server = this.app.listen(this.port, () => {
+                const actualPort = this.server.address().port;
+                this.port = actualPort;
                 this.logger(`[Bracify] Server started at http://localhost:${this.port}`);
                 resolve(this.port);
             }).on('error', (e) => reject(e));
@@ -287,10 +332,16 @@ class EngineServer {
 
     stop() {
         return new Promise((resolve, reject) => {
+            if (this.watcher) {
+                this.watcher.close();
+                this.watcher = null;
+            }
+
             if (!this.server) return resolve();
-            this.server.close((err) => {
+            this.server.close(async (err) => {
                 if (err) return reject(err);
                 this.server = null;
+                await db.close();
                 this.logger('[Bracify] Server stopped');
                 resolve();
             });

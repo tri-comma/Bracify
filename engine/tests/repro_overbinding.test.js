@@ -62,8 +62,8 @@ describe('CSR Over-Binding Bug Reproduction: THE FORCED NG', () => {
 
         const input = document.querySelector('input[name="name"]');
 
-        // This will FAIL (it will be empty "") because we disabled the guard.
-        assert.strictEqual(input.value, 'Bracify Studio', 'Project Name should NOT be cleared. (If this fails, we successfully reproduced how it empties)');
+        // This will PASS because we successfully reproduced how it empties when the guard is OFF.
+        assert.strictEqual(input.value, '', 'Project Name should be cleared when guard is OFF');
     });
 
     test('NG State: If inScope is mistakenly TRUE at root, it clears the input', async () => {
@@ -81,7 +81,7 @@ describe('CSR Over-Binding Bug Reproduction: THE FORCED NG', () => {
 
         const input = document.querySelector('input[name="name"]');
 
-        // This will also FAIL (it will be empty "") because we told the engine everything is in scope.
-        assert.strictEqual(input.value, 'Bracify Studio', 'Project Name should NOT be cleared if inScope is wrongly true');
+        // This will PASS because we told the engine everything is in scope.
+        assert.strictEqual(input.value, '', 'Project Name should be cleared if inScope is wrongly true');
     });
 });

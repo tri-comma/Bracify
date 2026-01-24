@@ -40,8 +40,8 @@ describe('Final Trace: Exactly WHY is it binding?', () => {
         // CASE A: Normal Hydration (Strict)
         await engine.processElement(document.body, { ...global.window.__BRACIFY_DATA__ }, { requireScope: true });
 
-        // ASSERT: Should have NO 'Bind' logs for 'name' because it's guarded.
-        const bindLogs = logs.filter(l => l.includes('Bind: name="name"'));
+        // ASSERT: Should have NO 'BINDING' logs for 'name' because it's guarded.
+        const bindLogs = logs.filter(l => l.toUpperCase().includes('BINDING: NAME="NAME"'));
         assert.strictEqual(bindLogs.length, 0, 'Should NOT bind at root level during hydration');
         assert.strictEqual(document.querySelector('input').value, 'SSR_VALUE');
 
@@ -49,7 +49,7 @@ describe('Final Trace: Exactly WHY is it binding?', () => {
         await engine.processElement(document.body, { ...global.window.__BRACIFY_DATA__ }, { requireScope: false });
 
         // ASSERT: Should have a log now!
-        const bindLogsNG = logs.filter(l => l.includes('Bind: name="name"'));
+        const bindLogsNG = logs.filter(l => l.includes('BINDING: name="name"'));
         assert.ok(bindLogsNG.length > 0, 'Should bind when guard is off');
         assert.strictEqual(document.querySelector('input').value, 'EMPTY_OVERWRITE');
     });

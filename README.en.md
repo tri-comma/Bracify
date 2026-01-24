@@ -67,8 +67,9 @@ Create a file named `/_sys/data/info.json` and write the following:
 
 ### 4. Run
 
-When you press the `Start Server` button in the GUI app, a `_dist` folder is generated in your workspace. Opening `index.html` inside the `_dist` folder in your browser will display `Hello Bracify!`. Opening `localhost:3000` will show the same.
-Enjoy the experience of displaying data with just HTML, without writing any JavaScript.
+When you press the `Start Server` button in the GUI app and open `localhost:3000`, `Hello Bracify!` will be displayed.
+The server reads `index.html` and `info.json` on startup, resolves SSI (Server Side Includes) in memory, and returns the response.
+When you edit and save a file, the OS-level monitoring immediately updates the template in memory.
 
 ---
 
@@ -95,50 +96,46 @@ An integrated management screen that consolidates all operations.
   - JSON editing, schema estimation.
 - **API Monitor**:
   - Check communication logs.
-- **Static Build**:
-  - Execute static site generation.
 
 ---
 
 ## Project Structure (File System Structure)
 
-A `Bracify` project consists of a source editing folder (root) and an output folder (`_dist`).
+A `Bracify` project consists of a single source folder. No physical build directory is required for execution.
 
 ### Recommended Directory Structure
 
 ```text
 project/
-├── index.html          # Entry point (editing target)
+├── index.html          # Entry point
 ├── style.css           # Static resource
-├── img/                # Assets like images
+├── img/                # Any folder not starting with underscore is public
 │   └── logo.png
-├── _parts/             # Components for include (not included in build results)
+├── _parts/             # [Private] Components for include
 │   ├── header.html
 │   └── footer.html
-├── _sys/               # System data and settings (not included in build results)
-│   └── data/
-│       └── articles.json
-└── _dist/              # [Auto-generated] Build output destination (the final product goes here)
-    ├── index.html
-    ├── style.css
-    └── img/
-        └── logo.png
+└── _sys/               # [Private] System data and settings
+    ├── data.db         # Database file
+    └── data/           # JSON data for entities
+        └── articles.json
 ```
 
-### Build Specifications
+### Rendering Specifications
 
-When you execute a "Build" via the GUI or command line, the output is generated in the `_dist` folder according to the following rules:
+Bracify allows you to seamlessly switch between "SSR Mode" (acting as a web server) and "CSR Mode" (running directly in the browser).
 
-1. **HTML File Processing**:
-    - `.html` files in the root directory are output to `_dist` with `data-t-include` resolved (components merged).
-2. **Copy Static Resources**:
-    - Images, CSS, JS files, etc., are copied to `_dist` as is.
-3. **Exclusion Rules**:
-    - Files and directories starting with an underscore `_` (`_parts`, `_sys`, etc.) are considered build-only or for system management and **are not copied to `_dist`**.
-4. **Conversion of System Data (`_sys/data`)**:
-    - `.json` files in the `_sys/data` folder are automatically converted to `.js` (Mock format) for CSR and output to `_dist/_sys/data`.
-    - **Note**: Even if there is a `.js` file with the same name in the source folder, it is **ignored**. The source of truth for data is the `.json` file to prevent conflicts.
-    - This conversion (build) is required even if you are not using `data-t-include`, in order to display data with CSR.
+#### 1. SSR Mode (Server-Side)
+The server dynamically builds HTML in response to requests.
+
+- **On-memory Build**: Resolves `data-t-include` and caches the combined HTML template in **memory** upon startup or file save.
+- **File Watching**: When `index.html` or files under `_parts/` are updated, the server detects OS-level events and automatically rebuilds the memory cache.
+- **High Performance**: Responses are served from the pre-combined templates in memory, minimizing disk I/O.
+
+#### 2. CSR Mode (Client-Side)
+Runs via the `file://` protocol by opening the folder directly in a browser.
+
+- **Runtime Include**: When the browser loads the HTML, it fetches and merges files specified by `data-t-include` on the fly using the File System Access API.
+- **Consistency**: Both SSR and CSR use the exact same binding engine (`engine.js`), ensuring identical results across environments.
 
 ---
 
@@ -215,7 +212,7 @@ Loads a common "framework (layout)" and fills specific areas within it with its 
     </body>
     ```
 
-- **Note**: Merging occurs on the server side during development server use or the build process. It does not work when viewing the file directly in a browser (`file://`).
+- **Note**: Merging occurs on the server side during development server use or via File System Access API in the browser.
 
 #### `data-t-source`
 
@@ -282,17 +279,18 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
   <code>\{user.name\}</code> <!-- Result: {user.name} -->
   ```
 
-- **Displaying Multiple Items (`data-t-list`)**:
-    If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.
+### List Display (`data-t-list`)
 
-    ```html
-    <link data-t-source="articles" href="/_sys/data/articles.json">
-    <ul>
-      <li data-t-list="articles">
-        <h3>{articles.title}</h3>
-      </li>
-    </ul>
-    ```
+If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.
+
+```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <ul>
+    <li data-t-list="articles">
+      <h3>{articles.title}</h3>
+    </li>
+  </ul>
+```
 
 #### Embedding Data into Attributes (Universal Placeholder)
 
@@ -353,7 +351,7 @@ If a `name` attribute is specified for `input`, `select`, or `textarea` elements
 
     ```html
     <!-- title and content from article data are automatically set in each field -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article">
+    <form data-t-scope="article" method="PUT" action="/_sys/data/article.json">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -431,40 +429,17 @@ Displays or hides elements based on conditions. The element is displayed if the 
 Specifies the transition destination URL after a process (such as form submission) is successfully completed.
 
 - **Specification**: Specify the relative or absolute path of the destination.
-- **Target Tag**: Primarily `form` tags (expansion to buttons, etc., is planned for the future).
-- **Example**:
+- **Target Tag**: `form` tag.
+- **Operation**: After the server completes the process, it redirects with a 302 status to the specified path. If not specified, it reloads the current page.
 
-    ```html
-    <!-- Return to top page after submission -->
-    <form method="POST" action="/_sys/data/contact" data-t-redirect="/">
-    ```
+### Forms and Data Saving (Postback)
 
-### Forms and Data Saving
+You can create and update data using standard `<form>` tags. Bracify works with browser-standard **postbacks (submissions involving page transitions)** without using asynchronous JavaScript (fetch).
 
-You can send data (create/update) to the API using standard `<form>` tags.
-
-- **Automatic API Submission**: If you specify the API URL in the `action` attribute and `POST` or `PUT` in the `method` attribute, data is automatically sent in JSON format.
-- **Page Transition**: You can specify the page to move to after saving is complete (relative path) using the `data-t-redirect` attribute. If not specified, the current page is reloaded.
-- **Data Binding (Initial Values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as initial values for the input fields (useful for edit screens, etc.).
+- **Automatic Handling**: Specify the destination in the `action` attribute (e.g., `/_sys/data/xxxxx.json`) and send using `method="POST"` or `PUT`.
+- **Redirect (PRG Pattern)**: Once saved on the server, it automatically redirects to the URL specified by `data-t-redirect` or the original page. This prevents "form resubmission" and allows for safe navigation.
+- **Data Binding (Initial values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as default values for input fields.
 - **Input Items**: The `name` attribute of `<input>` and `<textarea>` becomes the data item name (property).
-
-#### Example: Article Editing (Update) Form
-
-```html
-<!-- Binds article data to the entire form (sets initial values) -->
-<!-- Sends with PUT method to the API specified in action -->
-<!-- Returns to the list page (../list.html) after saving is complete -->
-<form method="PUT" action="/_sys/data/article" data-t-scope="article" data-t-redirect="../list.html">
-
-  <label>Title</label>
-  <input type="text" name="title"> <!-- Populated with article.title -->
-
-  <label>Body</label>
-  <textarea name="content"></textarea> <!-- Populated with article.content -->
-
-  <button>Save</button>
-</form>
-```
 
 ### Processing Filters (Pipes)
 
@@ -514,24 +489,24 @@ Outputs data as a formatted JSON string. Useful for debugging or using data dire
 
 - **Syntax**: `{ item_name | json }`
 
-## Data Access API
+## Data Saving Processing (Form Handler)
 
-### Endpoint Specification (Data API)
-
-You can not only read but also update and delete data (JSON files, etc.) on the server.
+Bracify does not provide data externally (API). All resources under `/_sys` are hidden, except for the following endpoints that act as handlers for form submissions.
 
 ```text
-/_sys/data/{entity}.json?{prop}={val}
+POST /_sys/data/{entity}.json
 ```
 
-#### Data Operation Methods
+This endpoint cannot be accessed directly via `GET` from a browser (403 Forbidden). It is only available as a form `action`.
+
+#### Data Operations
+Data operations are performed via HTTP requests, but the response is always a "redirect to a page".
 
 | Method | Action | Description |
 | :--- | :--- | :--- |
-| `GET` | Read | Fetches data according to conditions. |
 | `POST` | Create | Creates new data. |
-| `PUT` | Update | Replaces data matching conditions with the specified values. |
-| `DELETE` | Delete | Deletes data matching conditions. |
+| `PUT` | Update | Replaces existing information with submitted data. |
+| `DELETE`| Delete | Deletes specified data. |
 
 ### Endpoint Specification (File API)
 
@@ -672,7 +647,7 @@ The mode where you develop by directly opening `index.html` as a local file (`fi
 
 #### Build-less Development via File System Access API
 
-By utilizing the **File System Access API** provided by modern browsers (Chrome, Edge, etc.), the traditional build process (converting JSON files to JS files) becomes unnecessary.
+By utilizing the **File System Access API** provided by modern browsers (Chrome, Edge, etc.), the traditional build process becomes unnecessary.
 
 1. **Select Project Folder**: When opening a page via `file://`, a folder selection prompt appears during initialization. By selecting the project's root directory, the browser can directly fetch and operate on files.
 2. **Build-less Preview**: Since `_sys/data/*.json` and `_parts/*.html` are read directly by the browser, any edits and saves are instantly reflected upon browser reload (or transition).
@@ -792,3 +767,7 @@ Bracify includes several built-in protection features to support safe frontend d
 - **Auto-Escaping**: Data expansion via `{placeholder}` is automatically HTML-escaped (treated as plain text), preventing XSS (Cross-Site Scripting).
 - **Secure Data Injection**: When injecting data into HTML during SSR or build processes, it is automatically escaped to prevent script tag interference (such as `</script>` breakouts).
 - **URL Sanitization**: When embedding data into `href` or `src` attributes, any dangerous protocols such as `javascript:` are automatically detected and disabled to prevent unexpected script execution.
+- **Underscore Guard (SSR-Only)**:
+  When running as a server, it rejects all external direct access (403 Forbidden) to resources where the directory or file name at the root starts with an underscore (`_`).
+  This blocks unauthorized access to internal info like `data.db` or include components (`_parts/`) at the web server level.
+  * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
