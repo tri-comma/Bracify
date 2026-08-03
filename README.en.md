@@ -280,6 +280,32 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
   <p>City: {user.address.city}</p>
   ```
 
+- **Numeric Calculations (Arithmetic)**:
+  You can perform arithmetic operations (`+`, `-`, `*`, `/`, `%`) and use parentheses `()` inside placeholders `{ }` to calculate numeric values without writing JavaScript. Combine data values and numeric literals, and pass the result to subsequent pipes (`|`).
+
+  ```html
+  <!-- Variable addition (next pagination offset) -->
+  <a href="?_offset={_sys.query._offset + 10}">Next</a>
+
+  <!-- Multiplication combined with a pipe (tax / total display) -->
+  <span>Total: {item.price * 1.1 | number} 円</span>
+
+  <!-- Precedence with parentheses -->
+  <span>Total: {(item.price + item.shipping) * item.qty}</span>
+  ```
+
+  - Variables in the expression (e.g. `item.price`) are automatically resolved from the data. Undefined, `null`, or non-numeric values are safely treated as `0`, so rendering is never interrupted by an error.
+  - Division/modulo by `0` returns `0`.
+
+- **Displaying List Indices**:
+  For each element iterated by `data-t-list`, a zero-based index `_index` is automatically injected. Add `+ 1` to correct to a one-based index.
+
+  ```html
+  <ul>
+    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
+  </ul>
+  ```
+
 - **Escaping Placeholders**:
   If you want to display the placeholder notation as is without evaluating it, place a backslash `\` before the opening curly brace.
 

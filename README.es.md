@@ -280,6 +280,32 @@ Puedes mostrar datos escribiendo `{nombre_fuente_datos.nombre_item}` en el texto
   <p>Ciudad: {user.address.city}</p>
   ```
 
+- **Cálculos numéricos (aritmética)**:
+  Puede realizar operaciones aritméticas (`+`, `-`, `*`, `/`, `%`) y usar paréntesis `()` dentro de los marcadores de posición `{ }` para calcular valores numéricos sin escribir JavaScript. Combine valores de datos y literales numéricos, y pase el resultado a los filtros (pipes) posteriores (`|`).
+
+  ```html
+  <!-- Suma de variables (siguiente offset de paginación) -->
+  <a href="?_offset={_sys.query._offset + 10}">Next</a>
+
+  <!-- Multiplicación combinada con un pipe (impuesto / total) -->
+  <span>Total: {item.price * 1.1 | number} 円</span>
+
+  <!-- Precedencia con paréntesis -->
+  <span>Total: {(item.price + item.shipping) * item.qty}</span>
+  ```
+
+  - Las variables en la expresión (p. ej., `item.price`) se resuelven automáticamente desde los datos. Los valores indefinidos, `null` o no numéricos se tratan de forma segura como `0`, por lo que el renderizado nunca se interrumpe por un error.
+  - La división/módulo por `0` devuelve `0`.
+
+- **Visualización de índices de lista**:
+  Para cada elemento iterado por `data-t-list`, se inyecta automáticamente un índice basado en cero `_index`. Añada `+ 1` para corregir a un índice basado en uno.
+
+  ```html
+  <ul>
+    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
+  </ul>
+  ```
+
 - **Escape de marcadores de posición**:
   Si deseas mostrar la notación del marcador de posición tal cual sin evaluarla, coloca una barra invertida `\` antes de la llave de apertura.
 

@@ -280,6 +280,32 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
   <p>Cidade: {user.address.city}</p>
   ```
 
+- **Cálculos numéricos (aritmética)**:
+  Você pode realizar operações aritméticas (`+`, `-`, `*`, `/`, `%`) e usar parênteses `()` dentro dos placeholders `{ }` para calcular valores numéricos sem escrever JavaScript. Combine valores de dados e literais numéricos e passe o resultado para os pipes subsequentes (`|`).
+
+  ```html
+  <!-- Soma de variáveis (próximo offset de paginação) -->
+  <a href="?_offset={_sys.query._offset + 10}">Next</a>
+
+  <!-- Multiplicação combinada com pipe (imposto / total) -->
+  <span>Total: {item.price * 1.1 | number} 円</span>
+
+  <!-- Precedência com parênteses -->
+  <span>Total: {(item.price + item.shipping) * item.qty}</span>
+  ```
+
+  - As variáveis na expressão (por exemplo, `item.price`) são resolvidas automaticamente a partir dos dados. Valores indefinidos, `null` ou não numéricos são tratados com segurança como `0`, portanto a renderização nunca é interrompida por um erro.
+  - Divisão/módulo por `0` retorna `0`.
+
+- **Exibindo índices de lista**:
+  Para cada elemento iterado por `data-t-list`, um índice baseado em zero `_index` é injetado automaticamente. Adicione `+ 1` para corrigir para um índice baseado em um.
+
+  ```html
+  <ul>
+    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
+  </ul>
+  ```
+
 - **Escapando Placeholders**:
   Se você quiser exibir a notação do placeholder como está sem avaliá-la, coloque uma barra invertida `\` antes da chave de abertura.
 
