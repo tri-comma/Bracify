@@ -108,6 +108,121 @@ const factory = function () {
         json: (value) => { try { return JSON.stringify(value, null, 2); } catch (e) { return String(value); } }
     };
 
+    // --- Arithmetic Expression Evaluation (placeholders like {price * 1.1}) ---
+    // Detect whether a placeholder body contains an arithmetic expression.
+    // +, *, /, % and parentheses are unambiguous operators. A '-' is treated as an
+    // operator only when not glued to a path segment (e.g. "price - 5", "-5"),
+    // so hyphenated data keys like "first-name" keep working as plain lookups.
+    function isArithmeticExpression(str) {
+        if (typeof str !== 'string') return false;
+        if (/[+*/%()]/.test(str)) return true;
+        return /(^|[\s(])-/.test(str);
+    }
+
+    // Tokenize an arithmetic expression into numbers, variable paths and operators.
+    // Returns null when an unexpected character is encountered (safe non-expression).
+    function tokenizeArithmetic(expr) {
+        const tokens = [];
+        let i = 0;
+        const n = expr.length;
+        while (i < n) {
+            const ch = expr[i];
+            if (/\s/.test(ch)) { i++; continue; }
+            // Number literal (integer or decimal)
+            if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(expr[i + 1] || ''))) {
+                let j = i;
+                while (j < n && /[0-9.]/.test(expr[j])) j++;
+                tokens.push({ type: 'number', value: parseFloat(expr.slice(i, j)) });
+                i = j;
+                continue;
+            }
+            // Variable path (e.g. _sys.query._offset, item.price, projects._index)
+            if (/[A-Za-z_$]/.test(ch)) {
+                let j = i;
+                while (j < n && /[A-Za-z0-9_$.]/.test(expr[j])) j++;
+                tokens.push({ type: 'ident', value: expr.slice(i, j) });
+                i = j;
+                continue;
+            }
+            if ('+-*/%'.indexOf(ch) !== -1) { tokens.push({ type: 'op', value: ch }); i++; continue; }
+            if (ch === '(') { tokens.push({ type: 'paren', value: '(' }); i++; continue; }
+            if (ch === ')') { tokens.push({ type: 'paren', value: ')' }); i++; continue; }
+            return null; // Unexpected character -> not evaluable as arithmetic
+        }
+        return tokens;
+    }
+
+    // Convert a resolved variable value to a number, falling back to 0 for
+    // undefined/null/non-numeric values (safe evaluation, no interruption).
+    function toNumber(val) {
+        if (val === undefined || val === null) return 0;
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+    }
+
+    // Clean up floating point artifacts (e.g. 0.1 * 3 -> 0.30000000000000004).
+    function cleanFloat(n) {
+        if (!isFinite(n)) return 0;
+        return Math.round(n * 1e12) / 1e12;
+    }
+
+    // Safe arithmetic evaluator (no eval/Function) supporting +, -, *, /, %,
+    // parentheses, and variable paths resolved from the data context.
+    function evaluateExpression(expr, data) {
+        const tokens = tokenizeArithmetic(String(expr));
+        if (!tokens || tokens.length === 0) return 0;
+        let pos = 0;
+        const peek = () => tokens[pos];
+        const next = () => tokens[pos++];
+
+        function parsePrimary() {
+            const tok = peek();
+            if (!tok) return 0;
+            if (tok.type === 'number') { next(); return tok.value; }
+            if (tok.type === 'ident') {
+                next();
+                return toNumber(getNestedValue(data, tok.value));
+            }
+            if (tok.type === 'paren' && tok.value === '(') {
+                next();
+                const v = parseAddSub();
+                if (peek() && peek().type === 'paren' && peek().value === ')') next();
+                return v;
+            }
+            if (tok.type === 'op' && (tok.value === '-' || tok.value === '+')) {
+                next();
+                const v = parsePrimary();
+                return tok.value === '-' ? -v : v;
+            }
+            return 0;
+        }
+
+        function parseMulDiv() {
+            let left = parsePrimary();
+            while (peek() && peek().type === 'op' && (peek().value === '*' || peek().value === '/' || peek().value === '%')) {
+                const op = next().value;
+                const right = parsePrimary();
+                if (op === '*') left = left * right;
+                else if (op === '/') left = right === 0 ? 0 : left / right; // Guard division by zero
+                else left = right === 0 ? 0 : left % right;
+            }
+            return left;
+        }
+
+        function parseAddSub() {
+            let left = parseMulDiv();
+            while (peek() && peek().type === 'op' && (peek().value === '+' || peek().value === '-')) {
+                const op = next().value;
+                const right = parseMulDiv();
+                left = op === '+' ? left + right : left - right;
+            }
+            return left;
+        }
+
+        return cleanFloat(parseAddSub());
+    }
+
     function resolveValue(expression, data) {
         if (expression === null || expression === undefined) return '';
         const exprStr = String(expression);
@@ -124,7 +239,9 @@ const factory = function () {
         return exprStr.replace(/(^|[^\\])\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, prefix, key, pipeExpr) => {
             let lookupKey = key.trim();
             if (lookupKey.startsWith('?')) lookupKey = '_sys.query.' + lookupKey.substring(1);
-            let val = getNestedValue(data, lookupKey);
+            // Arithmetic expressions (e.g. "{price * 1.1}") are evaluated safely,
+            // otherwise the placeholder body is treated as a plain data path.
+            let val = isArithmeticExpression(lookupKey) ? evaluateExpression(lookupKey, data) : getNestedValue(data, lookupKey);
             if (pipeExpr) {
                 const parts = pipeExpr.split(':').map(s => s.trim());
                 const pipeName = parts[0];
@@ -577,10 +694,17 @@ const factory = function () {
             // List items are always in scope
             const itemOptions = { ...options, inScope: true };
 
-            for (const item of listData) {
+            // Inject a 0-based "_index" meta property into each item's scope so
+            // placeholders like "{projects._index + 1}" can render a 1-based index.
+            for (let i = 0; i < listData.length; i++) {
+                const item = listData[i];
                 const clone = template.cloneNode(true);
                 parent.insertBefore(clone, nextSibling);
-                await this.processElement(clone, { ...data, [name]: item }, itemOptions);
+                let itemData = item;
+                if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+                    itemData = { ...item, _index: i };
+                }
+                await this.processElement(clone, { ...data, [name]: itemData }, itemOptions);
             }
             return true;
         }
@@ -613,7 +737,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, resolvePathHandle, readFileContent, evaluateCondition, filterLocalData,
+        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
