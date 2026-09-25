@@ -482,22 +482,41 @@ Puedes usar filtros de procesamiento (nombre formal: pipes) `|` al mostrar los d
 #### Sintaxis básica
 
 ```html
-<p>Actualizado: { article.updated_at | date: 'yyyy/mm/dd' }</p>
-<span>Precio: { product.price | number } USD</span>
+<p>Actualizado: { article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
+<span>Precio: { product.price | currency }</span>
+<span>Estado: { article.is_published | ternary: 'Publicado', 'Borrador' }</span>
+<span>Apodo: { user.nickname | default: 'Anónimo' }</span>
+<span>Resumen: { article.summary | truncate: 10 | uppercase }</span>
 ```
 
-↓ **Resultado**
+↓ **Resultado** (cuando `article.summary` es `"Bracify is simple"`)
 
 ```html
-<p>Actualizado: 2025/12/10</p>
-<span>Precio: 1,500 USD</span>
+<p>Actualizado: 2025/12/10 14:05</p>
+<span>Precio: $1,500.00</span>
+<span>Estado: Borrador</span>
+<span>Apodo: Anónimo</span>
+<span>Resumen: BRACIFY...</span>
 ```
 
 #### Sintaxis de Pipe
 
 ```text
-{ nombre_dato.nombre_item | nombre_filtro: 'argumento' }
+{ nombre_dato.nombre_item | nombre_filtro }
+{ nombre_dato.nombre_item | nombre_filtro: argumento }
+{ nombre_dato.nombre_item | nombre_filtro: 'argumento1', 'argumento2' }
+{ nombre_dato.nombre_item | nombre_filtro1 | nombre_filtro2: 'argumento' }   ← encadenamiento (aplicado de izquierda a derecha)
 ```
+
+- Todo lo que sigue al primer `:` después del nombre del filtro se trata como sus argumentos. Los argumentos múltiples se separan con `,`.
+- Los argumentos pueden envolverse en `'...'` o `"..."`. Dentro de las comillas, `:` `,` y `|` no se tratan como separadores. Los argumentos numéricos no necesitan comillas (ej. `truncate: 20`).
+- **Los argumentos no pueden contener `}`** (se interpretaría como el final del marcador de posición).
+- Se pueden encadenar varios filtros con `|`. La salida del filtro anterior se convierte en la entrada del siguiente (aplicado de izquierda a derecha).
+- Los pipes también se pueden aplicar al resultado de una expresión aritmética: `{ item.price * 1.1 | currency }`
+
+#### Nota sobre el momento de aplicación
+
+Los pipes se aplican solo después de que los datos de destino hayan terminado de cargarse. Mientras los datos aún no se hayan cargado, el marcador `{ ... }` permanece tal cual en la página y se reemplaza por el valor correcto una vez completada la carga. Para aprovechar esto, coloca `data-t-source` lo más temprano posible respecto a donde se usa (recomendado: un `<link data-t-source>` en `<head>`).
 
 ### Filtros estándar (Pipes integrados)
 
@@ -510,12 +529,59 @@ Muestra datos de fecha (tipo de fecha) como texto en el formato especificado.
   - `yyyy`: Año de 4 dígitos
   - `mm`: Mes de 2 dígitos
   - `dd`: Día de 2 dígitos
+  - `HH`: Hora de 2 dígitos (formato 24 horas)
+  - `MM`: Minuto de 2 dígitos
+  - `SS`: Segundo de 2 dígitos
+- **Nota**: `mm` (minúscula, mes) y `MM` (mayúscula, minuto) distinguen mayúsculas y minúsculas.
+- Ejemplo: `{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }` → `2025/12/10 14:05`
 
 #### `number`
 
 Muestra números en formato de "separación por comas de tres dígitos".
 
 - **Sintaxis**: `{ nombre_item | number }`
+
+#### `currency`
+
+Muestra números con formato de moneda.
+
+- **Sintaxis**: `{ nombre_item | currency }` / `{ nombre_item | currency: 'código_moneda' }`
+- El código de moneda sigue el estándar ISO 4217 (ej. `USD`, `EUR`). Si se omite, se usa `JPY`.
+- Ejemplo: `{ product.price | currency }` → `¥1,500`
+- Ejemplo: `{ product.price | currency: 'USD' }` → `$1,500.00`
+
+#### `uppercase` / `lowercase`
+
+Convierte una cadena a mayúsculas o minúsculas.
+
+- **Sintaxis**: `{ nombre_item | uppercase }` / `{ nombre_item | lowercase }`
+- Ejemplo: `{ user.code | uppercase }` → `ABC-001`
+
+#### `truncate`
+
+Trunca una cadena a la longitud especificada, añadiendo `...` si se acortó.
+
+- **Sintaxis**: `{ nombre_item | truncate: longitud }`
+- La cadena truncada, incluyendo `...`, cabe dentro de la longitud especificada (ej. con `truncate: 10`, `Bracify is simple` → `Bracify...` (10 caracteres)).
+- Si la longitud especificada es 3 o menos, no se añade `...`; solo se muestran los primeros caracteres según la longitud indicada.
+- Si el valor ya está dentro de la longitud especificada, se muestra sin cambios.
+
+#### `default`
+
+Especifica un valor alternativo a mostrar cuando el valor está vacío (`undefined`, `null` o una cadena vacía).
+
+- **Sintaxis**: `{ nombre_item | default: 'valor_alternativo' }`
+- `0` y `false` no se consideran "vacíos" y se muestran tal cual.
+- Ejemplo: `{ user.nickname | default: 'Anónimo' }`
+
+#### `ternary`
+
+Cambia la cadena mostrada según una condición booleana.
+
+- **Sintaxis**: `{ nombre_item | ternary: 'valor_si_verdadero', 'valor_si_falso' }`
+- La evaluación de veracidad usa las mismas reglas que `data-t-if` (`false`, `0`, `""`, `null`, `undefined`, arreglos vacíos y objetos vacíos son falsos). Ten en cuenta que las cadenas `"false"` y `"0"` son verdaderas.
+- Si se omite el argumento del caso falso, se muestra una cadena vacía.
+- Ejemplo: `{ article.is_published | ternary: 'Publicado', 'Borrador' }`
 
 #### `json`
 

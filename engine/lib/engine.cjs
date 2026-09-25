@@ -105,8 +105,110 @@ const factory = function () {
             return str;
         },
         number: (value) => (value === undefined || value === null) ? '' : Number(value).toLocaleString(),
+        currency: (value, currencyCode) => {
+            if (value === undefined || value === null || value === '') return '';
+            const num = Number(value);
+            if (isNaN(num)) return value;
+            try {
+                return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode || 'JPY' }).format(num);
+            } catch (e) {
+                return num.toLocaleString();
+            }
+        },
+        uppercase: (value) => (value === undefined || value === null) ? '' : String(value).toUpperCase(),
+        lowercase: (value) => (value === undefined || value === null) ? '' : String(value).toLowerCase(),
+        truncate: (value, lengthArg) => {
+            if (value === undefined || value === null) return '';
+            const str = String(value);
+            const length = parseInt(lengthArg, 10);
+            if (!lengthArg || isNaN(length) || length < 0) return str;
+            const chars = Array.from(str);
+            if (chars.length <= length) return str;
+            if (length <= 3) return chars.slice(0, length).join('');
+            return chars.slice(0, length - 3).join('') + '...';
+        },
+        default: (value, fallback) => {
+            const isEmpty = value === undefined || value === null || value === '';
+            return isEmpty ? (fallback !== undefined ? fallback : '') : value;
+        },
+        ternary: (value, trueVal, falseVal) => {
+            const result = isTruthy(value) ? trueVal : falseVal;
+            return result !== undefined ? result : '';
+        },
         json: (value) => { try { return JSON.stringify(value, null, 2); } catch (e) { return String(value); } }
     };
+
+    // --- Pipe expression parsing ("filter1: 'a', 'b' | filter2: arg") ---
+    // Splits on `delimiter` at the top level only, leaving quoted sections ('...'/"...") intact.
+    // An unterminated quote simply runs to the end of the string as a single segment.
+    function splitTopLevel(str, delimiter) {
+        const result = [];
+        let start = 0;
+        let quoteChar = null;
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            if (quoteChar) {
+                if (ch === quoteChar) quoteChar = null;
+            } else if (ch === "'" || ch === '"') {
+                quoteChar = ch;
+            } else if (ch === delimiter) {
+                result.push(str.slice(start, i));
+                start = i + 1;
+            }
+        }
+        result.push(str.slice(start));
+        return result;
+    }
+
+    function indexOfTopLevel(str, char) {
+        let quoteChar = null;
+        for (let i = 0; i < str.length; i++) {
+            const ch = str[i];
+            if (quoteChar) {
+                if (ch === quoteChar) quoteChar = null;
+            } else if (ch === "'" || ch === '"') {
+                quoteChar = ch;
+            } else if (ch === char) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    function stripQuotes(str) {
+        const trimmed = str.trim();
+        if (trimmed.length >= 2) {
+            const first = trimmed[0];
+            const last = trimmed[trimmed.length - 1];
+            if ((first === "'" || first === '"') && first === last) {
+                return trimmed.slice(1, -1);
+            }
+        }
+        return trimmed;
+    }
+
+    // "truncate: 20 | uppercase" -> [{ name: 'truncate', args: ['20'] }, { name: 'uppercase', args: [] }]
+    function parsePipes(pipeExpr) {
+        if (!pipeExpr) return [];
+        return splitTopLevel(pipeExpr, '|').map(part => {
+            const trimmed = part.trim();
+            const colonIdx = indexOfTopLevel(trimmed, ':');
+            let name, argsStr;
+            if (colonIdx === -1) { name = trimmed; argsStr = ''; }
+            else { name = trimmed.slice(0, colonIdx).trim(); argsStr = trimmed.slice(colonIdx + 1); }
+            const args = argsStr.trim() ? splitTopLevel(argsStr, ',').map(stripQuotes) : [];
+            return { name, args };
+        });
+    }
+
+    // Whether the reference path's top-level key is present in the current data
+    // (i.e. "loaded", as opposed to not-yet-fetched). Used to decide whether an
+    // undefined value should leave the placeholder intact for later evaluation.
+    function isTopLevelLoaded(lookupKey, data) {
+        let key = lookupKey.startsWith('!') ? lookupKey.substring(1) : lookupKey;
+        const topKey = key.split('.')[0];
+        return !!(data && typeof data === 'object' && topKey in data);
+    }
 
     // --- Arithmetic Expression Evaluation (placeholders like {price * 1.1}) ---
     // Detect whether a placeholder body contains an arithmetic expression.
@@ -223,7 +325,7 @@ const factory = function () {
         return cleanFloat(parseAddSub());
     }
 
-    function resolveValue(expression, data) {
+    function resolveValue(expression, data, ctx) {
         if (expression === null || expression === undefined) return '';
         const exprStr = String(expression);
         // If it's a simple path (no spaces, no ?, no {), resolve it as is
@@ -242,11 +344,23 @@ const factory = function () {
             // Arithmetic expressions (e.g. "{price * 1.1}") are evaluated safely,
             // otherwise the placeholder body is treated as a plain data path.
             let val = isArithmeticExpression(lookupKey) ? evaluateExpression(lookupKey, data) : getNestedValue(data, lookupKey);
+
             if (pipeExpr) {
-                const parts = pipeExpr.split(':').map(s => s.trim());
-                const pipeName = parts[0];
-                const args = parts.slice(1).map(arg => arg.replace(/^['"]|['"]$/g, ''));
-                if (pipes[pipeName]) val = pipes[pipeName](val, ...args);
+                // Undefined can mean either "not loaded yet" (keep the placeholder for a
+                // later pass) or "loaded, but this property is empty" (resolve now).
+                // Only the data's top-level key tells them apart; scope/list contexts
+                // (ctx.inScope) always count as loaded since their properties are flattened.
+                if (val === undefined && !((ctx && ctx.inScope) || isTopLevelLoaded(lookupKey, data))) {
+                    return match;
+                }
+                for (const { name, args } of parsePipes(pipeExpr)) {
+                    if (!Object.prototype.hasOwnProperty.call(pipes, name)) continue; // unknown pipe: pass through
+                    if ((val === undefined || val === null) && name !== 'default' && name !== 'ternary') {
+                        val = '';
+                        continue;
+                    }
+                    val = pipes[name](val, ...args);
+                }
             }
             // If the final value is still an array (and no pipe was used), treat it as undefined
             // to avoid rendering "item1,item2" in the UI.
@@ -533,11 +647,11 @@ const factory = function () {
         });
     }
 
-    function applyAttributeBindings(el, data) {
+    function applyAttributeBindings(el, data, ctx) {
         for (const attr of Array.from(el.attributes)) {
             if (attr.name.startsWith('on')) continue;
             if (attr.value && attr.value.indexOf('{') !== -1) {
-                let val = resolveValue(attr.value, data);
+                let val = resolveValue(attr.value, data, ctx);
                 if (val !== undefined) {
                     if (URL_ATTRIBUTES.includes(attr.name.toLowerCase())) val = sanitizeUrl(val);
                     el.setAttribute(attr.name, val);
@@ -547,13 +661,13 @@ const factory = function () {
         }
     }
 
-    function applyTextBindings(el, data) {
+    function applyTextBindings(el, data, ctx) {
         if (['STYLE', 'SCRIPT'].includes(el.tagName)) return;
         for (const node of Array.from(el.childNodes)) {
             if (node.nodeType === 3) {
                 const content = node.nodeValue;
                 if (content && content.indexOf('{') !== -1) {
-                    const val = resolveValue(content, data);
+                    const val = resolveValue(content, data, ctx);
                     if (val !== undefined) node.nodeValue = val;
                 }
             }
@@ -664,8 +778,8 @@ const factory = function () {
                 if (localConfig.stripAttributes) element.removeAttribute('data-t-scope');
             }
             if (localConfig.processBindings) {
-                applyAttributeBindings(element, data);
-                applyTextBindings(element, data);
+                applyAttributeBindings(element, data, localConfig);
+                applyTextBindings(element, data, localConfig);
                 applyAutoBindings(element, data, this, localConfig);
             }
             for (const child of Array.from(element.children || [])) await this.processElement(child, data, localConfig);

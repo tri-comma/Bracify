@@ -481,22 +481,41 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
 #### 基本语法
 
 ```html
-<p>更新日期：{ article.updated_at | date: 'yyyy/mm/dd' }</p>
-<span>价格：{ product.price | number } 元</span>
+<p>更新日期：{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
+<span>价格：{ product.price | currency }</span>
+<span>状态：{ article.is_published | ternary: '已发布', '草稿' }</span>
+<span>昵称：{ user.nickname | default: '匿名' }</span>
+<span>摘要：{ article.summary | truncate: 10 | uppercase }</span>
 ```
 
-↓ **运行结果**
+↓ **运行结果**（当 `article.summary` 为 `"Bracify is simple"` 时）
 
 ```html
-<p>更新日期：2025/12/10</p>
-<span>价格：1,500 元</span>
+<p>更新日期：2025/12/10 14:05</p>
+<span>价格：￥1,500</span>
+<span>状态：草稿</span>
+<span>昵称：匿名</span>
+<span>摘要：BRACIFY...</span>
 ```
 
 #### 过滤器语法
 
 ```text
-{ 数据名.项目名 | 过滤器名: '参数' }
+{ 数据名.项目名 | 过滤器名 }
+{ 数据名.项目名 | 过滤器名: 参数 }
+{ 数据名.项目名 | 过滤器名: '参数1', '参数2' }
+{ 数据名.项目名 | 过滤器名1 | 过滤器名2: '参数' }   ← 链式调用（从左到右依次应用）
 ```
+
+- 过滤器名后第一个 `:` 之后的部分为参数。多个参数用 `,` 分隔。
+- 参数可以用 `'...'` 或 `"..."` 括起来。引号内的 `:` `,` `|` 不会被当作分隔符。数字参数无需加引号（例如 `truncate: 20`）。
+- **参数中不能包含 `}`**（会被解释为占位符的结束）。
+- 可以用 `|` 连接多个过滤器。前一个过滤器的输出作为下一个过滤器的输入（从左到右依次应用）。
+- 过滤器也可应用于算术表达式的结果：`{ item.price * 1.1 | currency }`
+
+#### 关于应用时机的说明
+
+过滤器仅在目标数据加载完成后才会被应用。当数据尚未加载时，`{ ... }` 占位符会原样保留在页面上，加载完成后会被替换为正确的值。为了利用这一特性，请尽量将 `data-t-source` 放在使用位置之前（推荐：放在 `<head>` 中的 `<link data-t-source>`）。
 
 ### 标准过滤器 (内置管道函数)
 
@@ -509,12 +528,59 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
   - `yyyy`：4 位年份
   - `mm`：2 位月份
   - `dd`：2 位日期
+  - `HH`：2 位小时（24 小时制）
+  - `MM`：2 位分钟
+  - `SS`：2 位秒
+- **注意**：表示月份的 `mm`（小写）与表示分钟的 `MM`（大写）是区分大小写的。
+- 示例：`{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }` → `2025/12/10 14:05`
 
 #### `number`
 
 按“三位千分位”格式输出数字。
 
 - **语法**：`{ 字段名 | number }`
+
+#### `currency`
+
+将数字格式化为货币形式输出。
+
+- **语法**：`{ 字段名 | currency }` / `{ 字段名 | currency: '货币代码' }`
+- 货币代码遵循 ISO 4217 标准（如 `USD`、`EUR`）。省略时使用 `JPY`。
+- 示例：`{ product.price | currency }` → `￥1,500`
+- 示例：`{ product.price | currency: 'USD' }` → `$1,500.00`
+
+#### `uppercase` / `lowercase`
+
+将字符串转换为大写或小写。
+
+- **语法**：`{ 字段名 | uppercase }` / `{ 字段名 | lowercase }`
+- 示例：`{ user.code | uppercase }` → `ABC-001`
+
+#### `truncate`
+
+将字符串截断为指定长度，若发生截断则在末尾加上 `...`。
+
+- **语法**：`{ 字段名 | truncate: 长度 }`
+- 截断后的字符串（包含 `...`）会控制在指定长度内（例如 `truncate: 10` 时，`Bracify is simple` → `Bracify...`（10 个字符））。
+- 指定长度为 3 或以下时不会附加 `...`，只输出从开头起对应长度的字符。
+- 若值本身长度未超过指定长度，则原样输出。
+
+#### `default`
+
+指定当值为空（`undefined`、`null` 或空字符串）时显示的替代值。
+
+- **语法**：`{ 字段名 | default: '替代值' }`
+- `0` 和 `false` 不视为“空”，会原样输出。
+- 示例：`{ user.nickname | default: '匿名' }`
+
+#### `ternary`
+
+根据布尔值切换显示的字符串。
+
+- **语法**：`{ 字段名 | ternary: '为真时的值', '为假时的值' }`
+- 真假判定与 `data-t-if` 相同（`false`、`0`、`""`、`null`、`undefined`、空数组、空对象为假）。请注意字符串 `"false"` 和 `"0"` 会被判定为真。
+- 省略为假时的值时，输出空字符串。
+- 示例：`{ article.is_published | ternary: '已发布', '草稿' }`
 
 #### `json`
 
