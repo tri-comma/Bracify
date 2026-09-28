@@ -31,4 +31,3 @@ gui/dist/
 **/package-lock.json
 !/package-lock.json
 **/_sys/data.db
-**/_dist/
