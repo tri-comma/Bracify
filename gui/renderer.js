@@ -8,7 +8,6 @@ const dashboardUrlSpan = document.getElementById('dashboard-url');
 const logs = document.getElementById('logs');
 const projectPathDisplay = document.getElementById('project-path-display');
 const buildStatus = document.getElementById('build-status');
-const manualBuildBtn = document.getElementById('manual-build-btn');
 
 let currentUrl = '';
 let selectedProjectPath = null;
@@ -57,7 +56,6 @@ function setProjectPath(path) {
     selectedProjectPath = path;
     projectPathDisplay.textContent = path;
     startBtn.disabled = false;
-    manualBuildBtn.disabled = false;
     log(`Project selected: ${path}`);
 }
 
@@ -154,29 +152,6 @@ async function createData() {
         }
     } catch (e) {
         alert('Fetch Error: ' + e.message);
-    }
-}
-
-async function buildProject() {
-    buildStatus.innerHTML = '<span style="color: blue;">Building... check logs</span>';
-    manualBuildBtn.disabled = true;
-
-    try {
-        log('Starting manual build...');
-        const res = await window.api.buildProject(selectedProjectPath);
-
-        if (res.ok) {
-            buildStatus.innerHTML = '<span style="color: green;">Build Success! check _dist</span>';
-            log('Build Success!');
-        } else {
-            buildStatus.innerHTML = '<span style="color: red;">Build Failed</span>';
-            log('Build Failed: ' + res.error);
-        }
-    } catch (e) {
-        buildStatus.innerHTML = '<span style="color: red;">Error: ' + e.message + '</span>';
-        log('Build Error: ' + e.message);
-    } finally {
-        manualBuildBtn.disabled = false;
     }
 }
 
