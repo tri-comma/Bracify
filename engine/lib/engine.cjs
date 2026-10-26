@@ -30,6 +30,28 @@ const factory = function () {
 
     const URL_ATTRIBUTES = ['href', 'src', 'action', 'formaction'];
 
+    // Automatic data relation: `obj.X` resolves through `X_id` / `XId` to the record
+    // (matched by `id`) in the root data source named after the plural of X.
+    const NO_RELATION = {};
+    function lookupRelated(root, obj, key) {
+        if (!root || typeof root !== 'object' || !key) return NO_RELATION;
+        let fk = obj[key + '_id'];
+        if (fk === undefined) fk = obj[key + 'Id'];
+        if (fk === undefined || fk === null) return NO_RELATION;
+        const names = [key + 's', key + 'es'];
+        if (key.endsWith('y')) names.push(key.slice(0, -1) + 'ies');
+        names.push(key);
+        const has = (n) => Object.prototype.hasOwnProperty.call(root, n);
+        for (const n of names) {
+            if (!has(n) || root[n] === undefined || root[n] === null || typeof root[n] !== 'object') continue;
+            const src = root[n];
+            const rec = Array.isArray(src) ? src.find(r => r && typeof r === 'object' && String(r.id) === String(fk))
+                : (String(src.id) === String(fk) ? src : undefined);
+            return rec;
+        }
+        return NO_RELATION;
+    }
+
     function getNestedValue(data, path, noExpand = false) {
         if (!path) return undefined;
         let isNegative = false;
@@ -81,6 +103,10 @@ const factory = function () {
             }
 
             if (value === undefined || value === null) break;
+            if (typeof value === 'object' && !Array.isArray(value) && !(key in value)) {
+                const related = lookupRelated(data, value, key);
+                if (related !== NO_RELATION) { value = related; continue; }
+            }
             value = value[key];
         }
 
