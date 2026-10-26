@@ -113,6 +113,16 @@ ipcMain.handle('start-system-server', async (event, port, projectPath) => {
                 }
             }
 
+            if (typeof pPath !== 'string' || !pPath.trim()) {
+                return res.status(400).json({ error: 'Invalid project path' });
+            }
+            pPath = path.resolve(pPath);
+            try {
+                if (!fs.statSync(pPath).isDirectory()) throw new Error('not a directory');
+            } catch (e) {
+                return res.status(400).json({ error: 'Project path must be an existing directory' });
+            }
+
             await systemServer.setCurrentProjectPath(pPath);
 
             // Still update history if opened via server API
