@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db/index.cjs');
 const scanner = require('./schema-scanner.cjs');
+const UserError = require('./user-error.cjs');
 
 // Studio Data Manager server side (Issue #9).
 // Enabled only on the system server (manageProjects). Operates on a *target project's* DB through
@@ -48,18 +49,18 @@ class StudioData {
 
     // { id -> project path } via Studio's own 'projects' entity
     async resolveProjectPath(id) {
-        if (!id || typeof id !== 'string') throw new Error('Project id is required');
+        if (!id || typeof id !== 'string') throw new UserError('Project id is required');
         const records = await db.find('projects', { id });
         const record = records && records[0];
-        if (!record) throw new Error(`Project not found: ${id}`);
-        if (!record.path) throw new Error(`Project has no path: ${id}`);
+        if (!record) throw new UserError(`Project not found: ${id}`);
+        if (!record.path) throw new UserError(`Project has no path: ${id}`);
         const p = path.resolve(record.path);
-        if (!fs.existsSync(p) || !fs.statSync(p).isDirectory()) throw new Error(`Project path not found: ${record.path}`);
+        if (!fs.existsSync(p) || !fs.statSync(p).isDirectory()) throw new UserError('Project path not found');
         return p;
     }
 
     checkEntity(entity) {
-        if (!scanner.isValidEntityName(entity)) throw new Error('Invalid entity name');
+        if (!scanner.isValidEntityName(entity)) throw new UserError('Invalid entity name');
     }
 
     async withProjectDb(projectId, fn) {
@@ -131,19 +132,19 @@ class StudioData {
             const body = req.body || {};
             const fail = (e) => {
                 this.logger(`[Studio] ${action} error: ${e.message}`);
-                this.server.redirectBack(req, res, e.message);
+                this.server.redirectBack(req, res, e.userSafe ? e.message : 'Internal Server Error');
             };
             try {
                 this.checkEntity(q.entity);
                 await this.withProjectDb(q.project, async (dbm, projectPath) => {
                     const schema = await this.schemaFor(dbm, projectPath, q.entity);
-                    if (!schema) throw new Error(`Unknown entity: ${q.entity}`);
+                    if (!schema) throw new UserError(`Unknown entity: ${q.entity}`);
 
                     if (action === 'scaffold') {
                         const files = scanner.scaffoldFiles(schema);
                         const targets = Object.keys(files).map(rel => path.join(projectPath, rel));
                         for (const t of targets) {
-                            if (fs.existsSync(t)) throw new Error(`File already exists: ${path.relative(projectPath, t).split(path.sep).join('/')}`);
+                            if (fs.existsSync(t)) throw new UserError(`File already exists: ${path.relative(projectPath, t).split(path.sep).join('/')}`);
                         }
                         fs.mkdirSync(path.join(projectPath, q.entity), { recursive: true });
                         for (const [rel, content] of Object.entries(files)) {
@@ -153,7 +154,7 @@ class StudioData {
                     }
 
                     if (action === 'delete') {
-                        if (!q.id) throw new Error('Record id is required');
+                        if (!q.id) throw new UserError('Record id is required');
                         await dbm.remove(q.entity, { id: q.id });
                         return;
                     }
@@ -161,14 +162,14 @@ class StudioData {
                     const data = this.server.unflatten(body);
                     delete data.id;
                     const errors = scanner.validateRecord(schema, data);
-                    if (errors.length) throw new Error(errors.join('; '));
+                    if (errors.length) throw new UserError(errors.join('; '));
 
                     if (action === 'create') {
                         await dbm.save(q.entity, null, data);
                     } else {
-                        if (!q.id) throw new Error('Record id is required');
+                        if (!q.id) throw new UserError('Record id is required');
                         const existing = (await dbm.find(q.entity, { id: q.id }))[0];
-                        if (!existing) throw new Error(`Record not found: ${q.id}`);
+                        if (!existing) throw new UserError(`Record not found: ${q.id}`);
                         const next = { ...existing };
                         delete next.id;
                         // Fields in the schema are replaced by the form (unchecked checkboxes are absent)

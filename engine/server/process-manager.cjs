@@ -2,6 +2,7 @@ const { spawn, execFile, execFileSync } = require('child_process');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
+const UserError = require('./user-error.cjs');
 
 const START_SCRIPT = path.join(__dirname, '..', 'start.cjs');
 const DEFAULT_PORT = 3000;
@@ -54,14 +55,14 @@ class ProcessManager {
      * Start a project server. Resolves to { id, pid, port, path, startedAt }.
      */
     async start(projectId, projectPath, port) {
-        if (!projectId && projectId !== 0) throw new Error('Project id is required');
+        if (!projectId && projectId !== 0) throw new UserError('Project id is required');
         projectId = String(projectId);
         // Synchronous guard: check + set before any await
         if (this.processes.has(projectId)) {
-            throw new Error(`Project "${projectId}" is already running (port ${this.processes.get(projectId).port})`);
+            throw new UserError(`Project "${projectId}" is already running (port ${this.processes.get(projectId).port})`);
         }
         if (this.starting.has(projectId)) {
-            throw new Error(`Project "${projectId}" is already starting`);
+            throw new UserError(`Project "${projectId}" is already starting`);
         }
         this.starting.add(projectId);
         try {
@@ -72,11 +73,11 @@ class ProcessManager {
     }
 
     async doStart(projectId, projectPath, port) {
-        if (!projectPath || typeof projectPath !== 'string') throw new Error('Project path is required');
+        if (!projectPath || typeof projectPath !== 'string') throw new UserError('Project path is required');
         const resolved = path.resolve(projectPath);
         let stat;
         try { stat = fs.statSync(resolved); } catch (e) { stat = null; }
-        if (!stat || !stat.isDirectory()) throw new Error(`Project directory not found: ${projectPath}`);
+        if (!stat || !stat.isDirectory()) throw new UserError('Project directory not found');
 
         // The probed port can be taken by another process before the child binds it:
         // retry with the next port when the child fails with EADDRINUSE.
