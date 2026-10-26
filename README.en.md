@@ -298,6 +298,9 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
   - `id` values are compared as strings. If no record matches, it behaves like any other undefined value.
   - A real `category` property on the object always takes precedence.
   - Chains such as `article.category.parent.name` work too.
+  - `article.category` itself resolves to the whole related record, so it can be used with `data-t-scope="article.category"` or `data-t-if="article.category"`.
+  - Form auto-binding (prefilling inputs by `name`) does NOT follow relations; use the foreign key field instead (e.g. `name="category_id"`).
+  - The first existing source name is used even if it has no matching record; later candidates are not tried.
   - It works in `{ }`, `data-t-if`, `data-t-list`, `data-t-scope` and attribute bindings (`href="/cat.html?id={article.category.id}"`), identically in SSR and CSR.
 
 - **Numeric Calculations (Arithmetic)**:

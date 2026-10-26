@@ -303,6 +303,9 @@ HTMLのテキスト中や属性値に `{データソース名.項目名}` と記
   - `id` は文字列として比較します。該当レコードがない場合は他の未定義値と同様に扱われます。
   - オブジェクトに実際の `category` プロパティがある場合は、そちらが常に優先されます。
   - `article.category.parent.name` のように連鎖して辿ることも可能です。
+  - `article.category` 自体も関連レコード全体に解決されるため、`data-t-scope="article.category"` や `data-t-if="article.category"` にも使えます。
+  - フォームの自動バインディング（`name` 属性による値の自動入力）は関連を辿りません。外部キーのフィールド（例: `name="category_id"`）を使用してください。
+  - 名前が一致する最初のデータソースが使用され、そこに該当レコードがなくても次の候補は探しません。
   - `{ }`、`data-t-if`、`data-t-list`、`data-t-scope`、属性バインディング（`href="/cat.html?id={article.category.id}"`）のいずれでも利用でき、SSR・CSR で同じ動作をします。
 
 - **数値の計算（四則演算）**:

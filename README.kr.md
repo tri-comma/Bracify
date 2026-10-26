@@ -298,6 +298,9 @@ HTML 텍스트나 속성값에 `{데이터소스명.항목명}`이라고 작성�
   - `id`는 문자열로 비교합니다. 일치하는 레코드가 없으면 다른 정의되지 않은 값과 동일하게 처리됩니다.
   - 객체에 실제 `category` 속성이 있으면 항상 그쪽이 우선합니다.
   - `article.category.parent.name`처럼 연쇄적으로 따라갈 수도 있습니다.
+  - `article.category` 자체도 관련 레코드 전체로 해석되므로 `data-t-scope="article.category"`나 `data-t-if="article.category"`에 사용할 수 있습니다.
+  - 폼 자동 바인딩(`name`으로 입력값 자동 채움)은 관계를 따라가지 않습니다. 외래 키 필드(예: `name="category_id"`)를 사용하세요.
+  - 존재하는 첫 번째 소스 이름이 사용되며, 일치하는 레코드가 없어도 다음 후보는 찾지 않습니다.
   - `{ }`, `data-t-if`, `data-t-list`, `data-t-scope`, 속성 바인딩(`href="/cat.html?id={article.category.id}"`) 모두에서 사용할 수 있으며 SSR과 CSR에서 동일하게 동작합니다.
 
 - **숫자 계산(사칙 연산)**:

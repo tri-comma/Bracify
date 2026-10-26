@@ -298,6 +298,9 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
   - `id` 按字符串比较。没有匹配记录时，与其他未定义值的处理相同。
   - 对象上存在真实的 `category` 属性时，始终优先使用该属性。
   - 也可以像 `article.category.parent.name` 这样链式访问。
+  - `article.category` 本身会解析为完整的关联记录，因此可用于 `data-t-scope="article.category"` 或 `data-t-if="article.category"`。
+  - 表单自动绑定（按 `name` 自动填充输入）不会跟随关联；请使用外键字段（例如 `name="category_id"`）。
+  - 使用第一个存在的数据源，即使其中没有匹配记录也不会尝试后续候选。
   - 可用于 `{ }`、`data-t-if`、`data-t-list`、`data-t-scope` 和属性绑定（`href="/cat.html?id={article.category.id}"`），SSR 与 CSR 行为一致。
 
 - **数值计算（四则运算）**：

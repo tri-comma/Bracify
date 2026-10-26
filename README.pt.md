@@ -298,6 +298,9 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
   - Os `id` são comparados como strings. Se não houver correspondência, comporta-se como qualquer valor indefinido.
   - Uma propriedade real `category` no objeto sempre tem prioridade.
   - Cadeias como `article.category.parent.name` também funcionam.
+  - `article.category` em si resolve para o registro relacionado inteiro, podendo ser usado com `data-t-scope="article.category"` ou `data-t-if="article.category"`.
+  - O auto-binding de formulários (preencher inputs por `name`) NÃO segue relações; use o campo da chave estrangeira (ex.: `name="category_id"`).
+  - Usa-se a primeira fonte existente mesmo sem registro correspondente; as seguintes não são tentadas.
   - Funciona em `{ }`, `data-t-if`, `data-t-list`, `data-t-scope` e em bindings de atributos (`href="/cat.html?id={article.category.id}"`), de forma idêntica em SSR e CSR.
 
 - **Cálculos numéricos (aritmética)**:
