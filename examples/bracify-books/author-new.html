@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add author | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Add an author</span>
+
+    <div data-t-content="main-body">
+        <form class="card" method="POST" action="/_sys/data/authors.json">
+            <input type="hidden" name="data-t-redirect" value="/authors.html?saved=1">
+            <div data-t-include="_parts/author-fields.html"></div>
+            <button type="submit">Create author</button>
+            <a href="authors.html">Cancel</a>
+        </form>
+    </div>
+</body>
+
+</html>

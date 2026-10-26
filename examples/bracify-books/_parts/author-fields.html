@@ -1,0 +1,29 @@
+<!-- Shared form fields for author-new.html / author-edit.html (nested names: genres.0, links.0.label) -->
+<div class="field">
+    <label>Name</label>
+    <input type="text" name="name" required maxlength="60">
+</div>
+<div class="field row">
+    <div>
+        <label>Country</label>
+        <select name="country">
+            <option value="jp">Japan</option>
+            <option value="es">Spain</option>
+            <option value="ng">Nigeria</option>
+            <option value="us">United States</option>
+        </select>
+    </div>
+    <div><label>Born</label><input type="number" name="born" min="1000" max="2100"></div>
+</div>
+<div class="field">
+    <label>Bio</label>
+    <textarea name="bio" rows="3" maxlength="300"></textarea>
+</div>
+<div class="field row">
+    <div><label>Genre 1</label><input type="text" name="genres.0"></div>
+    <div><label>Genre 2</label><input type="text" name="genres.1"></div>
+</div>
+<div class="field row">
+    <div><label>Link label</label><input type="text" name="links.0.label"></div>
+    <div><label>Link URL</label><input type="url" name="links.0.url"></div>
+</div>

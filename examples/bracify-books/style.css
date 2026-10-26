@@ -1,0 +1,82 @@
+:root {
+    --bg: #f7f7f4;
+    --fg: #1f2328;
+    --muted: #6b7280;
+    --accent: #0b6bcb;
+    --line: #dcdcd4;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --danger: #cf222e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.site-header { background: #fff; border-bottom: 1px solid var(--line); }
+.nav { max-width: 960px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.nav .brand { font-weight: 700; font-size: 1.1rem; color: var(--fg); margin-right: auto; }
+.btn, button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 6px 14px; font: inherit; cursor: pointer; display: inline-block; }
+.btn:hover, button:hover { opacity: 0.9; text-decoration: none; }
+button.link { background: none; color: var(--accent); padding: 0; }
+button.danger, .danger { color: var(--danger); }
+button.danger:not(.link) { background: var(--danger); color: #fff; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 24px 20px 48px; }
+h1 { margin: 0 0 16px; font-size: 1.8rem; }
+h2 { margin-top: 28px; font-size: 1.25rem; }
+
+.site-footer { max-width: 960px; margin: 0 auto; padding: 16px 20px 32px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); }
+
+.muted { color: var(--muted); }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.notice { padding: 8px 14px; border-radius: 6px; background: #e8f1fb; margin: 10px 0; }
+.notice.ok { background: #e6f4ea; color: var(--ok); }
+.notice.warn { background: #fff4d6; color: var(--warn); }
+
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 20px; min-width: 130px; }
+.stat b { display: block; font-size: 1.8rem; }
+.stat span { color: var(--muted); font-size: 0.85rem; }
+
+.cards { padding-left: 20px; }
+.cards li { margin: 6px 0; }
+.price { font-weight: 600; }
+
+.badge { display: inline-block; font-size: 0.72rem; background: #ddf4e4; color: var(--ok); border-radius: 10px; padding: 1px 8px; margin-left: 4px; }
+.badge.off { background: #fde8e8; color: var(--danger); }
+.tag { display: inline-block; background: #eceff3; border-radius: 4px; padding: 0 8px; margin-right: 4px; font-size: 0.85rem; }
+
+.table { width: 100%; border-collapse: collapse; background: #fff; }
+.table th, .table td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.table tr.draft { opacity: 0.7; }
+
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+input[type=text], input[type=search], input[type=number], input[type=url], select, textarea {
+    font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; width: 100%;
+}
+.filters input[type=search], .filters select { width: auto; }
+.field { margin: 12px 0; }
+.field label { display: block; font-size: 0.85rem; color: var(--muted); }
+.field label.inline, label.inline { display: inline-block; margin-right: 12px; color: var(--fg); }
+.field.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.field.row > div { flex: 1; min-width: 120px; }
+form.inline { display: inline; }
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pager { display: flex; gap: 16px; margin: 16px 0; }
+
+.facts { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.reviews { list-style: none; padding: 0; }
+.reviews li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.bar { display: inline-block; height: 6px; background: #f2c94c; border-radius: 3px; vertical-align: middle; max-width: 100px; }
+pre { background: #f0f0ea; padding: 10px; border-radius: 6px; overflow: auto; }

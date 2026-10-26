@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playground | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <!-- Operators are used in data-t-if below; data-source filters use exact matches (the only form that works in local mode too) -->
+    <link data-t-source="sample" href="_sys/data/books.json?id=1&_limit=1">
+    <link data-t-source="noMeta" href="_sys/data/books.json?id=8&_limit=1">
+    <link data-t-source="reviews" href="_sys/data/reviews.json">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Playground</span>
+
+    <div data-t-content="main-body">
+        <p class="muted">Every line below is plain Bracify markup. Source: book #1 "{sample.title}".</p>
+
+        <section class="card">
+            <h2>Built-in pipes</h2>
+            <table class="table pipes">
+                <tr><th>date</th><td id="p-date">{sample.published_at | date: 'yyyy/mm/dd'}</td></tr>
+                <tr><th>number</th><td id="p-number">{sample.price | number}</td></tr>
+                <tr><th>currency (default JPY)</th><td id="p-currency">{sample.price | currency}</td></tr>
+                <tr><th>currency USD</th><td id="p-currency-usd">{sample.price | currency: 'USD'}</td></tr>
+                <tr><th>uppercase</th><td id="p-upper">{sample.meta.publisher | uppercase}</td></tr>
+                <tr><th>lowercase</th><td id="p-lower">{sample.meta.publisher | lowercase}</td></tr>
+                <tr><th>truncate</th><td id="p-truncate">{sample.summary | truncate: 20}</td></tr>
+                <tr><th>default</th><td id="p-default">{noMeta.meta.isbn | default: 'no isbn'}</td></tr>
+                <tr><th>ternary (true)</th><td id="p-ternary-true">{sample.featured | ternary: 'featured', 'regular'}</td></tr>
+                <tr><th>ternary (false)</th><td id="p-ternary-false">{noMeta.featured | ternary: 'featured', 'regular'}</td></tr>
+                <tr><th>chain</th><td id="p-chain">{sample.summary | truncate: 12 | uppercase}</td></tr>
+                <tr><th>json</th><td><pre id="p-json">{sample.tags | json}</pre></td></tr>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>Arithmetic</h2>
+            <ul>
+                <li id="a-mul">{sample.price} x 1.1 = {sample.price * 1.1}</li>
+                <li id="a-paren">({sample.price} + 100) x 3 = {(sample.price + 100) * 3}</li>
+                <li id="a-mod">{sample.pages} % 7 = {sample.pages % 7}</li>
+                <li id="a-div0">division by zero is safe: {sample.pages / 0}</li>
+                <li id="a-pipe">piped: {sample.price * 1.1 | number}</li>
+                <li id="a-page">next offset: {_sys.query._offset + 10}</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>Conditions</h2>
+            <ul>
+                <li data-t-if="sample.featured" id="c-exists">featured is truthy</li>
+                <li data-t-if="!noMeta.featured" id="c-neg">draft is not featured</li>
+                <li data-t-if="sample.status=published" id="c-eq">status = published</li>
+                <li data-t-if="sample.status:ne=draft" id="c-ne">status is not draft</li>
+                <li data-t-if="sample.price:gt=1000" id="c-gt">price &gt; 1000</li>
+                <li data-t-if="sample.price:gte=1500" id="c-gte">price &gt;= 1500</li>
+                <li data-t-if="sample.stock:lt=10" id="c-lt">stock &lt; 10</li>
+                <li data-t-if="sample.stock:lte=4" id="c-lte">stock &lt;= 4</li>
+                <li data-t-if="sample.price:gte=1000 sample.stock:gt=0" id="c-and">price &gt;= 1000 AND stock &gt; 0</li>
+                <li data-t-if="sample.status=draft,published" id="c-or">status is draft OR published</li>
+                <li data-t-if="sample.author_id={sample.author_id}" id="c-var">compares with a variable</li>
+                <li data-t-if="sample.price:gt=99999" id="c-never">never shown</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>Relations and nested access</h2>
+            <p id="r-author">{sample.author.name} ({sample.author.country | uppercase}) wrote this {sample.category.name} book.</p>
+            <p id="r-meta">Publisher: {sample.meta.publisher}</p>
+            <p id="r-scope" data-t-scope="sample.author">Scoped: {name} was born in {born}</p>
+        </section>
+
+        <section class="card">
+            <h2>System values</h2>
+            <p id="s-length">{reviews._length} reviews, title length {sample.title._length}</p>
+            <p id="s-query">?x = {_sys.query.x | default: '(not set)'} / {?x | default: '(shortcut)'}</p>
+            <p id="s-index"><span data-t-list="authors">{authors._index + 1}.{authors.name} </span></p>
+        </section>
+
+        <section class="card">
+            <h2>Event handlers</h2>
+            <!-- {placeholders} do not work inside onclick: put the value in a data attribute and read this.dataset -->
+            <button type="button" id="e-button" data-id="{sample.id}" onclick="alert('Book id: ' + this.dataset.id)">Show book id</button>
+        </section>
+    </div>
+</body>
+
+</html>

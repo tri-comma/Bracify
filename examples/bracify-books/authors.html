@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authors | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="countryFilter" href="_sys/data/authors.json?country={?country}">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Authors</span>
+
+    <div data-t-content="main-body">
+        <p class="notice ok" data-t-if="_sys.query.saved">Saved.</p>
+        <p class="notice ok" data-t-if="_sys.query.deleted">Deleted.</p>
+
+        <div class="actions">
+            <a class="btn" href="author-new.html">Add author</a>
+            Filter:
+            <a href="authors.html?country=jp">Japan</a>
+            <a href="authors.html?country=es">Spain</a>
+            <a href="authors.html">All</a>
+        </div>
+        <p class="muted">{countryFilter._length} of {authors._length} author(s)<span data-t-if="_sys.query.country"> in {_sys.query.country | uppercase}</span></p>
+
+        <!-- Nested lists: genres (strings) and links (objects) live inside every author -->
+        <div class="card" data-t-list="countryFilter">
+            <h2><a href="author.html?id={countryFilter.id}">{countryFilter.name}</a>
+                <span class="badge">{countryFilter.country | uppercase}</span>
+            </h2>
+            <p class="muted">Born {countryFilter.born}</p>
+            <p>{countryFilter.bio | truncate: 70}</p>
+            <p>
+                <span class="tag" data-t-list="countryFilter.genres">{countryFilter.genres}</span>
+            </p>
+            <ul data-t-if="countryFilter.links">
+                <li data-t-list="countryFilter.links">
+                    <a href="{countryFilter.links.url}" target="_blank">{countryFilter.links.label}</a>
+                </li>
+            </ul>
+            <div class="actions">
+                <a href="author-edit.html?id={countryFilter.id}">Edit</a>
+                <form class="inline" method="POST" action="/_sys/data/authors.json?id={countryFilter.id}&_method=DELETE">
+                    <input type="hidden" name="data-t-redirect" value="/authors.html?deleted=1">
+                    <button type="submit" class="link danger" data-title="{countryFilter.name}"
+                        onclick="return confirm('Delete ' + this.dataset.title + '?')">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit book | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <link data-t-source="book" href="_sys/data/books.json?id={?id}&_limit=1">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Edit book</span>
+
+    <div data-t-content="main-body">
+        <p class="notice warn" data-t-if="!_sys.query.id">No book selected. <a href="books.html">Browse books</a>.</p>
+
+        <!-- data-t-scope="book" fills every field. POST + ?_method=PUT updates the record (a plain form cannot send PUT).
+             The whole record is replaced by the submitted fields, so every field is part of the form. -->
+        <form class="card" data-t-if="_sys.query.id book.title" data-t-scope="book" method="POST"
+            action="/_sys/data/books.json?id={book.id}&_method=PUT">
+            <input type="hidden" name="data-t-redirect" value="/book.html?id={book.id}&saved=1">
+            <div data-t-include="_parts/book-fields.html"></div>
+            <button type="submit">Save changes</button>
+            <a href="book.html?id={book.id}">Cancel</a>
+        </form>
+
+        <!-- Delete: POST + ?_method=DELETE -->
+        <form class="card" data-t-if="_sys.query.id book.title" method="POST"
+            action="/_sys/data/books.json?id={book.id}&_method=DELETE">
+            <input type="hidden" name="data-t-redirect" value="/books.html?deleted=1">
+            <button type="submit" class="danger" data-title="{book.title}"
+                onclick="return confirm('Delete ' + this.dataset.title + '?')">Delete this book</button>
+        </form>
+    </div>
+</body>
+
+</html>

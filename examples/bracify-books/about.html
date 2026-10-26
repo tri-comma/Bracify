@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">About</span>
+
+    <div data-t-content="main-body">
+        <!-- Snippet mode: static text from _parts/about-text.html -->
+        <section class="card" data-t-include="_parts/about-text.html">Fallback text (replaced by the include)</section>
+
+        <section class="card">
+            <h2>Site data</h2>
+            <p>Name: <strong>{site.name}</strong> &middot; Currency: {site.currency | lowercase}</p>
+            <p class="muted">Query parameter <code>from</code>: {_sys.query.from | default: 'direct visit'}</p>
+            <pre id="site-json">{site.footer | json}</pre>
+        </section>
+
+        <section class="card">
+            <h2>Escaping</h2>
+            <!-- Backslash before the braces prints the placeholder as text -->
+            <p>Write <code>\{book.title\}</code> to show a book title.</p>
+        </section>
+
+        <p><a href="pipes.html">See the playground &rarr;</a></p>
+    </div>
+</body>
+
+</html>

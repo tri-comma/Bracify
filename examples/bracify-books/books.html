@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <!-- Filters come from the URL ({?name} = _sys.query.name); empty / missing values are ignored.
+         "shelf" is one page (3 rows), "matched" is the same filter without paging (used for the total). -->
+    <link data-t-source="shelf"
+        href="_sys/data/books.json?status={?status}&category_id={?category}&author_id={?author}&title={?q}&_sort={?sort}&_order={?order}&_limit=3&_offset={?_offset}">
+    <link data-t-source="matched"
+        href="_sys/data/books.json?status={?status}&category_id={?category}&author_id={?author}&title={?q}">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Books</span>
+
+    <div data-t-content="main-body">
+        <p class="notice ok" data-t-if="_sys.query.saved">Saved.</p>
+        <p class="notice ok" data-t-if="_sys.query.deleted">Deleted.</p>
+
+        <!-- Search form: GET + data-t-scope="_sys.query" fills every field from the URL -->
+        <form class="filters" method="GET" action="books.html" data-t-scope="_sys.query">
+            <input type="search" name="q" placeholder="Exact title">
+            <label class="inline"><input type="radio" name="category" value="" checked> All</label>
+            <label class="inline" data-t-list="categories"><input type="radio" name="category" value="{categories.id}"> {categories.name}</label>
+            <select name="status">
+                <option value="">Any status</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+            </select>
+            <select name="sort">
+                <option value="">Default order</option>
+                <option value="title">Title</option>
+                <option value="year">Year</option>
+                <option value="price">Price</option>
+            </select>
+            <label class="inline"><input type="radio" name="order" value="asc"> asc</label>
+            <label class="inline"><input type="radio" name="order" value="desc"> desc</label>
+            <button type="submit">Apply</button>
+            <a href="books.html">Reset</a>
+        </form>
+
+        <p class="muted">
+            Showing {shelf._length} of {matched._length} book(s)
+            <span data-t-if="_sys.query._offset:gt=0">(from #{_sys.query._offset + 1})</span>
+        </p>
+        <p class="notice warn" data-t-if="!shelf._length">No books match your filters.</p>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>
+                        Title
+                        <a href="books.html?q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort=title&order=asc">&uarr;</a>
+                        <a href="books.html?q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort=title&order=desc">&darr;</a>
+                    </th>
+                    <th>Author</th>
+                    <th>Category</th>
+                    <th>
+                        Year
+                        <a href="books.html?q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort=year&order=asc">&uarr;</a>
+                        <a href="books.html?q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort=year&order=desc">&darr;</a>
+                    </th>
+                    <th>Price</th>
+                    <th>Incl. tax</th>
+                    <th>Stock value</th>
+                    <th>Stock</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="row {shelf.status}" data-t-list="shelf">
+                    <td>{shelf._index + 1}</td>
+                    <td>
+                        <a href="book.html?id={shelf.id}">{shelf.title}</a>
+                        <span class="badge" data-t-if="shelf.featured">Featured</span>
+                        <span class="badge off" data-t-if="shelf.status=draft">{shelf.status | uppercase}</span>
+                    </td>
+                    <td><a href="author.html?id={shelf.author_id}">{shelf.author.name}</a></td>
+                    <td><a href="books.html?category={shelf.category.id}">{shelf.category.name}</a></td>
+                    <td>{shelf.year}</td>
+                    <td>{shelf.price | currency: 'USD'}</td>
+                    <td>{shelf.price * 1.1 | number}</td>
+                    <td>{shelf.price * shelf.stock | number}</td>
+                    <td>{shelf.stock | ternary: 'In stock', 'Out of stock'}</td>
+                    <td class="actions">
+                        <a href="book-edit.html?id={shelf.id}">Edit</a>
+                        <form class="inline" method="POST" action="/_sys/data/books.json?id={shelf.id}&_method=DELETE">
+                            <input type="hidden" name="data-t-redirect" value="/books.html?deleted=1">
+                            <!-- Event handlers cannot hold {placeholders}: pass data via data-* and read this.dataset -->
+                            <button type="submit" class="link danger" data-title="{shelf.title}"
+                                onclick="return confirm('Delete ' + this.dataset.title + '?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Pagination: _offset +/- page size (3), keeping the other filters -->
+        <nav class="pager">
+            <a data-t-if="_sys.query._offset:gt=0"
+                href="books.html?_offset={_sys.query._offset - 3}&q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort={?sort | default: ''}&order={?order | default: ''}">&larr; Previous</a>
+            <a data-t-if="matched._length:gt={_sys.query._offset + 3}"
+                href="books.html?_offset={_sys.query._offset + 3}&q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort={?sort | default: ''}&order={?order | default: ''}">Next &rarr;</a>
+        </nav>
+    </div>
+</body>
+
+</html>

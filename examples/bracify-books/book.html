@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <!-- Single record: id from the URL + _limit=1 returns one object instead of a list -->
+    <link data-t-source="book" href="_sys/data/books.json?id={?id}&_limit=1">
+    <link data-t-source="bookReviews" href="_sys/data/reviews.json?book_id={?id}&_sort=created_at&_order=desc">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Book details</span>
+
+    <div data-t-content="main-body">
+        <p class="notice ok" data-t-if="_sys.query.saved">Saved.</p>
+        <p class="notice warn" data-t-if="!_sys.query.id">No book selected. <a href="books.html">Browse books</a>.</p>
+
+        <p class="notice warn" data-t-if="_sys.query.id !book.title">Book not found.</p>
+
+        <article data-t-if="_sys.query.id book.title">
+            <h2>{book.title}</h2>
+            <p class="notice warn" data-t-if="book.status=draft">This book is a draft and is not published yet.</p>
+            <p class="notice" data-t-if="book.status=published,archived">Publicly visible.</p>
+
+            <!-- Relations: author_id -> authors, category_id -> categories (no extra markup needed) -->
+            <p>
+                by <a href="author.html?id={book.author_id}">{book.author.name}</a>
+                in <a href="books.html?category={book.category.id}">{book.category.name}</a>
+                <span class="badge" data-t-if="book.featured">Featured</span>
+            </p>
+
+            <dl class="facts">
+                <dt>Published</dt><dd>{book.published_at | date: 'yyyy/mm/dd'}</dd>
+                <dt>Pages</dt><dd>{book.pages | number}</dd>
+                <dt>Reading time</dt><dd>{book.pages / 40 | number} hours</dd>
+                <dt>Price</dt><dd>{book.price | currency: 'USD'}</dd>
+                <dt>With 10% tax</dt><dd>{book.price * 1.1 | currency: 'USD'}</dd>
+                <dt>Price for 3 copies</dt><dd>{(book.price + 100) * 3 | number}</dd>
+                <dt>Availability</dt><dd>{book.stock | ternary: 'In stock', 'Out of stock'}</dd>
+                <dt>ISBN</dt><dd>{book.meta.isbn | default: 'n/a'}</dd>
+                <dt>Publisher</dt><dd>{book.meta.publisher | uppercase}</dd>
+            </dl>
+            <p class="notice warn" data-t-if="book.stock:lte=3 book.stock:gt=0">Only a few copies left ({book.stock}).</p>
+
+            <p>{book.summary}</p>
+            <p class="muted">Short: {book.summary | truncate: 40 | uppercase}</p>
+
+            <p>
+                Tags:
+                <span class="tag" data-t-list="book.tags" data-t-if="book.tags">{book.tags}</span>
+            </p>
+
+            <p class="actions">
+                <a class="btn" href="book-edit.html?id={book.id}">Edit</a>
+                <a href="books.html">&larr; All books</a>
+            </p>
+            <details>
+                <summary>Raw metadata</summary>
+                <pre>{book.meta | json}</pre>
+            </details>
+
+            <h3>Reviews ({bookReviews._length})</h3>
+            <p class="muted" data-t-if="!bookReviews._length">No reviews yet.</p>
+            <ul class="reviews">
+                <li data-t-list="bookReviews">
+                    <strong>{bookReviews.reviewer}</strong>
+                    <span class="rating">{bookReviews.rating}/5</span>
+                    <span class="bar" style="width: {bookReviews.rating * 20}%"></span>
+                    <span class="badge" data-t-if="bookReviews.rating:gte=4">Recommended</span>
+                    <span class="badge off" data-t-if="bookReviews.rating:lt=3">Not for everyone</span>
+                    <span class="badge" data-t-if="bookReviews.reviewer=Alice,Bob">Regular reader</span>
+                    <em>{bookReviews.comment | default: '(no comment)'}</em>
+                    <span class="muted">{bookReviews.created_at | date: 'yyyy/mm/dd'}</span>
+                </li>
+            </ul>
+
+            <h3>Write a review</h3>
+            <form class="card" method="POST" action="/_sys/data/reviews.json">
+                <input type="hidden" name="data-t-redirect" value="/book.html?id={book.id}&saved=1">
+                <input type="hidden" name="book_id" value="{book.id}">
+                <div class="field row">
+                    <div><label>Your name</label><input type="text" name="reviewer" required maxlength="40"></div>
+                    <div>
+                        <label>Rating</label>
+                        <select name="rating">
+                            <option value="5">5</option>
+                            <option value="4">4</option>
+                            <option value="3">3</option>
+                            <option value="2">2</option>
+                            <option value="1">1</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field"><label>Comment</label><textarea name="comment" rows="3" maxlength="300"></textarea></div>
+                <button type="submit">Post review</button>
+            </form>
+        </article>
+    </div>
+</body>
+
+</html>
