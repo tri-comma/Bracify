@@ -867,3 +867,7 @@ Bracify includes several built-in protection features to support safe frontend d
   When running as a server, it rejects all external direct access (403 Forbidden) to resources where the directory or file name at the root starts with an underscore (`_`).
   This blocks unauthorized access to internal info like `data.db` or include components (`_parts/`) at the web server level.
   * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
+
+## Contributing
+
+This project is developed by a single maintainer, so Pull Requests from third parties are not accepted. Issues (bug reports, feature requests, and questions) are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.

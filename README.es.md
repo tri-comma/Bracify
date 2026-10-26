@@ -867,3 +867,7 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
   Cuando se ejecuta como servidor, rechaza todo acceso directo externo (403 Forbidden) a los recursos donde el nombre del directorio o archivo en la raíz comienza con un guion bajo (`_`).
   Esto bloquea el acceso no autorizado a información interna como `data.db` o componentes de inclusión (`_parts/`) a nivel de servidor web.
   * Nota: Los puntos finales de formulario oficiales (como `POST /_sys/data/*.json`) están exentos de esta restricción.
+
+## Contribuir
+
+Este proyecto es desarrollado por un único mantenedor, por lo que no se aceptan Pull Requests de terceros. Los Issues (informes de errores, solicitudes de funciones y preguntas) son bienvenidos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.

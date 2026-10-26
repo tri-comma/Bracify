@@ -776,3 +776,7 @@ project/
 - **下划线保护 (仅限 SSR)**：
   作为服务器运行时，拒绝所有对根目录下以下划线 (`_`) 开头的资源（如 `data.db`, `_parts/`）的直接外部访问 (403 Forbidden)。
   * 注意：官方表单端点（如 `POST /_sys/data/*.json`）不受此限。
+
+## 贡献 (Contributing)
+
+本项目由作者一人独立开发，因此不接受第三方的 Pull Request。欢迎通过 Issue 提交错误报告、功能建议和问题。详情请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
