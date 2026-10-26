@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity | Bracify Studio</title>
+    <link data-t-source="schema" href="_sys/studio/schema.json?project={?project}&entity={?entity}">
+    <link data-t-source="records" href="_sys/studio/records.json?project={?project}&entity={?entity}">
+    <link rel="stylesheet" href="/common.css">
+    <script src="/engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+
+    <div data-t-content="main-content">
+        <a href="/data/index.html?project={?project}"
+            style="color: var(--accent); font-size: 0.9rem; margin-bottom: 2rem; display: inline-block;">&larr; Back to
+            Entities</a>
+
+        <span class="section-label">Entity</span>
+        <h1>{?entity}</h1>
+
+        <p data-t-if="_sys.query.error" style="color: #ef4444;">{?error}</p>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <span class="section-label">Schema</span>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Required</th>
+                        <th>Max length</th>
+                        <th>Min length</th>
+                        <th>Min</th>
+                        <th>Max</th>
+                        <th>Pattern</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-t-list="schema.fields">
+                        <td>{schema.fields.name}</td>
+                        <td>{schema.fields.type}</td>
+                        <td><span data-t-if="schema.fields.required">yes</span></td>
+                        <td>{schema.fields.maxlength}</td>
+                        <td>{schema.fields.minlength}</td>
+                        <td>{schema.fields.min}</td>
+                        <td>{schema.fields.max}</td>
+                        <td>{schema.fields.pattern}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <span class="section-label">Records</span>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th data-t-list="schema.fields">{schema.fields.name}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-t-list="records">
+                        <td>{records.id}</td>
+                        <td data-t-list="records.cells">{records.cells.value}</td>
+                        <td>
+                            <details>
+                                <summary>Edit</summary>
+                                <form method="POST"
+                                    action="/_sys/studio/records/update?project={?project}&entity={?entity}&id={records.id}">
+                                    <input type="hidden" name="data-t-redirect"
+                                        value="/data/entity.html?project={?project}&entity={?entity}">
+                                    <div class="form-group" data-t-list="records.cells">
+                                        <label>{records.cells.name}</label>
+                                        <select data-t-if="records.cells.isEnum" name="{records.cells.name}">
+                                            <option data-t-list="records.cells.options" data-t-if="records.cells.options.isSelected" value="{records.cells.options.value}" selected>{records.cells.options.value}</option>
+                                            <option data-t-list="records.cells.options" data-t-if="!records.cells.options.isSelected" value="{records.cells.options.value}">{records.cells.options.value}</option>
+                                        </select>
+                                        <input data-t-if="records.cells.isChecked" type="checkbox" name="{records.cells.name}" checked>
+                                        <input data-t-if="records.cells.isUnchecked" type="checkbox" name="{records.cells.name}">
+                                        <textarea data-t-if="records.cells.isTextarea" name="{records.cells.name}">{records.cells.value}</textarea>
+                                        <input data-t-if="records.cells.isPlain" type="{records.cells.inputType}" name="{records.cells.name}" value="{records.cells.value}">
+                                    </div>
+                                    <button type="submit" class="btn-primary">Save</button>
+                                </form>
+                            </details>
+                            <form method="POST"
+                                action="/_sys/studio/records/delete?project={?project}&entity={?entity}&id={records.id}">
+                                <input type="hidden" name="data-t-redirect"
+                                    value="/data/entity.html?project={?project}&entity={?entity}">
+                                <button type="submit" class="btn-secondary">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p data-t-if="!records" style="color: var(--text-muted);">No records.</p>
+        </div>
+
+        <div class="card">
+            <span class="section-label">Create Record</span>
+            <form method="POST" action="/_sys/studio/records?project={?project}&entity={?entity}">
+                <input type="hidden" name="data-t-redirect"
+                    value="/data/entity.html?project={?project}&entity={?entity}">
+                <div class="form-group" data-t-list="schema.fields">
+                    <label>{schema.fields.name}</label>
+                    <select data-t-if="schema.fields.isEnum" name="{schema.fields.name}">
+                        <option data-t-list="schema.fields.options" value="{schema.fields.options}">{schema.fields.options}</option>
+                    </select>
+                    <input data-t-if="schema.fields.isCheckbox" type="checkbox" name="{schema.fields.name}">
+                    <textarea data-t-if="schema.fields.isTextarea" name="{schema.fields.name}"></textarea>
+                    <input data-t-if="schema.fields.isPlain" type="{schema.fields.inputType}" name="{schema.fields.name}">
+                </div>
+                <button type="submit" class="btn-primary">Create</button>
+            </form>
+        </div>
+    </div>
+
+</body>
+
+</html>

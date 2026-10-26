@@ -224,3 +224,22 @@ input:focus {
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--text-muted);
 }
+/* Data Manager tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--card-border);
+    vertical-align: top;
+}
+
+.data-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+}

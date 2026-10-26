@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Manager | Bracify Studio</title>
+    <link data-t-source="project" href="_sys/data/projects.json?id={?project}&_limit=1">
+    <link data-t-source="entities" href="_sys/studio/entities.json?project={?project}">
+    <link rel="stylesheet" href="/common.css">
+    <script src="/engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+
+    <div data-t-content="main-content">
+        <a href="/project.html?id={?project}"
+            style="color: var(--accent); font-size: 0.9rem; margin-bottom: 2rem; display: inline-block;">&larr; Back to
+            Project</a>
+
+        <span class="section-label">Data Manager</span>
+        <h1>{project.name}</h1>
+        <p style="color: var(--text-muted);">Entities discovered from the project's HTML and data.</p>
+
+        <p data-t-if="_sys.query.error" style="color: #ef4444;">{?error}</p>
+        <p data-t-if="_sys.query.scaffolded" style="color: #22c55e;">Scaffold created for {?scaffolded}.</p>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Entity</th>
+                        <th>Fields</th>
+                        <th>Records</th>
+                        <th>Used in</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-t-list="entities">
+                        <td><a href="/data/entity.html?project={?project}&entity={entities.entity}"
+                                style="color: var(--accent); font-weight: 500;">{entities.entity}</a></td>
+                        <td>{entities.fieldCount}</td>
+                        <td>{entities.count}</td>
+                        <td>{entities.fileCount} file(s)</td>
+                        <td>
+                            <form method="POST" action="/_sys/studio/scaffold?project={?project}&entity={entities.entity}">
+                                <input type="hidden" name="data-t-redirect"
+                                    value="/data/index.html?project={?project}&scaffolded={entities.entity}">
+                                <button type="submit" class="btn-secondary">Scaffold</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p data-t-if="!entities" style="color: var(--text-muted);">No entities found.</p>
+        </div>
+    </div>
+
+</body>
+
+</html>
