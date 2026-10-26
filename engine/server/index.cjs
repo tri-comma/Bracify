@@ -92,6 +92,9 @@ class EngineServer {
                 return res.status(400).send('Invalid entity name');
             }
 
+            // CSRF: reject cross-origin writes (incl. POST ?_method=PUT|DELETE)
+            if (method !== 'GET' && !this.checkOrigin(req, res)) return;
+
             if (method === 'GET') {
                 this.logger(`[Security] Blocked direct GET access to data entity: ${entity}`);
                 return res.status(403).send('Access Denied');

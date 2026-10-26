@@ -7,6 +7,9 @@ const { JSDOM } = require('jsdom');
 const ENTITY_RE = /^[a-zA-Z0-9_-]+$/;
 const isValidEntityName = (name) => typeof name === 'string' && ENTITY_RE.test(name) && !name.startsWith('_');
 
+const FIELD_NAME_RE = /^[A-Za-z0-9_.-]+$/;
+const NESTED_QUANTIFIER_RE = /\([^)]*[+*][^)]*\)[+*{]/;
+const MAX_PATTERN_INPUT = 1000;
 const SKIP_DIRS = new Set(['node_modules', '_sys']);
 
 const walkHtml = (dir, out = []) => {
@@ -33,7 +36,7 @@ const entityFromHref = (href) => {
 
 const baseField = (name) => ({
     name, type: 'unknown', required: false,
-    maxlength: null, minlength: null, min: null, max: null, pattern: null, options: null
+    maxlength: null, minlength: null, min: null, max: null, pattern: null, options: null, patternSkipped: false
 });
 
 const numAttr = (el, attr) => {
@@ -60,6 +63,7 @@ const fieldFromControl = (el) => {
     f.min = numAttr(el, 'min');
     f.max = numAttr(el, 'max');
     f.pattern = el.getAttribute('pattern') || null;
+    f.patternSkipped = !!(f.pattern && NESTED_QUANTIFIER_RE.test(f.pattern));
     return f;
 };
 
@@ -95,7 +99,7 @@ const scan = (projectPath, opts = {}) => {
         return entities.get(name);
     };
     const addField = (ent, field) => {
-        if (!field.name || field.name === 'data-t-redirect') return;
+        if (!field.name || field.name === 'data-t-redirect' || !FIELD_NAME_RE.test(field.name)) return;
         const existing = ent.fields.get(field.name);
         if (existing) mergeField(existing, field); else ent.fields.set(field.name, field);
     };
@@ -197,7 +201,7 @@ const validateRecord = (schema, data) => {
         const v = get(data, f.name);
         const empty = v === undefined || v === null || v === '';
         if (empty) {
-            if (f.required) errors.push(`${f.name} is required`);
+            if (f.required && f.type !== 'checkbox') errors.push(`${f.name} is required`);
             continue;
         }
         const s = String(v);
@@ -217,7 +221,8 @@ const validateRecord = (schema, data) => {
         } else if (f.type === 'enum' && Array.isArray(f.options) && f.options.length) {
             if (!f.options.includes(s)) errors.push(`${f.name} must be one of: ${f.options.join(', ')}`);
         }
-        if (f.pattern) {
+        if (f.pattern && !(f.patternSkipped || NESTED_QUANTIFIER_RE.test(f.pattern))) {
+            if (s.length > MAX_PATTERN_INPUT) { errors.push(`${f.name} is too long to validate (max ${MAX_PATTERN_INPUT} characters)`); continue; }
             let re = null;
             try { re = new RegExp('^(?:' + f.pattern + ')$'); } catch (e) { /* invalid pattern: ignore */ }
             if (re && !re.test(s)) errors.push(`${f.name} does not match the required pattern`);

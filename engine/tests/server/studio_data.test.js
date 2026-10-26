@@ -488,3 +488,59 @@ test('security and error handling', async (t) => {
         }
     });
 });
+
+test('review hardening', async (t) => {
+    await t.test('Data API rejects cross-origin writes (POST, POST?_method=DELETE, PUT); no-Origin and same-origin work', async () => {
+        const evil = { Origin: 'http://evil.example' };
+        const ok = await post('/_sys/data/notes.json', { id: 'n1', text: 'hi', 'data-t-redirect': '/index.html' });
+        assert.strictEqual(ok.status, 302, 'no Origin header allowed');
+        const count = async () => (await db.find('notes', {})).length;
+        assert.strictEqual(await count(), 1);
+
+        const r1 = await post('/_sys/data/notes.json', { id: 'n2', text: 'x' }, evil);
+        assert.strictEqual(r1.status, 403);
+        const r2 = await post('/_sys/data/notes.json?id=n1&_method=DELETE', {}, evil);
+        assert.strictEqual(r2.status, 403);
+        const r3 = await fetch(base + '/_sys/data/notes.json?id=n1', { method: 'PUT', redirect: 'manual', headers: { ...evil, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=changed' });
+        assert.strictEqual(r3.status, 403);
+        const r4 = await fetch(base + '/_sys/data/notes.json?id=n1', { method: 'DELETE', redirect: 'manual', headers: evil });
+        assert.strictEqual(r4.status, 403);
+        const rec = await db.find('notes', {});
+        assert.strictEqual(rec.length, 1);
+        assert.strictEqual(rec[0].text, 'hi', 'nothing changed');
+
+        const same = await post('/_sys/data/notes.json?id=n1&_method=DELETE', {}, { Origin: base });
+        assert.strictEqual(same.status, 302);
+        assert.strictEqual(await count(), 0, 'same-origin _method=DELETE still works');
+    });
+
+    await t.test('ReDoS: nested-quantifier patterns are not enforced and respond quickly; long input rejected', async () => {
+        write('redos.html', `<form action="_sys/data/redos.json" method="POST"><input name="v" pattern="(a+)+$"><input name="w" pattern="[a-z]+"></form>`);
+        const schema = await server.studioData.fetch('_sys/studio/schema.json?project=u&entity=redos');
+        assert.strictEqual(schema.fields.find(f => f.name === 'v').patternSkipped, true);
+        const start = Date.now();
+        const r = await post('/_sys/studio/records?project=u&entity=redos', { 'data-t-redirect': ENT, v: 'a'.repeat(40) + '!', w: 'abc' });
+        assert.ok(Date.now() - start < 3000, 'returned quickly');
+        assert.ok(!errOf(r), errOf(r));
+        const long = await post('/_sys/studio/records?project=u&entity=redos', { 'data-t-redirect': ENT, w: 'a'.repeat(1001) });
+        assert.ok(/too long/.test(errOf(long)), errOf(long));
+        fs.rmSync(path.join(userDir, 'redos.html'));
+    });
+
+    await t.test('scanner drops field names with markup', () => {
+        write('evil.html', `<form action="_sys/data/evilent.json"><input name="ok"><input name='x"><script>alert(1)</script>'><input name="a b"></form>`);
+        const e = scanner.scan(userDir).find(x => x.entity === 'evilent');
+        assert.deepStrictEqual(e.fields.map(f => f.name), ['ok']);
+        const files = scanner.scaffoldFiles(e);
+        for (const c of Object.values(files)) assert.ok(!c.includes('<script>'));
+        fs.rmSync(path.join(userDir, 'evil.html'));
+    });
+
+    await t.test('required checkbox is not enforced', async () => {
+        write('chk.html', `<form action="_sys/data/chk.json" method="POST"><input name="name"><input type="checkbox" name="agree" required></form>`);
+        const r = await post('/_sys/studio/records?project=u&entity=chk', { 'data-t-redirect': ENT, name: 'n' });
+        assert.ok(!errOf(r), errOf(r));
+        assert.strictEqual((await userRecords('chk')).length, 1);
+        fs.rmSync(path.join(userDir, 'chk.html'));
+    });
+});
