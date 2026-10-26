@@ -752,6 +752,16 @@ By utilizing the **File System Access API** provided by modern browsers (Chrome,
 1. **Select Project Folder**: When opening a page via `file://`, a folder selection prompt appears during initialization. By selecting the project's root directory, the browser can directly fetch and operate on files.
 2. **Build-less Preview**: Since `_sys/data/*.json` and `_parts/*.html` are read directly by the browser, any edits and saves are instantly reflected upon browser reload (or transition).
 
+#### Resetting Folder Access
+
+The selected folder handle is stored in the browser's IndexedDB and restored automatically next time. To switch to another project or redo the permission, reset it in any of the following ways (`file://` mode only).
+
+- **Disconnect Folder button**: While a folder is connected, the engine shows a small "Disconnect Folder" button at the bottom-right of the screen. Clicking it discards the stored handle and shows the folder selection overlay again.
+- **JavaScript API**: `Bracify.resetRootAccess()` (returns a Promise). It deletes the handle from IndexedDB, drops the in-memory handle, and shows the folder selection overlay again.
+- **URL parameter**: Opening with `?bracify_reset=1` discards the stored handle instead of restoring it and shows the overlay. The parameter is removed from the URL automatically via `history.replaceState`.
+
+None of this UI is included in SSR (server) output.
+
 #### Page Transitions and SPA Routing
 
 As described in [Page Transitions and SPA Routing (Unified SPA)](#3-page-transitions-and-spa-routing-unified-spa), all transitions in CSR mode are handled as SPA. This solves the major challenge of losing folder access permissions upon reload in a `file://` environment.

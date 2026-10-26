@@ -752,6 +752,16 @@ Al utilizar la **File System Access API** proporcionada por los navegadores mode
 1. **Selección de la carpeta del proyecto**: Al abrir una página a través de `file://`, aparece un aviso de selección de carpeta durante la inicialización. Al seleccionar el directorio raíz del proyecto, el navegador puede obtener y operar directamente con los archivos.
 2. **Vista previa sin construcción**: Dado que `_sys/data/*.json` y `_parts/*.html` son leídos directamente por el navegador, cualquier edición y guardado se refleja instantáneamente al recargar el navegador (o al realizar una transición).
 
+#### Restablecer el acceso a la carpeta
+
+El identificador de la carpeta seleccionada se guarda en IndexedDB del navegador y se restaura automáticamente la próxima vez. Para cambiar de proyecto o rehacer el permiso, puede restablecerlo de cualquiera de estas formas (solo en modo `file://`).
+
+- **Botón Disconnect Folder**: mientras hay una carpeta conectada, el motor muestra un pequeño botón "Disconnect Folder" en la esquina inferior derecha. Al hacer clic se descarta el identificador guardado y se vuelve a mostrar la superposición de selección de carpeta.
+- **API de JavaScript**: `Bracify.resetRootAccess()` (devuelve una Promise). Elimina el identificador de IndexedDB, descarta el de memoria y vuelve a mostrar la superposición de selección de carpeta.
+- **Parámetro de URL**: al abrir con `?bracify_reset=1` se descarta el identificador guardado en lugar de restaurarlo y se muestra la superposición. El parámetro se elimina de la URL automáticamente mediante `history.replaceState`.
+
+Nada de esta interfaz se incluye en la salida SSR (servidor).
+
 #### Transiciones de página y enrutamiento SPA
 
 Como se describe en [Transiciones de página y enrutamiento SPA (Unified SPA)](#3-transiciones-de-página-y-enrutamiento-spa-unified-spa), todas las transiciones en modo CSR se manejan como SPA. Esto resuelve el gran desafío de perder los permisos de acceso a las carpetas al recargar en un entorno `file://`.
