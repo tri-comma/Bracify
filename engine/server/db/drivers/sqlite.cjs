@@ -119,6 +119,9 @@ class SQLiteAdapter extends BaseAdapter {
             const dataFilters = {};
             for (const [key, val] of Object.entries(filters)) {
                 if (val === undefined || val === null || val === '' || val === '{?}') continue;
+                // Ignore unresolved placeholders (e.g. "{_sys.query.q}" when the URL parameter is absent),
+                // consistent with the CSR filterLocalData(); otherwise they would filter out every record.
+                if (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1) continue;
 
                 if (key === '_limit') limit = parseInt(val, 10);
                 else if (key === '_offset') offset = parseInt(val, 10);
@@ -153,10 +156,13 @@ class SQLiteAdapter extends BaseAdapter {
                 }
             }
 
-            if (limit !== null && !isNaN(limit)) {
+            const hasLimit = limit !== null && !isNaN(limit);
+            const hasOffset = offset !== null && !isNaN(offset);
+            if (hasLimit || hasOffset) {
+                // SQLite requires LIMIT for OFFSET; -1 means "no limit" so _offset works on its own.
                 sql += " LIMIT ?";
-                params.push(limit);
-                if (offset !== null && !isNaN(offset)) {
+                params.push(hasLimit ? limit : -1);
+                if (hasOffset) {
                     sql += " OFFSET ?";
                     params.push(offset);
                 }
