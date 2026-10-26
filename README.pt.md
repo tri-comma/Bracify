@@ -102,7 +102,19 @@ Uma tela de gerenciamento integrada que consolida todas as operações.
     - O resultado (`status` = `running`/`stopped`, `pid`, porta real) é gravado no registro do projeto e exibido no painel.
     - Ao parar o servidor do sistema, todos os processos filhos iniciados também são parados.
 - **Gerenciador de Dados**:
-  - Edição de JSON, estimativa de esquema.
+  - Coleta automaticamente entidades e esquema do HTML do projeto e oferece listagem, criação/edição/exclusão (CRUD) e geração de modelos (Scaffold). As páginas são `studio/data/index.html?project=<id>` (lista de entidades) e `studio/data/entity.html?project=<id>&entity=<name>` (esquema, registros, formulário de criação), todas formulários SSR sem JavaScript.
+  - **Descoberta de entidades**: varre todos os `*.html` do projeto (exceto `node_modules`, `_sys` e pastas iniciadas por `.`; `_parts` é incluída) e coleta entidades de:
+    - o `href` de `data-t-source` (`_sys/data/<entity>.json`)
+    - `<form action="..._sys/data/<entity>.json">` e o `name` de seus `input` / `select` / `textarea` (`data-t-redirect` é ignorado; nomes com ponto como `a.b` são campos aninhados)
+    - marcadores `{<source>.<field>}` que usam uma fonte conhecida (tipo `unknown`)
+    - registros existentes no BD (campos não definidos por formulários inferem `number` / `boolean` / `string` / `object` a partir dos valores)
+  - **Informações de esquema**: por campo, o tipo (`text` / `number` / `email` / `date` / `checkbox` / `enum` (opções do `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` e `pattern`.
+  - **CRUD**: opera diretamente nos dados do projeto de destino (`<project>/_sys/data.db` e sua configuração de roteamento). O BD do Studio não é afetado.
+    - `POST /_sys/studio/records?project=<id>&entity=<name>` (criar), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (atualizar), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (excluir)
+    - Criar/atualizar são validados no servidor contra o esquema detectado (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / tipo); em caso de falha, redirecionamento 303 de volta com `?error=mensagem`. Em caso de sucesso, redireciona para `data-t-redirect` ou o Referer.
+    - Fontes de dados SSR (hrefs virtuais apenas para páginas do Studio): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>` (mesmos filtros, `_sort`, `_limit`, `_offset` da Data API) e `_sys/studio/schema.json?project=<id>&entity=<name>`.
+  - **Scaffold (somente desenvolvimento)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>` gera no projeto `<entity>/index.html` (lista e formulários de exclusão) e `<entity>/edit.html` (formulário de criação/edição com `type` / `required` / `maxlength` / `pattern` conforme o esquema). Usa apenas atributos documentados do Bracify e nunca sobrescreve arquivos existentes (retorna erro).
+  - Como `/_sys/server/*`, só está ativo no servidor do sistema (Studio) (404 nos demais), e POSTs com `Origin` diferente de `Host` são rejeitados com 403. `entity` aceita apenas letras, dígitos, `_` e `-` (sem iniciar por `_`).
 - **Monitor de API**:
   - Verificação de logs de comunicação.
 

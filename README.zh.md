@@ -102,7 +102,19 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
     - 结果（`status` = `running`/`stopped`、`pid`、实际 `port`）会写回项目记录并显示在仪表板上。
     - 停止系统服务器时，也会停止其启动的所有子进程。
 - **数据管理器 (Data Manager)**：
-  - JSON 编辑、模式 (Schema) 推断。
+  - 从项目的 HTML 自动收集实体和模式 (Schema)，提供数据列表、新增/编辑/删除 (CRUD) 以及模板生成 (Scaffold)。页面为 `studio/data/index.html?project=<id>`（实体列表）和 `studio/data/entity.html?project=<id>&entity=<name>`（模式、记录、新增表单），均为不使用 JavaScript 的 SSR 表单。
+  - **实体发现**：扫描项目中所有 `*.html`（排除 `node_modules`、`_sys` 和以 `.` 开头的文件夹；包含 `_parts`），从以下位置收集实体：
+    - `data-t-source` 的 `href`（`_sys/data/<entity>.json`）
+    - `<form action="..._sys/data/<entity>.json">` 及其中 `input` / `select` / `textarea` 的 `name`（跳过 `data-t-redirect`；`a.b` 这样的点号名称为嵌套字段）
+    - 使用已知数据源名称的 `{<source>.<field>}` 占位符（类型为 `unknown`）
+    - 数据库中的现有记录（表单未定义的字段根据值推断 `number` / `boolean` / `string` / `object`）
+  - **模式信息**：每个字段收集类型（`text` / `number` / `email` / `date` / `checkbox` / `enum`（`select` 的选项）/ `unknown` 等）、`required`、`maxlength`、`minlength`、`min`、`max`、`pattern`。
+  - **CRUD**：直接操作目标项目的数据（`<project>/_sys/data.db` 及该项目的路由配置），不影响 Studio 自身的数据库。
+    - `POST /_sys/studio/records?project=<id>&entity=<name>`（新增）、`POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`（更新）、`POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`（删除）
+    - 新增/更新时按已发现的模式在服务器端验证（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 类型）；失败时以 303 重定向返回并附带 `?error=消息`。成功时重定向到 `data-t-redirect` 或 Referer。
+    - SSR 数据源（仅限 Studio 页面的虚拟 href）：`_sys/studio/entities.json?project=<id>`、`_sys/studio/records.json?project=<id>&entity=<name>`（支持与 Data API 相同的过滤、`_sort`、`_limit`、`_offset`）、`_sys/studio/schema.json?project=<id>&entity=<name>`。
+  - **Scaffold（仅限开发时）**：`POST /_sys/studio/scaffold?project=<id>&entity=<name>` 在目标项目中生成 `<entity>/index.html`（列表和删除表单）和 `<entity>/edit.html`（带有与模式对应的 `type` / `required` / `maxlength` / `pattern` 的新增/编辑表单）。仅使用已文档化的 Bracify 属性，不会覆盖已有文件（返回错误）。
+  - 与 `/_sys/server/*` 相同，这些功能仅在系统服务器 (Studio) 上启用（其他情况返回 404），`Origin` 与 `Host` 不一致的 POST 会被 403 拒绝。`entity` 只能包含字母、数字、`_` 和 `-`（不能以 `_` 开头）。
 - **API 监视器 (API Monitor)**：
   - 查看通信日志。
 

@@ -102,7 +102,19 @@ GUI 앱에서 `Start Server` 버튼을 누르고 `localhost:3000`을 열면 `Hel
     - 결과(`status` = `running`/`stopped`, `pid`, 실제 `port`)는 프로젝트 레코드에 기록되어 대시보드에 표시됩니다.
     - 시스템 서버를 중지하면 시작한 모든 자식 프로세스도 함께 중지됩니다.
 - **Data Manager**:
-  - JSON 편집 및 스키마 추정 기능.
+  - 프로젝트의 HTML에서 엔티티와 스키마를 자동 수집하고, 데이터 목록·등록·수정·삭제(CRUD)와 템플릿 생성(Scaffold)을 제공합니다. 화면은 `studio/data/index.html?project=<id>`(엔티티 목록)와 `studio/data/entity.html?project=<id>&entity=<name>`(스키마·레코드·등록 폼)이며, 모두 JavaScript를 쓰지 않는 SSR 폼입니다.
+  - **엔티티 탐지**: 프로젝트의 모든 `*.html`(`node_modules`, `_sys`, `.`로 시작하는 폴더 제외, `_parts` 포함)을 탐색하여 다음에서 엔티티를 수집합니다.
+    - `data-t-source`의 `href`(`_sys/data/<entity>.json`)
+    - `<form action="..._sys/data/<entity>.json">`과 그 안의 `input` / `select` / `textarea`의 `name`(`data-t-redirect` 제외, `a.b` 같은 점 표기는 중첩 필드)
+    - 알려진 소스 이름을 쓰는 `{<source>.<field>}` 플레이스홀더(타입 `unknown`)
+    - 기존 DB 레코드(폼에 정의되지 않은 필드는 값에서 `number` / `boolean` / `string` / `object`를 추정)
+  - **스키마 정보**: 필드별로 타입(`text` / `number` / `email` / `date` / `checkbox` / `enum`(`select`의 선택지) / `unknown` 등), `required`, `maxlength`, `minlength`, `min`, `max`, `pattern`을 수집합니다.
+  - **CRUD**: 대상 프로젝트의 데이터(`<project>/_sys/data.db` 및 해당 프로젝트의 라우팅 설정)를 직접 조작합니다. Studio 자체 DB에는 영향이 없습니다.
+    - `POST /_sys/studio/records?project=<id>&entity=<name>`(등록), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`(수정), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`(삭제)
+    - 등록·수정 시 탐지한 스키마에 따라 서버에서 검증(`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 타입)하며, 실패하면 `?error=메시지`를 붙여 303 리다이렉트합니다. 성공 시 `data-t-redirect` 또는 Referer로 이동합니다.
+    - SSR 데이터 소스(Studio 페이지 전용 가상 href): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>`(Data API와 동일한 필터, `_sort`, `_limit`, `_offset` 지원), `_sys/studio/schema.json?project=<id>&entity=<name>`.
+  - **Scaffold(개발 시에만)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>`로 대상 프로젝트에 `<entity>/index.html`(목록·삭제 폼)과 `<entity>/edit.html`(스키마에 맞는 `type` / `required` / `maxlength` / `pattern`이 있는 등록/수정 폼)을 생성합니다. 문서화된 Bracify 속성만 사용하며 기존 파일은 덮어쓰지 않고 오류를 반환합니다.
+  - `/_sys/server/*`와 마찬가지로 시스템 서버(Studio)에서만 활성화되며(그 외에는 404), `Origin`이 `Host`와 다른 POST는 403으로 거부됩니다. `entity`는 영문자·숫자·`_`·`-`만 가능합니다(`_`로 시작 불가).
 - **API Monitor**:
   - 통신 로그 확인.
 
