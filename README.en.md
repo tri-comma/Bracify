@@ -97,7 +97,8 @@ An integrated management screen that consolidates all operations.
       - `POST /_sys/server/start` (field: `id` = project ID)
       - `POST /_sys/server/stop` (field: `id`)
       - After processing, redirects (303) to `data-t-redirect`, else the Referer, else `/`. On failure it redirects back with `?error=message` appended so the page can show `{?error}`.
-    - The port from the `projects` entity's `port` is used; if empty or already in use, a free port is found automatically (probing upward from 3000).
+    - The `port` of the `projects` entity is used. If empty, probing starts at 3000; if the configured port is busy, free ports are probed upward from that port. The port actually used overwrites `port` in the record.
+    - This feature is enabled only on the server running as the system server (Studio); elsewhere `/_sys/server/*` returns 404. POSTs whose `Origin` header does not match `Host` are rejected with 403. If a child process exits unexpectedly, `status` is updated to `stopped`.
     - The result (`status` = `running`/`stopped`, `pid`, actual `port`) is written back to the project record and shown on the dashboard.
     - Stopping the system server also stops all child processes it started.
 - **Data Manager**:

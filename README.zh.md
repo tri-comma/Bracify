@@ -97,7 +97,8 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
       - `POST /_sys/server/start`（字段：`id` = 项目ID）
       - `POST /_sys/server/stop`（字段：`id`）
       - 处理后重定向（303）到 `data-t-redirect`，否则为 Referer，再否则为 `/`。失败时附加 `?error=消息` 返回，页面可通过 `{?error}` 显示。
-    - 使用 `projects` 实体的 `port`；若为空或已被占用，则自动查找空闲端口（从 3000 起向上探测）。
+    - 使用 `projects` 实体的 `port`。若为空则从 3000 开始；若指定端口已被占用，则从该端口起向上探测空闲端口。实际使用的端口会覆盖记录中的 `port`。
+    - 此功能仅在作为系统服务器（Studio）运行的服务器上启用，其他情况下 `/_sys/server/*` 返回 404。`Origin` 头与 `Host` 不一致的 POST 会被 403 拒绝。子进程意外退出时，`status` 会更新为 `stopped`。
     - 结果（`status` = `running`/`stopped`、`pid`、实际 `port`）会写回项目记录并显示在仪表板上。
     - 停止系统服务器时，也会停止其启动的所有子进程。
 - **数据管理器 (Data Manager)**：

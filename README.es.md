@@ -97,7 +97,8 @@ Una pantalla de gestión integrada que consolida todas las operaciones.
       - `POST /_sys/server/start` (campo: `id` = ID del proyecto)
       - `POST /_sys/server/stop` (campo: `id`)
       - Tras procesar, redirige (303) a `data-t-redirect`, si no al Referer, si no a `/`. En caso de error redirige de vuelta con `?error=mensaje`, para mostrarlo con `{?error}`.
-    - Se usa el `port` de la entidad `projects`; si está vacío o en uso, se busca automáticamente un puerto libre (desde 3000 en adelante).
+    - Se usa el `port` de la entidad `projects`. Si está vacío, se empieza desde 3000; si el puerto configurado está ocupado, se buscan puertos libres hacia arriba desde ese puerto. El puerto realmente usado sobrescribe `port` en el registro.
+    - Esta función solo está activa en el servidor que actúa como servidor del sistema (Studio); en otros, `/_sys/server/*` devuelve 404. Los POST cuyo encabezado `Origin` no coincide con `Host` se rechazan con 403. Si un proceso hijo termina inesperadamente, `status` pasa a `stopped`.
     - El resultado (`status` = `running`/`stopped`, `pid`, puerto real) se escribe en el registro del proyecto y se muestra en el panel.
     - Al detener el servidor del sistema, también se detienen todos los procesos hijo iniciados.
 - **Gestor de datos**:
