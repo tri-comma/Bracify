@@ -511,6 +511,7 @@ Especifica la URL de destino de la transición después de que un proceso (como 
 - **Especificación**: Especifica la ruta relativa o absoluta del destino.
 - **Etiqueta de destino**: Etiqueta `form`.
 - **Operación**: Después de que el servidor complete el proceso, redirecciona con un estado 302 a la ruta especificada. Si no se especifica, recarga la página actual.
+- **Reglas de destino**: Las rutas relativas se resuelven respecto a la página que contiene el formulario. Solo se permiten destinos del mismo origen; cualquier otro recurre a la página del formulario, o a `/`.
 
 ### Formularios y guardado de datos (Postback)
 

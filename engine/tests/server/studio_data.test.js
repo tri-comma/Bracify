@@ -323,7 +323,7 @@ test('CRUD via SSR forms hits the target project DB only', async (t) => {
 
     await t.test('falls back to Referer when data-t-redirect is absent', async () => {
         const r = await post(R, { title: 'RefTest' }, { Referer: base + ENT });
-        assert.strictEqual(loc(r), base + ENT);
+        assert.strictEqual(loc(r), ENT); // Location is now a same-origin root-relative path
         await post('/_sys/studio/records/delete?project=u&entity=posts&id=' + (await userRecords('posts', { title: 'RefTest' }))[0].id, { 'data-t-redirect': ENT });
     });
 

@@ -157,7 +157,7 @@ class EngineServer {
                 return /^application\/x-www-form-urlencoded/i.test(ct) || req.accepts(['json', 'html']) === 'html';
             };
             try {
-                const redirect = req.body['data-t-redirect'] || req.header('Referer') || '/';
+                const redirect = this.safeRedirectTarget(req, req.body['data-t-redirect']) || '/';
                 const unflattenedBody = this.unflatten(req.body);
 
                 switch (method) {
@@ -428,10 +428,36 @@ class EngineServer {
         return true;
     }
 
+    // Resolve a user-supplied redirect target to a same-origin root-relative path (never an open redirect).
+    // Relative values resolve against the same-origin Referer (the page holding the form), else the site root.
+    // Invalid / foreign values fall back to the same-origin Referer, then null.
+    safeRedirectTarget(req, value) {
+        // Compare host[:port] in URL-normalized form (case, default ports, IPv6 brackets). The scheme is deliberately not
+        // compared: only a root-relative path is ever returned, and behind a TLS-terminating proxy req.protocol is 'http'
+        // while the browser's Referer / absolute target is 'https'.
+        let origin, host;
+        try { const o = new URL(`${req.protocol}://${req.get('host')}`); origin = o.origin; host = o.host; } catch { origin = 'http://localhost'; host = null; }
+        const toPath = (u) => {
+            if (!host || u.host !== host || (u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password) return null;
+            // Collapse leading slashes so the result can never be read as a protocol-relative URL
+            return (u.pathname + u.search + u.hash).replace(/^\/{2,}/, '/');
+        };
+        const parse = (v, b) => { try { return new URL(v, b); } catch { return null; } };
+        const referer = req.header('Referer');
+        const refUrl = typeof referer === 'string' && referer ? parse(referer, origin) : null;
+        const refPath = refUrl ? toPath(refUrl) : null;
+        if (typeof value === 'string' && value && !/[\x00-\x1f\x7f\\]/.test(value)) {
+            const u = parse(value, refUrl && refPath ? refUrl : origin + '/');
+            const p = u && toPath(u);
+            if (p) return p;
+        }
+        return refPath;
+    }
+
     // 303 back to data-t-redirect / Referer (with ?error=... on failure)
     redirectBack(req, res, error) {
         const body = req.body || {};
-        const base = body['data-t-redirect'] || req.header('Referer') || null;
+        const base = this.safeRedirectTarget(req, body['data-t-redirect']) || (body['data-t-redirect'] ? '/' : null);
         if (!base) {
             return error ? res.status(400).send('Bad Request') : res.redirect(303, '/');
         }

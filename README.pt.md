@@ -508,6 +508,7 @@ Define a URL para onde o usuário será redirecionado após um processo (como en
 - **Especificação**: Indique o caminho relativo ou absoluto.
 - **Alvo**: Tag `form`.
 - **Funcionamento**: Após o servidor completar o processamento, redireciona com status 302 para o caminho especificado. Caso contrário, recarrega a página atual.
+- **Regras de destino**: Caminhos relativos são resolvidos a partir da página que contém o formulário. Apenas destinos de mesma origem são permitidos; qualquer outro volta para a página do formulário, ou `/`.
 
 ### Formulários e Salvamento de Dados (Postback)
 
