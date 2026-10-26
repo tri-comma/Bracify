@@ -910,6 +910,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // Final unescape
         unescapeNodes(document.body);
+
+        ensureDisconnectButton();
     }
 
     function unescapeNodes(node) {
@@ -972,6 +974,61 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
                 }
             };
         });
+    }
+
+    async function deleteHandle() {
+        if (typeof window === 'undefined' || !window.indexedDB) return;
+        return new Promise((resolve) => {
+            const request = window.indexedDB.open('BracifyDB', 2);
+            request.onerror = () => resolve();
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('handles')) db.createObjectStore('handles');
+            };
+            request.onsuccess = (e) => {
+                try {
+                    const db = e.target.result;
+                    const tx = db.transaction(['handles'], 'readwrite');
+                    tx.objectStore('handles').delete('root');
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                    tx.onabort = () => resolve();
+                } catch (err) {
+                    resolve();
+                }
+            };
+        });
+    }
+
+    /**
+     * Discards the cached project folder handle (IndexedDB + memory) and
+     * shows the folder selection overlay again.
+     */
+    let resetGeneration = 0; // bumped on reset so a pending restore can abort
+    BracifyLib.resetRootAccess = async function () {
+        resetGeneration++;
+        await deleteHandle();
+        BracifyLib.rootHandle = null;
+        const btn = document.getElementById('bracify-disconnect-btn');
+        if (btn) btn.remove();
+        const old = document.getElementById('bracify-init-overlay');
+        if (old) old.remove();
+        showInitOverlay();
+    };
+
+    // Small "Disconnect Folder" button (local file:// mode with a connected folder only)
+    function ensureDisconnectButton() {
+        if (location.protocol !== 'file:' || !BracifyLib.rootHandle) return;
+        if (document.getElementById('bracify-disconnect-btn')) return;
+        const btn = document.createElement('button');
+        btn.id = 'bracify-disconnect-btn';
+        btn.type = 'button';
+        btn.textContent = 'Disconnect Folder';
+        btn.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:999998;padding:4px 10px;' +
+            'font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#86868b;' +
+            'background:rgba(255,255,255,0.85);border:1px solid rgba(0,0,0,0.1);border-radius:12px;cursor:pointer;opacity:0.6;';
+        btn.onclick = () => BracifyLib.resetRootAccess();
+        document.body.appendChild(btn);
     }
 
     async function verifyPermission(handle) {
@@ -1226,16 +1283,33 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     BracifyLib.initializeBracify = initializeBracify;
 
     document.addEventListener('DOMContentLoaded', async () => {
+        let forceReset = false;
         if (location.protocol === 'file:') {
             try {
+                const url = new URL(location.href);
+                if (url.searchParams.get('bracify_reset') === '1') {
+                    forceReset = true;
+                    await deleteHandle();
+                    url.searchParams.delete('bracify_reset');
+                    try { history.replaceState(history.state, '', url.search + url.hash); } catch (e) { }
+                    if (window._sys && window._sys.query) delete window._sys.query.bracify_reset;
+                }
+            } catch (e) { }
+        }
+
+        const gen = resetGeneration;
+        if (location.protocol === 'file:' && !forceReset) {
+            try {
                 const saved = await loadHandle();
-                if (saved && await verifyPermission(saved)) {
+                if (saved && await verifyPermission(saved) && gen === resetGeneration) {
                     BracifyLib.rootHandle = saved;
                 }
             } catch (e) { }
         }
 
-        if (location.protocol === 'file:' && !BracifyLib.rootHandle) {
+        if (gen !== resetGeneration) {
+            // resetRootAccess() ran while restoring: it already showed the overlay
+        } else if (location.protocol === 'file:' && !BracifyLib.rootHandle) {
             showInitOverlay();
         } else {
             initializeBracify();
