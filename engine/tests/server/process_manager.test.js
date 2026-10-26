@@ -74,7 +74,7 @@ before(async () => {
     projA = mkProject('proj-a', 'Hello from A');
     projB = mkProject('proj-b', 'Hello from B');
 
-    server = new EngineServer(0, () => { }, { sqlite3 });
+    server = new EngineServer(0, () => { }, { sqlite3, manageProjects: true });
     await server.start();
     await server.setCurrentProjectPath(studioDir);
     base = `http://localhost:${server.port}`;
@@ -87,12 +87,19 @@ before(async () => {
 });
 
 after(async () => {
-    try { if (server) await server.stop(); } catch (e) { }
-    // Safety net: never leave orphans
+    // Kill every recorded child first, so nothing holds files in the temp dirs
     for (const pid of allPids) {
-        if (isAlive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { } }
+        if (isAlive(pid)) {
+            try { process.kill(pid, 'SIGKILL'); } catch (e) { console.error('cleanup kill failed:', pid, e.message); }
+        }
     }
-    try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (e) { }
+    try { if (server) await server.stop(); } catch (e) { console.error('cleanup server.stop failed:', e.message); }
+    for (let i = 0; i < 10; i++) {
+        try { fs.rmSync(tmpRoot, { recursive: true, force: true }); break; } catch (e) {
+            console.error(`cleanup rm attempt ${i + 1} failed: ${e.message}`);
+            await sleep(500);
+        }
+    }
 });
 
 test('multi-project start/stop via SSR forms', { timeout: TIMEOUT * 3 }, async (t) => {
@@ -105,7 +112,8 @@ test('multi-project start/stop via SSR forms', { timeout: TIMEOUT * 3 }, async (
         ]);
         assert.strictEqual(ra.status, 303);
         assert.strictEqual(rb.status, 303);
-        assert.strictEqual(ra.headers.get('location'), '/index.html');
+        assert.strictEqual(ra.headers.get('location'), '/index.html', `A redirected to ${ra.headers.get('location')}`);
+        assert.strictEqual(rb.headers.get('location'), '/index.html', `B redirected to ${rb.headers.get('location')}`);
 
         recA = await getRecord('a');
         recB = await getRecord('b');
@@ -190,7 +198,7 @@ test('multi-project start/stop via SSR forms', { timeout: TIMEOUT * 3 }, async (
 });
 
 test('reconcile marks unmanaged running records as stopped', { timeout: TIMEOUT }, async () => {
-    const s2 = new EngineServer(0, () => { }, { sqlite3 });
+    const s2 = new EngineServer(0, () => { }, { sqlite3, manageProjects: true });
     try {
         await s2.start();
         await s2.setCurrentProjectPath(studioDir);
@@ -198,7 +206,7 @@ test('reconcile marks unmanaged running records as stopped', { timeout: TIMEOUT 
         await fetch(b2 + '/_sys/data/projects.json', {
             method: 'POST', redirect: 'manual',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ id: 'ghost', name: 'Ghost', path: projA, port: '3999', status: 'running', pid: '99999' }).toString()
+            body: new URLSearchParams({ id: 'ghost', name: 'Ghost', path: projA, port: String(await getFreePort()), status: 'running', pid: '99999' }).toString()
         });
         await s2.setCurrentProjectPath(studioDir); // re-open => reconcile
         const html = await (await fetch(b2 + '/index.html')).text();
@@ -206,5 +214,76 @@ test('reconcile marks unmanaged running records as stopped', { timeout: TIMEOUT 
         assert.strictEqual(data.projects.find(r => r.id === 'ghost').status, 'stopped');
     } finally {
         await s2.stop();
+    }
+});
+
+test('same-id concurrent starts, CSRF, gating, unexpected exit', { timeout: TIMEOUT * 2 }, async (t) => {
+    const s3 = new EngineServer(0, () => { }, { sqlite3, manageProjects: true });
+    await s3.start();
+    await s3.setCurrentProjectPath(studioDir);
+    const b3 = `http://localhost:${s3.port}`;
+    const post3 = (url, fields, headers = {}) => fetch(b3 + url, {
+        method: 'POST', redirect: 'manual',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...headers },
+        body: new URLSearchParams(fields).toString()
+    });
+    const rec3 = async (id) => {
+        const html = await (await fetch(b3 + '/index.html')).text();
+        const d = JSON.parse(html.match(/window\.__BRACIFY_DATA__ = (.*);/)[1].replace(/\\u003c/g, '<'));
+        return d.projects.find(r => r.id === id);
+    };
+    try {
+        await post3('/_sys/data/projects.json', { id: 'c', name: 'C', path: projA, port: String(await getFreePort()), status: 'stopped' });
+
+        await t.test('concurrent starts of the same id: only one child', async () => {
+            const rs = await Promise.all([
+                post3('/_sys/server/start', { id: 'c', 'data-t-redirect': '/index.html' }),
+                post3('/_sys/server/start', { id: 'c', 'data-t-redirect': '/index.html' })
+            ]);
+            for (const p of s3.processManager.list()) allPids.add(p.pid);
+            const locs = rs.map(r => r.headers.get('location'));
+            assert.strictEqual(locs.filter(l => l.includes('error=')).length, 1, JSON.stringify(locs));
+            assert.strictEqual(s3.processManager.list().length, 1);
+        });
+
+        await t.test('unexpected child exit marks the record stopped', async () => {
+            const r = await rec3('c');
+            assert.strictEqual(r.status, 'running');
+            process.kill(r.pid, 'SIGKILL');
+            let st;
+            for (let i = 0; i < 40; i++) { st = (await rec3('c')).status; if (st === 'stopped') break; await sleep(250); }
+            assert.strictEqual(st, 'stopped');
+            assert.strictEqual(s3.processManager.list().length, 0);
+        });
+
+        await t.test('cross-origin POST is rejected, same-origin allowed', async () => {
+            let r = await post3('/_sys/server/start', { id: 'c' }, { Origin: 'http://evil.example.com' });
+            assert.strictEqual(r.status, 403);
+            assert.strictEqual(s3.processManager.list().length, 0);
+            r = await post3('/_sys/server/start', { id: 'c', 'data-t-redirect': '/index.html' }, { Origin: b3 });
+            assert.strictEqual(r.status, 303);
+            assert.strictEqual(r.headers.get('location'), '/index.html');
+            for (const p of s3.processManager.list()) allPids.add(p.pid);
+            assert.strictEqual(s3.processManager.list().length, 1);
+        });
+    } finally {
+        await s3.stop();
+    }
+    assert.strictEqual(s3.processManager.list().length, 0, 'stopAll leaves none');
+});
+
+test('server control endpoints are disabled without manageProjects', { timeout: TIMEOUT }, async () => {
+    const s4 = new EngineServer(0, () => { }, { sqlite3 });
+    try {
+        await s4.start();
+        await s4.setCurrentProjectPath(studioDir);
+        const r = await fetch(`http://localhost:${s4.port}/_sys/server/start`, {
+            method: 'POST', redirect: 'manual',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'id=a'
+        });
+        assert.strictEqual(r.status, 404);
+    } finally {
+        await s4.stop();
     }
 });

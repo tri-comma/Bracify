@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3'); // Use Electron-compatible sqlite3
 
 class SystemServer {
     constructor(port, logger) {
-        this.engine = new EngineServer(port, logger, { sqlite3 });
+        this.engine = new EngineServer(port, logger, { sqlite3, manageProjects: true });
 
         // Compatibility properties for main.js
         this.projectHistory = [];

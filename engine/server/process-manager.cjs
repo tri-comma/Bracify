@@ -1,4 +1,4 @@
-const { spawn, execFile } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
@@ -14,8 +14,10 @@ const MAX_PORT = 65535;
  * The DB layer is a per-process singleton, so one process per project is required.
  */
 class ProcessManager {
-    constructor(logger) {
+    constructor(logger, options = {}) {
         this.logger = logger || (() => { });
+        this.onUnexpectedExit = options.onUnexpectedExit || null;
+        this.starting = new Set(); // ids with a start() in flight
         this.processes = new Map(); // id -> { id, pid, port, path, startedAt, child }
         this.reservedPorts = new Set(); // ports handed out but not yet listening
     }
@@ -54,9 +56,22 @@ class ProcessManager {
     async start(projectId, projectPath, port) {
         if (!projectId && projectId !== 0) throw new Error('Project id is required');
         projectId = String(projectId);
+        // Synchronous guard: check + set before any await
         if (this.processes.has(projectId)) {
             throw new Error(`Project "${projectId}" is already running (port ${this.processes.get(projectId).port})`);
         }
+        if (this.starting.has(projectId)) {
+            throw new Error(`Project "${projectId}" is already starting`);
+        }
+        this.starting.add(projectId);
+        try {
+            return await this.doStart(projectId, projectPath, port);
+        } finally {
+            this.starting.delete(projectId);
+        }
+    }
+
+    async doStart(projectId, projectPath, port) {
         if (!projectPath || typeof projectPath !== 'string') throw new Error('Project path is required');
         const resolved = path.resolve(projectPath);
         let stat;
@@ -76,7 +91,6 @@ class ProcessManager {
         return new Promise((resolve, reject) => {
             const child = spawn(process.execPath, [START_SCRIPT, projectPath, String(port)], {
                 stdio: ['ignore', 'pipe', 'pipe'],
-                env: { ...process.env, BRACIFY_CHILD: '1' },
                 windowsHide: true
             });
             const info = { id, pid: child.pid, port, path: projectPath, startedAt: new Date().toISOString(), child };
@@ -109,7 +123,12 @@ class ProcessManager {
 
             child.on('error', (e) => finish(new Error(`Failed to spawn project server: ${e.message}`)));
             child.on('exit', (code) => {
-                if (this.processes.get(id) && this.processes.get(id).child === child) this.processes.delete(id);
+                if (this.processes.get(id) && this.processes.get(id).child === child) {
+                    this.processes.delete(id);
+                    if (settled && this.onUnexpectedExit) {
+                        try { this.onUnexpectedExit(id, code); } catch (e) { /* ignore */ }
+                    }
+                }
                 finish(new Error(`Project server exited (code ${code}): ${output.trim().split('\n').pop() || ''}`));
             });
 
@@ -141,6 +160,22 @@ class ProcessManager {
             child.once('exit', () => { clearTimeout(fallback); resolve(true); });
             this.killTree(child);
         });
+    }
+
+    // Synchronous best-effort kill, for process 'exit' handlers
+    killAllSync() {
+        for (const info of this.processes.values()) {
+            const pid = info.child.pid;
+            if (pid === undefined) continue;
+            try {
+                if (process.platform === 'win32') {
+                    execFileSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+                } else {
+                    process.kill(pid, 'SIGKILL');
+                }
+            } catch (e) { /* already gone */ }
+        }
+        this.processes.clear();
     }
 
     get(id) {

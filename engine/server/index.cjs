@@ -21,7 +21,15 @@ class EngineServer {
         this.currentProjectPath = null;
 
         // Child-process manager for multi-project execution (Issue #14)
-        this.processManager = new ProcessManager(this.logger);
+        // Only the system (Studio) server enables it: options.manageProjects
+        this.manageProjects = !!options.manageProjects;
+        this.processManager = new ProcessManager(this.logger, {
+            onUnexpectedExit: (id) => this.markProjectStopped(id)
+        });
+        if (this.manageProjects) {
+            // Never leave orphaned children if the parent dies
+            process.on('exit', () => this.processManager.killAllSync());
+        }
 
         // Cache loaded renderer
         this.renderer = null;
@@ -149,7 +157,18 @@ class EngineServer {
 
         // --- Project Server Control (SSR forms, Issue #14) ---
         // POST /_sys/server/start|stop  (urlencoded: id, data-t-redirect)
-        const serverControl = (action) => async (req, res) => {
+        const serverControl = (action) => async (req, res, next) => {
+            if (!this.manageProjects) return next();
+            // CSRF: reject cross-origin form posts
+            const origin = req.header('Origin');
+            if (origin) {
+                let originHost = null;
+                try { originHost = new URL(origin).host; } catch (e) { /* invalid */ }
+                if (!originHost || originHost !== req.header('Host')) {
+                    this.logger(`[Security] Blocked cross-origin server control: ${origin}`);
+                    return res.status(403).send('Forbidden');
+                }
+            }
             const body = req.body || {};
             const base = body['data-t-redirect'] || req.header('Referer') || null;
             const back = (error) => {
@@ -328,10 +347,20 @@ class EngineServer {
         this.openProjectHandler = handler;
     }
 
+    async markProjectStopped(id) {
+        try {
+            const records = await db.find('projects', { id });
+            if (records && records[0]) {
+                await db.save('projects', id, { ...records[0], id, status: 'stopped', pid: '' });
+            }
+        } catch (e) {
+            this.logger(`[Engine] Failed to mark project stopped: ${e.message}`);
+        }
+    }
+
     // Mark 'running' project records not managed by this process as 'stopped'
     async reconcileProjects() {
-        // Child project servers share the parent's project records; never touch them
-        if (process.env.BRACIFY_CHILD) return;
+        if (!this.manageProjects) return;
         try {
             const running = await db.find('projects', { status: 'running' });
             for (const rec of (running || [])) {
