@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit author | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="author" href="_sys/data/authors.json?id={?id}&_limit=1">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Edit author</span>
+
+    <div data-t-content="main-body">
+        <p class="notice warn" data-t-if="!_sys.query.id">No author selected. <a href="authors.html">Browse authors</a>.</p>
+
+        <form class="card" data-t-if="_sys.query.id author.name" data-t-scope="author" method="POST"
+            action="/_sys/data/authors.json?id={author.id}&_method=PUT">
+            <input type="hidden" name="data-t-redirect" value="/author.html?id={author.id}&saved=1">
+            <div data-t-include="_parts/author-fields.html"></div>
+            <button type="submit">Save changes</button>
+            <a href="author.html?id={author.id}">Cancel</a>
+        </form>
+    </div>
+</body>
+
+</html>

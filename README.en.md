@@ -926,6 +926,10 @@ Bracify includes several built-in protection features to support safe frontend d
   * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
 - **Cross-origin protection (Data API)**: any `POST` / `PUT` / `DELETE` request to `/_sys/data/*.json` (including `?_method=` overrides) whose `Origin` header differs from `Host` is rejected with 403 (requests without an `Origin` header, such as ordinary form submissions, are allowed).
 
+## Examples
+
+The [`examples/`](./examples/) folder contains "Bracify Books", a practical library / reading-log app that exercises the reference features of this README. The same files run unchanged in both server mode (SSR + SQLite) and local `file://` development mode. See [`examples/README.md`](./examples/README.md) for how to run it and a feature-to-file map.
+
 ## Contributing
 
 This project is developed by a single maintainer, so Pull Requests from third parties are not accepted. Issues (bug reports, feature requests, and questions) are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.

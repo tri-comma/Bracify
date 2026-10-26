@@ -926,6 +926,10 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
   * Nota: Los puntos finales de formulario oficiales (como `POST /_sys/data/*.json`) están exentos de esta restricción.
 - **Protección entre orígenes (Data API)**: toda petición `POST` / `PUT` / `DELETE` a `/_sys/data/*.json` (incluidas las sobrescrituras con `?_method=`) cuyo encabezado `Origin` difiera de `Host` se rechaza con 403 (se permiten las peticiones sin `Origin`, como los envíos de formulario normales).
 
+## Ejemplos (Examples)
+
+La carpeta [`examples/`](./examples/) contiene "Bracify Books", una aplicación práctica de biblioteca / registro de lectura que usa las funciones de referencia de este README. Los mismos archivos funcionan sin cambios tanto en modo servidor (SSR + SQLite) como en el modo de desarrollo local `file://`. Consulta [`examples/README.md`](./examples/README.md) para ver cómo ejecutarla y el mapa de funciones a archivos.
+
 ## Contribuir
 
 Este proyecto es desarrollado por un único mantenedor, por lo que no se aceptan Pull Requests de terceros. Los Issues (informes de errores, solicitudes de funciones y preguntas) son bienvenidos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.

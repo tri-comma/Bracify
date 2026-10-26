@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="books" href="_sys/data/books.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <link data-t-source="reviews" href="_sys/data/reviews.json">
+    <link data-t-source="latest" href="_sys/data/books.json?status=published&_sort=year&_order=desc&_limit=3">
+    <link data-t-source="featured" href="_sys/data/books.json?featured=true&status=published">
+    <link data-t-source="drafts" href="_sys/data/books.json?status=draft">
+    <link data-t-source="topReviews" href="_sys/data/reviews.json?rating=5&_sort=created_at&_order=desc">
+    <link rel="stylesheet" href="style.css">
+    <!-- Server mode loads the first script, local (file://) mode the second one. The failing one is ignored. -->
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Dashboard</span>
+
+    <div data-t-content="main-body">
+        <!-- Conditional banners: query flag, negation, comparison -->
+        <p class="notice ok" data-t-if="_sys.query.welcome">Welcome! You were redirected here.</p>
+        <p class="notice warn" data-t-if="!books._length">The library is empty. Add your first book!</p>
+        <p class="notice" data-t-if="books._length:gt=5">Big library: more than 5 books on the shelf.</p>
+        <p class="notice warn" data-t-if="drafts._length">{drafts._length} draft(s) are not published yet.</p>
+
+        <section class="stats">
+            <div class="stat"><b>{books._length}</b><span>books</span></div>
+            <div class="stat"><b>{authors._length}</b><span>authors</span></div>
+            <div class="stat"><b>{reviews._length}</b><span>reviews</span></div>
+            <div class="stat"><b>{books._length + authors._length + reviews._length}</b><span>catalogue entries</span></div>
+        </section>
+
+        <section>
+            <h2>Latest books</h2>
+            <ol class="cards">
+                <li data-t-list="latest">
+                    <span class="no">No. {latest._index + 1}</span>
+                    <a href="book.html?id={latest.id}">{latest.title}</a>
+                    <span class="muted">by {latest.author.name} &middot; {latest.category.name}</span>
+                    <span class="price">{latest.price | currency: 'USD'}</span>
+                    <span class="muted">{latest.published_at | date: 'yyyy/mm/dd'}</span>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Featured ({featured._length})</h2>
+            <ul>
+                <li data-t-list="featured">
+                    <a href="book.html?id={featured.id}">{featured.title}</a>
+                    <span class="badge" data-t-if="featured.stock:lte=3 featured.stock:gt=0">Low stock</span>
+                    <span class="badge off" data-t-if="featured.stock=0">Sold out</span>
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Top rated reviews</h2>
+            <ul>
+                <li data-t-list="topReviews">
+                    <strong>{topReviews.reviewer}</strong> on
+                    <a href="book.html?id={topReviews.book_id}">{topReviews.book.title}</a>:
+                    {topReviews.comment | default: '(no comment)'}
+                </li>
+            </ul>
+        </section>
+    </div>
+</body>
+
+</html>

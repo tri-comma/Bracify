@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add book | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="authors" href="_sys/data/authors.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Add a book</span>
+
+    <div data-t-content="main-body">
+        <!-- POST creates a record. After saving the server redirects (PRG) to the data-t-redirect value. -->
+        <form class="card" method="POST" action="/_sys/data/books.json">
+            <input type="hidden" name="data-t-redirect" value="/books.html?saved=1">
+            <div data-t-include="_parts/book-fields.html"></div>
+            <button type="submit">Create book</button>
+            <a href="books.html">Cancel</a>
+        </form>
+    </div>
+</body>
+
+</html>

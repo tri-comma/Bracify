@@ -1,0 +1,45 @@
+[
+  {
+    "id": 1,
+    "name": "Hana Mori",
+    "country": "jp",
+    "born": 1968,
+    "bio": "Hana Mori writes quiet, atmospheric novels set in small coastal towns.",
+    "genres": ["Literary", "Mystery"],
+    "links": [
+      { "label": "Website", "url": "https://example.com/hana" },
+      { "label": "Interview", "url": "https://example.com/hana/interview" }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Luis Ortega",
+    "country": "es",
+    "born": 1975,
+    "bio": "Luis Ortega is a physicist who explains the universe with kitchen metaphors.",
+    "genres": ["Popular science"],
+    "links": [
+      { "label": "Blog", "url": "https://example.com/luis" }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Amara Okafor",
+    "country": "ng",
+    "born": 1981,
+    "bio": "Amara Okafor is a historian focused on trade routes and the people who walked them.",
+    "genres": ["History", "Travel"],
+    "links": []
+  },
+  {
+    "id": 4,
+    "name": "Ken Tanaka",
+    "country": "jp",
+    "born": 1990,
+    "bio": "Ken Tanaka builds web tools and writes about keeping software simple.",
+    "genres": ["Technology"],
+    "links": [
+      { "label": "Code", "url": "https://example.com/ken/code" }
+    ]
+  }
+]

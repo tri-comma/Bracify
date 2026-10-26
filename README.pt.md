@@ -820,6 +820,10 @@ Seleciona o banco por nome da entidade: Correspondência Exata > Padrão Mais Lo
   * Nota: Endpoints oficiais de formulário (ex: `POST /_sys/data/*.json`) estão isentos.
 - **Proteção entre origens (Data API)**: qualquer requisição `POST` / `PUT` / `DELETE` para `/_sys/data/*.json` (incluindo substituições via `?_method=`) cujo cabeçalho `Origin` seja diferente de `Host` é rejeitada com 403 (requisições sem `Origin`, como envios de formulário normais, são permitidas).
 
+## Exemplos (Examples)
+
+A pasta [`examples/`](./examples/) contém o "Bracify Books", um aplicativo prático de biblioteca / registro de leitura que usa os recursos de referência deste README. Os mesmos arquivos funcionam sem alterações tanto no modo servidor (SSR + SQLite) quanto no modo de desenvolvimento local `file://`. Veja [`examples/README.md`](./examples/README.md) para saber como executar e para o mapa de recursos por arquivo.
+
 ## Contribuindo
 
 Este projeto é desenvolvido por um único mantenedor, portanto Pull Requests de terceiros não são aceitos. Issues (relatos de bugs, solicitações de recursos e dúvidas) são bem-vindos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.

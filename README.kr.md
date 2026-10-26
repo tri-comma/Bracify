@@ -835,6 +835,10 @@ GUI 또는 `config` 테이블에 직접 연결 정보(JSON)를 입력합니다.
   * 참고: 공식 폼 엔드포인트(예: `POST /_sys/data/*.json`)는 이 제한에서 제외됩니다.
 - **교차 출처 보호 (Data API)**: `/_sys/data/*.json`에 대한 `POST` / `PUT` / `DELETE` 요청(`?_method=` 재정의 포함)은 `Origin` 헤더가 `Host`와 다르면 403으로 거부됩니다(`Origin` 헤더가 없는 일반 폼 전송은 허용됩니다).
 
+## 예제 (Examples)
+
+[`examples/`](./examples/) 폴더에는 이 README의 레퍼런스 기능을 폭넓게 사용하는 실용 예제 앱 "Bracify Books"(장서 / 독서 기록 앱)가 있습니다. 같은 파일이 서버 모드(SSR + SQLite)와 로컬 `file://` 개발 모드 양쪽에서 그대로 동작합니다. 실행 방법과 기능별 파일 대응표는 [`examples/README.md`](./examples/README.md)를 참고하세요.
+
 ## 기여하기 (Contributing)
 
 이 프로젝트는 작성자 1인이 개발하는 방침이므로 제3자의 Pull Request는 받지 않습니다. 버그 보고, 기능 제안, 질문 등의 Issue는 환영합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.

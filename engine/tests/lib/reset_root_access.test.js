@@ -197,3 +197,10 @@ test('Studio page (real index.html + layout partial) shows the engine disconnect
     assert.notStrictEqual(btn.style.display, 'none');
     assert.ok(!btn.hidden);
 });
+
+test('?bracify_reset=1 as the only parameter is removed from the URL (replaceState needs the path)', async () => {
+    const { doc, dom } = boot({ url: 'file:///project/index.html?bracify_reset=1', stored: { root: fakeHandle } });
+    assert.ok(await until(() => doc.getElementById('bracify-init-overlay')), 'overlay should show');
+    assert.strictEqual(dom.window.location.search, '');
+    assert.strictEqual(dom.window.location.href, 'file:///project/index.html');
+});

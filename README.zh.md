@@ -835,6 +835,10 @@ SSR（服务器）输出中不包含任何此类 UI。
   * 注意：官方表单端点（如 `POST /_sys/data/*.json`）不受此限。
 - **跨源保护 (Data API)**：对 `/_sys/data/*.json` 的 `POST` / `PUT` / `DELETE` 请求（包括 `?_method=` 覆盖），若 `Origin` 头与 `Host` 不一致，将被 403 拒绝（没有 `Origin` 头的普通表单提交不受影响）。
 
+## 示例 (Examples)
+
+[`examples/`](./examples/) 文件夹中提供了实用示例应用 "Bracify Books"（藏书 / 阅读记录应用），涵盖了本 README 的参考功能。同一份文件无需修改即可在服务器模式（SSR + SQLite）和本地 `file://` 开发模式下运行。运行方法及“功能 → 文件”对照表请参阅 [`examples/README.md`](./examples/README.md)。
+
 ## 贡献 (Contributing)
 
 本项目由作者一人独立开发，因此不接受第三方的 Pull Request。欢迎通过 Issue 提交错误报告、功能建议和问题。详情请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。

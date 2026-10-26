@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Author | Bracify Books</title>
+    <link data-t-source="site" href="_sys/data/site.json">
+    <link data-t-source="categories" href="_sys/data/categories.json">
+    <link data-t-source="author" href="_sys/data/authors.json?id={?id}&_limit=1">
+    <link data-t-source="authorBooks" href="_sys/data/books.json?author_id={?id}&_sort=year&_order=desc">
+    <link rel="stylesheet" href="style.css">
+    <script src="/engine/engine.cjs"></script>
+    <script src="../../engine/lib/engine.cjs"></script>
+</head>
+
+<body data-t-include="_parts/layout.html">
+    <span data-t-content="page-title">Author</span>
+
+    <div data-t-content="main-body">
+        <p class="notice ok" data-t-if="_sys.query.saved">Saved.</p>
+        <p class="notice warn" data-t-if="!_sys.query.id">No author selected. <a href="authors.html">Browse authors</a>.</p>
+        <p class="notice warn" data-t-if="_sys.query.id !author.name">Author not found.</p>
+
+        <!-- data-t-scope: inside the element "author.xxx" can be written as just "xxx" -->
+        <article data-t-if="_sys.query.id author.name" data-t-scope="author">
+            <h2>{name}</h2>
+            <p class="muted">{country | uppercase} &middot; born {born}</p>
+            <p>{bio}</p>
+            <p>
+                <span class="tag" data-t-list="author.genres" data-t-if="author.genres">{author.genres}</span>
+            </p>
+
+            <h3>Books ({authorBooks._length})</h3>
+            <p class="muted" data-t-if="!authorBooks._length">No books yet.</p>
+            <ul>
+                <li data-t-list="authorBooks">
+                    <a href="book.html?id={authorBooks.id}">{authorBooks.title}</a>
+                    ({authorBooks.year}, {authorBooks.category.name})
+                    <span class="badge off" data-t-if="authorBooks.status:ne=published">{authorBooks.status}</span>
+                </li>
+            </ul>
+
+            <p class="actions">
+                <a class="btn" href="author-edit.html?id={id}">Edit</a>
+                <a href="authors.html">&larr; All authors</a>
+            </p>
+        </article>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "Bracify Books",
+  "tagline": "A tiny library and reading log built with HTML only",
+  "currency": "USD",
+  "footer": {
+    "owner": "Bracify Examples",
+    "year": 2026
+  }
+}

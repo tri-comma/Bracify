@@ -1330,7 +1330,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
                     forceReset = true;
                     await deleteHandle();
                     url.searchParams.delete('bracify_reset');
-                    try { history.replaceState(history.state, '', url.search + url.hash); } catch (e) { }
+                    try { history.replaceState(history.state, '', url.pathname + url.search + url.hash); } catch (e) { }
                     if (window._sys && window._sys.query) delete window._sys.query.bracify_reset;
                 }
             } catch (e) { }

@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "Fiction", "slug": "fiction" },
+  { "id": 2, "name": "Science", "slug": "science" },
+  { "id": 3, "name": "History", "slug": "history" },
+  { "id": 4, "name": "Technology", "slug": "technology" }
+]
