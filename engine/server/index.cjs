@@ -110,10 +110,13 @@ class EngineServer {
                         res.redirect(redirect);
                         break;
                     case 'PUT':
-                        if (!filters.id && !req.body.id) {
+                        // Own properties only: never pick up an inherited `id`
+                        const ownId = (o) => (o && Object.prototype.hasOwnProperty.call(o, 'id')) ? o.id : undefined;
+                        const updateId = ownId(filters) || ownId(req.body);
+                        if (!updateId) {
                             return res.status(400).send('ID required for update');
                         }
-                        await db.save(entity, filters.id || req.body.id, unflattenedBody);
+                        await db.save(entity, updateId, unflattenedBody);
                         res.redirect(redirect);
                         break;
                     case 'DELETE':
@@ -130,18 +133,21 @@ class EngineServer {
         });
 
         // Helper to unflatten dot-notation keys from form-urlencoded body
+        // Keys with a __proto__/constructor/prototype segment are dropped (prototype pollution, #32)
         this.unflatten = (data) => {
             const result = {};
+            const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
             for (const [key, value] of Object.entries(data)) {
                 if (key === 'data-t-redirect') continue;
                 const parts = key.split('.');
+                if (parts.some(p => p === '__proto__' || p === 'constructor' || p === 'prototype')) continue;
                 let current = result;
                 for (let i = 0; i < parts.length; i++) {
                     const part = parts[i];
                     if (i === parts.length - 1) {
                         current[part] = value;
                     } else {
-                        if (!current[part]) {
+                        if (!has(current, part) || !current[part]) {
                             const nextPart = parts[i + 1];
                             current[part] = !isNaN(nextPart) ? [] : {};
                         }
