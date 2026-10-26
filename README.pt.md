@@ -280,6 +280,26 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
   <p>Cidade: {user.address.city}</p>
   ```
 
+- **Relações de dados automáticas (lookup)**:
+  Quando várias fontes são carregadas com `data-t-source`, você pode seguir uma chave estrangeira até dados relacionados com a notação de ponto. Para `article.category`, se o objeto não tiver a propriedade `category` mas tiver `category_id` (ou `categoryId`), o Bracify procura automaticamente o registro cujo `id` coincide na fonte de dados com o nome no plural de `category` (`categories`). Nenhum atributo ou sintaxe adicional é necessário.
+
+  ```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <link data-t-source="categories" href="/_sys/data/categories.json">
+
+  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
+  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
+  <ul>
+    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
+  </ul>
+  ```
+
+  - O nome da fonte é testado como `X + s`, `X + es`, (se terminar em `y`) `ies` e por fim `X`; a primeira que existir é usada.
+  - Os `id` são comparados como strings. Se não houver correspondência, comporta-se como qualquer valor indefinido.
+  - Uma propriedade real `category` no objeto sempre tem prioridade.
+  - Cadeias como `article.category.parent.name` também funcionam.
+  - Funciona em `{ }`, `data-t-if`, `data-t-list`, `data-t-scope` e em bindings de atributos (`href="/cat.html?id={article.category.id}"`), de forma idêntica em SSR e CSR.
+
 - **Cálculos numéricos (aritmética)**:
   Você pode realizar operações aritméticas (`+`, `-`, `*`, `/`, `%`) e usar parênteses `()` dentro dos placeholders `{ }` para calcular valores numéricos sem escrever JavaScript. Combine valores de dados e literais numéricos e passe o resultado para os pipes subsequentes (`|`).
 

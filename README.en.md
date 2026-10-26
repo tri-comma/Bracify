@@ -280,6 +280,26 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
   <p>City: {user.address.city}</p>
   ```
 
+- **Automatic data relations (lookup)**:
+  When several data sources are loaded with `data-t-source`, you can follow a foreign key to related data using plain dot notation. For `article.category`, if the object has no `category` property but has `category_id` (or `categoryId`), Bracify automatically finds the record whose `id` matches in the data source named after the plural of `category` (`categories`). No extra attributes or syntax are needed.
+
+  ```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <link data-t-source="categories" href="/_sys/data/categories.json">
+
+  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
+  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
+  <ul>
+    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
+  </ul>
+  ```
+
+  - The source name is tried as `X + s`, `X + es`, (for names ending in `y`) `ies`, and finally `X` itself; the first one that exists is used.
+  - `id` values are compared as strings. If no record matches, it behaves like any other undefined value.
+  - A real `category` property on the object always takes precedence.
+  - Chains such as `article.category.parent.name` work too.
+  - It works in `{ }`, `data-t-if`, `data-t-list`, `data-t-scope` and attribute bindings (`href="/cat.html?id={article.category.id}"`), identically in SSR and CSR.
+
 - **Numeric Calculations (Arithmetic)**:
   You can perform arithmetic operations (`+`, `-`, `*`, `/`, `%`) and use parentheses `()` inside placeholders `{ }` to calculate numeric values without writing JavaScript. Combine data values and numeric literals, and pass the result to subsequent pipes (`|`).
 
