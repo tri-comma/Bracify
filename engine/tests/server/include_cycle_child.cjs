@@ -14,7 +14,10 @@ if (!isMainThread && workerData && workerData.mode === 'engine') {
     const Bracify = require(path.join(__dirname, '../../lib/engine.cjs'));
     const pages = workerData.pages;
     const engine = new Bracify.Engine({ includeResolver: async (p) => (p in pages ? pages[p] : null) });
-    (async () => {
+    // Module loading (jsdom) can be very slow on loaded/cloud-synced disks. Signal readiness and wait for
+    // the parent's "go" so the parent's hang timer measures only the render, not startup.
+    parentPort.postMessage({ ready: true });
+    parentPort.once('message', async () => {
         const root = document.createElement('div');
         root.innerHTML = pages[workerData.entry];
         try {
@@ -23,7 +26,7 @@ if (!isMainThread && workerData && workerData.mode === 'engine') {
         } catch (e) {
             parentPort.postMessage({ ok: false, error: String(e && e.message || e) });
         }
-    })();
+    });
 } else if (isMainThread && process.argv[2] === 'server') {
     const EngineServer = require('../../server/index.cjs');
     const sqlite3 = require('sqlite3').verbose();
