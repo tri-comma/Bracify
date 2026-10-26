@@ -863,6 +863,16 @@ const factory = function () {
         }
     }
 
+    // Validates a (possibly dynamic) include path. Leading '/' stays project-relative; anything that could
+    // leave the project root or reach the system directory (_sys) is refused.
+    function isSafeIncludePath(p) {
+        if (typeof p !== 'string' || !p || p.indexOf('\0') !== -1) return false;
+        if (p.charAt(0) === '\\') return false; // UNC / absolute backslash
+        const rel = p.replace(/^\/+/, '');
+        if (rel.indexOf(':') !== -1) return false; // drive letter, scheme (file:, http:), NTFS alternate data stream / ::$INDEX_ALLOCATION
+        return !rel.split(/[\/\\]/).some(seg => seg === '..' || seg.toLowerCase() === '_sys');
+    }
+
     async function resolvePathHandle(rootHandle, pathStr) {
         if (!rootHandle || !pathStr) return null;
         let parts = pathStr.split('/').filter(p => p && p !== '.');
@@ -890,7 +900,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
+        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
@@ -925,6 +935,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const data = await BracifyLib.preloadSources();
         const options = {
             includeResolver: async (path) => {
+                if (!BracifyLib.isSafeIncludePath(path)) {
+                    console.warn('[Bracify] Blocked unsafe include path:', path);
+                    return null;
+                }
                 // Try FS Access if available
                 if (BracifyLib.rootHandle) {
                     const cleanPath = path.startsWith('/') ? path.substring(1) : path;

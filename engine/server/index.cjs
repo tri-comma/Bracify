@@ -5,6 +5,7 @@ const fs = require('fs');
 const db = require('./db/index.cjs');
 const ProcessManager = require('./process-manager.cjs');
 const StudioData = require('./studio-data.cjs');
+const Bracify = require('../lib/engine.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
@@ -48,6 +49,31 @@ class EngineServer {
             this.renderer = await import('./renderer.cjs');
         }
         return this.renderer;
+    }
+
+    // Reads an include file confined to the project (no traversal, no _sys, no symlink escape).
+    // Returns '' (empty include) for rejected paths, null when the file does not exist.
+    resolveInclude(includePath) {
+        const root = path.resolve(this.currentProjectPath);
+        const reject = () => {
+            console.warn(`[Bracify] Blocked unsafe include path: ${includePath}`);
+            return '';
+        };
+        if (!Bracify.isSafeIncludePath(includePath)) return reject();
+        const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;
+        const within = (p) => norm(p).startsWith(norm(root + path.sep));
+        const incFile = path.resolve(root, includePath.replace(/^\/+/, ''));
+        if (!within(incFile)) return reject();
+        if (!fs.existsSync(incFile)) return null;
+        try {
+            // Symlink escape guard
+            const real = fs.realpathSync(incFile);
+            const realRoot = fs.realpathSync(root);
+            if (!norm(real).startsWith(norm(realRoot + path.sep))) return reject();
+            // Canonical path (8.3 names, trailing dots/spaces, ADS resolved): _sys must still be refused
+            if (path.relative(realRoot, real).split(path.sep).some(seg => seg.toLowerCase() === '_sys')) return reject();
+            return fs.readFileSync(incFile, 'utf-8');
+        } catch (e) { return null; }
     }
 
     setup() {
@@ -226,6 +252,11 @@ class EngineServer {
             const reqPath = req.path === '/' ? '/index.html' : req.path;
             const filePath = path.join(this.currentProjectPath, reqPath);
 
+            // A raw "/../" request target is not normalized by Express: keep the file inside the project
+            const projectRoot = path.resolve(this.currentProjectPath);
+            const rel = path.relative(projectRoot, path.resolve(filePath));
+            if (rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) return next();
+
             if (!fs.existsSync(filePath)) return next();
 
             // If HTML, Perform SSR
@@ -256,9 +287,7 @@ class EngineServer {
 
                     let processed = await renderer.processHTML(htmlContent, data, async (includePath) => {
                         // Built files already have includes resolved, but just in case
-                        const incFile = path.join(this.currentProjectPath, includePath);
-                        if (fs.existsSync(incFile)) return fs.readFileSync(incFile, 'utf-8');
-                        return null;
+                        return this.resolveInclude(includePath);
                     }, async (href) => {
                         // Data fetcher for SSR
                         // Studio Data Manager virtual sources (system server only)
@@ -326,11 +355,7 @@ class EngineServer {
                         try {
                             const rawHtml = fs.readFileSync(filePath, 'utf-8');
                             // Resolve SSI only phase (with empty data context)
-                            const resolvedSSI = await renderer.processHTML(rawHtml, { _sys: { query: {}, params: {} } }, async (includePath) => {
-                                const incFile = path.join(this.currentProjectPath, includePath);
-                                if (fs.existsSync(incFile)) return fs.readFileSync(incFile, 'utf-8');
-                                return null;
-                            }, async () => null, null, { processBindings: false });
+                            const resolvedSSI = await renderer.processHTML(rawHtml, { _sys: { query: {}, params: {} } }, async (includePath) => this.resolveInclude(includePath), async () => null, null, { processBindings: false });
                             this.templateCache.set(cacheKey, resolvedSSI);
                         } catch (e) {
                             this.logger(`[Bracify] Cache Warning Error: ${e.message}`);
