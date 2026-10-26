@@ -2,6 +2,51 @@ const path = require('path');
 const fs = require('fs');
 const BaseAdapter = require('./base.cjs');
 
+// --- Filter building (Data API: `key=val`, `key:ne|gt|gte|lt|lte=val`) ---
+const OPERATORS = { ne: '!=', gt: '>', gte: '>=', lt: '<', lte: '<=' };
+
+// Text form of a JSON field, comparable with a query-string value: numbers become
+// '2' / '1.5', booleans 'true' / 'false' (same as String(item[key]) in the CSR filter).
+const TEXT_EXPR = "CASE json_type(value, ?) WHEN 'true' THEN 'true' WHEN 'false' THEN 'false' ELSE CAST(json_extract(value, ?) AS TEXT) END";
+
+// Returns the SQL fragment (starting with " AND ") for one filter and pushes its parameters.
+function buildFilter(rawKey, val, params, allowWildcard = true) {
+    let key = rawKey;
+    let op = '=';
+    const m = /^(.*):(ne|gt|gte|lt|lte)$/.exec(rawKey);
+    if (m && m[1]) { key = m[1]; op = m[2]; }
+    val = String(val);
+
+    if (key === 'id') {
+        if (op === '=') { params.push(val); return ' AND id = ?'; }
+        if (op === 'ne') { params.push(val); return ' AND id != ?'; }
+        const num = val.trim() !== '' && isFinite(Number(val));
+        params.push(num ? Number(val) : val);
+        return ` AND ${num ? 'CAST(id AS REAL)' : 'id'} ${OPERATORS[op]} ?`;
+    }
+
+    const path = `$.${key}`;
+    if (op === '=') {
+        if (allowWildcard && val.includes("*")) {
+            params.push(path, path, val.replace(/\*/g, '%'));
+            return ` AND ${TEXT_EXPR} LIKE ?`;
+        }
+        params.push(path, path, val);
+        return ` AND ${TEXT_EXPR} = ?`;
+    }
+    if (op === 'ne') {
+        params.push(path, path, val);
+        return ` AND ${TEXT_EXPR} IS NOT ?`;
+    }
+    // Ordered comparison: numeric when the value is a number (numeric strings from form posts included), otherwise text.
+    if (val.trim() !== '' && isFinite(Number(val))) {
+        params.push(path, path, path, path, Number(val));
+        return ` AND (json_type(value, ?) IN ('integer', 'real') OR (json_type(value, ?) = 'text' AND trim(json_extract(value, ?)) GLOB '[-0-9.]*')) AND CAST(json_extract(value, ?) AS REAL) ${OPERATORS[op]} ?`;
+    }
+    params.push(path, path, val);
+    return ` AND ${TEXT_EXPR} ${OPERATORS[op]} ?`;
+}
+
 class SQLiteAdapter extends BaseAdapter {
     constructor(options = {}) {
         super(options);
@@ -131,20 +176,7 @@ class SQLiteAdapter extends BaseAdapter {
             }
 
             for (const [key, val] of Object.entries(dataFilters)) {
-                if (key === 'id') {
-                    sql += " AND id = ?";
-                    params.push(val);
-                } else {
-                    if (typeof val === 'string' && val.includes('*')) {
-                        sql += " AND json_extract(value, ?) LIKE ?";
-                        params.push(`$.${key}`);
-                        params.push(val.replace(/\*/g, '%'));
-                    } else {
-                        sql += " AND json_extract(value, ?) = ?";
-                        params.push(`$.${key}`);
-                        params.push(val);
-                    }
-                }
+                sql += buildFilter(key, val, params);
             }
 
             if (sort) {
@@ -195,14 +227,7 @@ class SQLiteAdapter extends BaseAdapter {
             let sql = "DELETE FROM data_records WHERE entity = ?";
             let params = [entity];
             for (const [key, val] of Object.entries(filters)) {
-                if (key === 'id') {
-                    sql += " AND id = ?";
-                    params.push(val);
-                } else {
-                    sql += " AND json_extract(value, ?) = ?";
-                    params.push(`$.${key}`);
-                    params.push(val);
-                }
+                sql += buildFilter(key, val, params, false);
             }
             this.db.run(sql, params, (err) => {
                 if (err) reject(err);
