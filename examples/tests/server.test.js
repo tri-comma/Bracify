@@ -550,7 +550,7 @@ describe('Bracify Books: server mode (SSR + SQLite over HTTP)', () => {
                 body: 'book_id=3&reviewer=Ref&rating=4'
             });
             assert.strictEqual(res.status, 302);
-            assert.strictEqual(res.headers.get('location'), url('book.html?id=3'));
+            assert.strictEqual(res.headers.get('location'), '/book.html?id=3'); // same-origin root-relative path (#45)
         });
     });
 

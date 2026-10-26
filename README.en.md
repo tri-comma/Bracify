@@ -511,6 +511,7 @@ Specifies the transition destination URL after a process (such as form submissio
 - **Specification**: Specify the relative or absolute path of the destination.
 - **Target Tag**: `form` tag.
 - **Operation**: After the server completes the process, it redirects with a 302 status to the specified path. If not specified, it reloads the current page.
+- **Destination rules**: Relative paths are resolved against the page containing the form. Only same-origin destinations are allowed; anything else falls back to the form page, or `/`.
 
 ### Forms and Data Saving (Postback)
 

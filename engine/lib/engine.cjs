@@ -935,6 +935,18 @@ const factory = function () {
                 applyAutoBindings(element, data, this, localConfig);
             }
             for (const child of Array.from(element.children || [])) await this.processElement(child, data, localConfig);
+            // <form data-t-redirect="X"> -> hidden field, so the browser actually submits it (the server validates it).
+            // Runs after the children are processed and is skipped when the field already exists, so re-hydration never duplicates it.
+            if (element.tagName === 'FORM' && element.hasAttribute('data-t-redirect') && element.ownerDocument) {
+                const exists = Array.from(element.querySelectorAll('input')).some(i => i.getAttribute('name') === 'data-t-redirect');
+                if (!exists) {
+                    const hidden = element.ownerDocument.createElement('input');
+                    hidden.setAttribute('type', 'hidden');
+                    hidden.setAttribute('name', 'data-t-redirect');
+                    hidden.setAttribute('value', element.getAttribute('data-t-redirect'));
+                    element.appendChild(hidden);
+                }
+            }
         }
         async processSource(element, data) {
             const name = element.getAttribute('data-t-source');

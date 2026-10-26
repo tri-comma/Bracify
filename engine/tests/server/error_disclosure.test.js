@@ -314,7 +314,7 @@ test('malformed percent-escape and directory requests: no stack/path disclosure'
 test('error text in redirect is bounded', async () => {
     await withServer(async ({ server }) => {
         let loc;
-        server.redirectBack({ body: {}, header: () => 'http://x/p' }, { redirect: (c, u) => { loc = u; } }, 'e'.repeat(5000));
+        server.redirectBack({ body: {}, protocol: 'http', get: () => 'x', header: () => 'http://x/p' }, { redirect: (c, u) => { loc = u; } }, 'e'.repeat(5000));
         assert.ok(loc.length < 500, `location length ${loc.length}`);
     });
 });
