@@ -23,12 +23,14 @@
             <a href="project.html" class="btn-primary">+ Create New Project</a>
         </div>
 
+        <p data-t-if="_sys.query.error" style="color: #ef4444;">{?error}</p>
+
         <div class="grid">
             <!-- Project Card List -->
-            <a data-t-list="projects" class="card" href="project.html?id={projects.id}">
+            <div data-t-list="projects" class="card">
                 <div
                     style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
-                    <h3>{projects.name}</h3>
+                    <h3><a href="project.html?id={projects.id}" style="color: inherit; text-decoration: none;">{projects.name}</a></h3>
                     <span class="status-dot {projects.status}"></span>
                 </div>
 
@@ -37,9 +39,26 @@
                 <div
                     style="margin-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem;">
                     <span style="color: var(--text-muted);">Port: {projects.port}</span>
-                    <span style="color: var(--accent); font-weight: 500;">Manage &rarr;</span>
+                    <a href="project.html?id={projects.id}" style="color: var(--accent); font-weight: 500;">Manage &rarr;</a>
                 </div>
-            </a>
+
+                <div style="margin-top: 1rem; font-size: 0.85rem;">
+                    <div data-t-if="projects.status=running" style="margin-bottom: 0.75rem;">
+                        <div style="color: var(--text-muted);">PID: {projects.pid}</div>
+                        <a href="http://localhost:{projects.port}/" target="_blank">http://localhost:{projects.port}/</a>
+                    </div>
+                    <form data-t-if="projects.status:ne=running" method="POST" action="/_sys/server/start">
+                        <input type="hidden" name="id" value="{projects.id}">
+                        <input type="hidden" name="data-t-redirect" value="/index.html">
+                        <button type="submit" class="btn-primary">Start</button>
+                    </form>
+                    <form data-t-if="projects.status=running" method="POST" action="/_sys/server/stop">
+                        <input type="hidden" name="id" value="{projects.id}">
+                        <input type="hidden" name="data-t-redirect" value="/index.html">
+                        <button type="submit" class="btn-secondary">Stop</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
     </div>

@@ -72,6 +72,25 @@
                     </a>
                 </div>
 
+                <p data-t-if="_sys.query.error" style="color: #ef4444;">{?error}</p>
+
+                <div class="form-group">
+                    <form data-t-if="project.status:ne=running" method="POST" action="/_sys/server/start">
+                        <input type="hidden" name="id" value="{project.id}">
+                        <input type="hidden" name="data-t-redirect" value="/project.html?id={project.id}">
+                        <button type="submit" class="btn-primary" style="width: 100%;">Start Server</button>
+                    </form>
+                    <form data-t-if="project.status=running" method="POST" action="/_sys/server/stop">
+                        <input type="hidden" name="id" value="{project.id}">
+                        <input type="hidden" name="data-t-redirect" value="/project.html?id={project.id}">
+                        <button type="submit" class="btn-secondary" style="width: 100%;">Stop Server</button>
+                    </form>
+                    <div data-t-if="project.status=running" style="margin-top: 1rem; font-size: 0.85rem;">
+                        <div style="color: var(--text-muted);">Port: {project.port} / PID: {project.pid}</div>
+                        <a href="http://localhost:{project.port}/" target="_blank">http://localhost:{project.port}/</a>
+                    </div>
+                </div>
+
                 <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--card-border);">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.85rem; color: var(--text-muted);">Current Status:</span>
