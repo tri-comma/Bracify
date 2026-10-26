@@ -931,6 +931,10 @@ Bracify は安全なフロントエンド開発をサポートするため、標
   ※ フォーム送信用の公式エンドポイント（`POST /_sys/data/*.json` 等）はこの制限の対象外となります。
 - **クロスオリジン保護 (Data API)**: `POST` / `PUT` / `DELETE`（`?_method=` による上書きを含む）で `/_sys/data/*.json` に送信されたリクエストは、`Origin` ヘッダーが `Host` と異なる場合 403 で拒否されます（`Origin` ヘッダーのない通常のフォーム送信は許可されます）。
 
+## サンプル (Examples)
+
+[`examples/`](./examples/) に、本 README のリファレンス機能を網羅した実用サンプルアプリ「Bracify Books」（蔵書・読書記録アプリ）があります。サーバーモード（SSR + SQLite）と `file://` のローカル開発モードの両方で、同じファイルのまま動作します。実行方法と「機能 → ファイル」の対応表は [`examples/README.md`](./examples/README.md) を参照してください。
+
 ## コントリビューション (Contributing)
 
 本プロジェクトは作者1名で開発を行う方針のため、第三者からの Pull Request は受け付けていません。バグ報告・機能要望・質問などの Issue は歓迎します。詳細は [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
