@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
@@ -52,7 +51,6 @@ class EngineServer {
     }
 
     setup() {
-        this.app.use(cors());
         this.app.use(bodyParser.json());
         this.app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -75,6 +73,15 @@ class EngineServer {
             next();
         });
 
+        // --- CSRF Guard (Issue #33) ---
+        // Every state-changing request under /_sys/ must be same-origin (Origin absent or matching Host).
+        // No CORS headers are sent, so cross-origin pages cannot read responses either.
+        this.app.use('/_sys', (req, res, next) => {
+            if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+            if (!this.checkOrigin(req, res)) return;
+            next();
+        });
+
         // --- Data API (Collection Support) ---
         // Route: /_sys/data/:entity.json
         // Supports GET (Find), POST (Create), PUT (Update), DELETE (Remove)
@@ -92,8 +99,7 @@ class EngineServer {
                 return res.status(400).send('Invalid entity name');
             }
 
-            // CSRF: reject cross-origin writes (incl. POST ?_method=PUT|DELETE)
-            if (method !== 'GET' && !this.checkOrigin(req, res)) return;
+            // CSRF is enforced by the /_sys middleware above (incl. POST ?_method=PUT|DELETE)
 
             if (method === 'GET') {
                 this.logger(`[Security] Blocked direct GET access to data entity: ${entity}`);
@@ -173,7 +179,6 @@ class EngineServer {
         // POST /_sys/server/start|stop  (urlencoded: id, data-t-redirect)
         const serverControl = (action) => async (req, res, next) => {
             if (!this.manageProjects) return next();
-            if (!this.checkOrigin(req, res)) return;
             const body = req.body || {};
             const back = (error) => this.redirectBack(req, res, error);
             try {
