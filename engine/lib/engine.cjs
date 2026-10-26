@@ -18,17 +18,69 @@ const factory = function () {
         return true;
     }
 
+    // Allow-list URL sanitizer. Normalizes like the browser URL parser (strip leading/trailing
+    // C0 controls + space, drop TAB/LF/CR anywhere) before reading the scheme. Values without a
+    // scheme (relative URLs) are returned unchanged.
+    const SAFE_SCHEMES = ['http', 'https', 'mailto', 'tel'];
+    // Raster images cannot execute script (unlike svg+xml / html), so data: URIs of these are allowed.
+    const SAFE_DATA_IMAGE = /^data:image\/(png|gif|jpe?g|webp|avif|bmp);/i;
     function sanitizeUrl(url) {
         if (typeof url !== 'string') return url;
-        const trimmed = url.trim();
-        // Block javascript: and other dangerous schemes that can execute code
-        if (/^(javascript:|vbscript:|data:text\/html)/i.test(trimmed)) {
-            return 'about:blank';
-        }
+        const normalized = url.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, '').replace(/[\t\n\r]/g, '');
+        const m = /^([a-z][a-z0-9+.-]*):/i.exec(normalized);
+        if (m && !SAFE_SCHEMES.includes(m[1].toLowerCase()) && !SAFE_DATA_IMAGE.test(normalized)) return 'about:blank';
         return url;
     }
 
-    const URL_ATTRIBUTES = ['href', 'src', 'action', 'formaction'];
+    // srcset / imagesrcset: sanitize the URL of each candidate, drop unsafe candidates.
+    function sanitizeSrcset(val) {
+        // Candidate = URL (non-whitespace run, so commas inside data: URLs survive) + optional descriptors up to the next comma.
+        const out = [];
+        const re = /[\s,]*([^\s]+)([^,]*)/g;
+        let m;
+        while ((m = re.exec(String(val)))) {
+            let url = m[1], desc = m[2].trim();
+            const trail = /,+$/.exec(url);
+            if (trail) { url = url.slice(0, -trail[0].length); desc = ''; }
+            if (!url || sanitizeUrl(url) !== url) continue;
+            out.push(desc ? url + ' ' + desc : url);
+        }
+        return out.join(', ');
+    }
+
+    // <meta http-equiv=refresh content="0;url=...">: mirror the browser's refresh parser
+    // (time, separators [\s;,], optional "url=", optional quote) and sanitize the URL part.
+    function sanitizeMetaRefresh(val) {
+        return String(val).replace(/^(\s*[\d.]*[\s;,]*(?:url\s*=\s*)?['"]?)([\s\S]*)$/i, (_, p, u) => p + sanitizeUrl(u));
+    }
+
+    const URL_ATTRIBUTES = ['href', 'src', 'action', 'formaction', 'xlink:href', 'poster', 'cite', 'background',
+        'codebase', 'longdesc', 'manifest', 'icon', 'dynsrc', 'lowsrc'];
+
+    const SVG_ANIMATION = ['animate', 'set', 'animatetransform', 'animatemotion'];
+
+    // Returns the safe value for a data-bound attribute, or null to drop the attribute.
+    function sanitizeAttributeValue(el, name, val) {
+        name = name.toLowerCase();
+        if (name === 'srcdoc') return null; // bound srcdoc must not carry markup
+        if (URL_ATTRIBUTES.includes(name)) return sanitizeUrl(val);
+        if (name === 'data' && el.tagName.toLowerCase() === 'object') return sanitizeUrl(val);
+        if (name === 'ping') return String(val).split(/\s+/).filter(Boolean).map(sanitizeUrl).join(' ');
+        if (name === 'srcset' || name === 'imagesrcset') return sanitizeSrcset(val);
+        if (name === 'content' && el.tagName.toLowerCase() === 'meta') {
+            const he = el.getAttribute('http-equiv') || '';
+            if (/^refresh$/i.test(he) || he.indexOf('{') !== -1) return sanitizeMetaRefresh(val);
+        }
+        // SVG animation can write any attribute (incl. href) from to/from/by/values
+        if (SVG_ANIMATION.includes(el.tagName.toLowerCase())) {
+            if (name === 'attributename') {
+                const target = String(val).trim().toLowerCase();
+                if (URL_ATTRIBUTES.includes(target) || /(^|:)(href|src|srcdoc|data|on.*)$/.test(target)) return null;
+            }
+            if (['to', 'from', 'by', 'values'].includes(name)) return String(val).split(';').map(sanitizeUrl).join(';');
+        }
+        return val;
+    }
 
     // Automatic data relation: `obj.X` resolves through `X_id` / `XId` to the record
     // (matched by `id`) in the root data source named after the plural of X.
@@ -692,8 +744,10 @@ const factory = function () {
             if (attr.value && attr.value.indexOf('{') !== -1) {
                 let val = resolveValue(attr.value, data, ctx);
                 if (val !== undefined) {
-                    if (URL_ATTRIBUTES.includes(attr.name.toLowerCase())) val = sanitizeUrl(val);
-                    el.setAttribute(attr.name, val);
+                    val = sanitizeAttributeValue(el, attr.name, val);
+                    if (val === null) { el.removeAttribute(attr.name); continue; }
+                    if (attr.namespaceURI) el.setAttributeNS(attr.namespaceURI, attr.name, val);
+                    else el.setAttribute(attr.name, val);
                     if (el.tagName === 'SELECT' && attr.name === 'value') updateSelectOptions(el, val);
                 }
             }
