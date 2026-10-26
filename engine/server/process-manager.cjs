@@ -78,12 +78,19 @@ class ProcessManager {
         try { stat = fs.statSync(resolved); } catch (e) { stat = null; }
         if (!stat || !stat.isDirectory()) throw new Error(`Project directory not found: ${projectPath}`);
 
-        const actualPort = await this.findFreePort(port);
-        this.reservedPorts.add(actualPort);
-        try {
-            return await this.spawnChild(projectId, resolved, actualPort);
-        } finally {
-            this.reservedPorts.delete(actualPort);
+        // The probed port can be taken by another process before the child binds it:
+        // retry with the next port when the child fails with EADDRINUSE.
+        let candidate = port;
+        for (let attempt = 0; ; attempt++) {
+            const actualPort = await this.findFreePort(candidate); // reserves the port
+            try {
+                return await this.spawnChild(projectId, resolved, actualPort);
+            } catch (e) {
+                if (attempt < 5 && e.code === 'EADDRINUSE') { candidate = actualPort + 1; continue; }
+                throw e;
+            } finally {
+                this.reservedPorts.delete(actualPort);
+            }
         }
     }
 
@@ -129,7 +136,11 @@ class ProcessManager {
                         try { this.onUnexpectedExit(id, code); } catch (e) { /* ignore */ }
                     }
                 }
-                finish(new Error(`Project server exited (code ${code}): ${output.trim().split('\n').pop() || ''}`));
+                const lines = output.trim().split('\n');
+                const errLine = lines.find(l => /Error/.test(l)) || lines.pop() || '';
+                const err = new Error(`Project server exited (code ${code}): ${errLine.trim()}`);
+                if (/EADDRINUSE/.test(output)) err.code = 'EADDRINUSE';
+                finish(err);
             });
 
             this.processes.set(id, info);
