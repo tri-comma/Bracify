@@ -102,7 +102,20 @@ Una pantalla de gestión integrada que consolida todas las operaciones.
     - El resultado (`status` = `running`/`stopped`, `pid`, puerto real) se escribe en el registro del proyecto y se muestra en el panel.
     - Al detener el servidor del sistema, también se detienen todos los procesos hijo iniciados.
 - **Gestor de datos**:
-  - Edición de JSON, estimación de esquemas.
+  - Recopila automáticamente entidades y esquema del HTML del proyecto, y ofrece listado, alta/edición/baja (CRUD) y generación de plantillas (Scaffold). Las páginas son `studio/data/index.html?project=<id>` (lista de entidades) y `studio/data/entity.html?project=<id>&entity=<name>` (esquema, registros, formulario de alta), todas formularios SSR sin JavaScript.
+  - **Detección de entidades**: recorre todos los `*.html` del proyecto (excepto `node_modules`, `_sys` y carpetas que empiezan por `.`; `_parts` se incluye) y recoge entidades de:
+    - el `href` de `data-t-source` (`_sys/data/<entity>.json`)
+    - `<form action="..._sys/data/<entity>.json">` y el `name` de sus `input` / `select` / `textarea` (se omite `data-t-redirect`; los nombres con puntos como `a.b` son campos anidados)
+    - marcadores `{<source>.<field>}` que usan un origen conocido (tipo `unknown`)
+    - registros existentes en la BD (los campos no definidos por formularios infieren `number` / `boolean` / `string` / `object` a partir de los valores)
+  - **Información de esquema**: por campo, el tipo (`text` / `number` / `email` / `date` / `checkbox` / `enum` (opciones de `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` y `pattern`.
+  - **Límites de validación**: los nombres de campo deben coincidir con `[A-Za-z0-9_.-]` (los demás se ignoran). `required` no se aplica a `checkbox` (una casilla sin marcar no se envía). Los valores de más de 1000 caracteres se rechazan en las comprobaciones de `pattern`. Un `pattern` con cuantificadores anidados (p. ej. `(a+)+$`) no se aplica por seguridad y `patternSkipped` es `true` en el esquema.
+  - **CRUD**: opera directamente sobre los datos del proyecto de destino (`<project>/_sys/data.db` y su configuración de enrutamiento). No afecta a la BD de Studio.
+    - `POST /_sys/studio/records?project=<id>&entity=<name>` (crear), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (actualizar), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (eliminar)
+    - Crear/actualizar se validan en el servidor contra el esquema detectado (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / tipo); si falla, redirección 303 de vuelta con `?error=mensaje`. Si tiene éxito, redirige a `data-t-redirect` o al Referer.
+    - Orígenes de datos SSR (href virtuales solo para páginas de Studio): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>` (admite los mismos filtros, `_sort`, `_limit`, `_offset` que la Data API) y `_sys/studio/schema.json?project=<id>&entity=<name>`.
+  - **Scaffold (solo desarrollo)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>` genera en el proyecto `<entity>/index.html` (lista y formularios de eliminación) y `<entity>/edit.html` (formulario de alta/edición con `type` / `required` / `maxlength` / `pattern` según el esquema). Solo usa atributos documentados de Bracify y nunca sobrescribe archivos existentes (devuelve un error).
+  - Como `/_sys/server/*`, solo está activo en el servidor del sistema (Studio) (404 en otros), y los POST con `Origin` distinto de `Host` se rechazan con 403. `entity` solo admite letras, dígitos, `_` y `-` (sin empezar por `_`).
 - **Monitor de API**:
   - Consultar registros de comunicación.
 
@@ -640,6 +653,8 @@ Las operaciones de datos se realizan a través de peticiones HTTP, pero la respu
 | `PUT` | Actualizar | Reemplaza la información existente con los datos enviados. |
 | `DELETE`| Eliminar | Elimina los datos especificados. |
 
+Los `<form>` estándar solo envían `GET` / `POST`, por lo que un `POST` con `_method=PUT` o `_method=DELETE` en la query se trata como ese método (p. ej. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Especificación de punto final (API de archivos)
 
 Una API para gestionar archivos estáticos (imágenes, etc.) en el servidor.
@@ -909,6 +924,7 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
   Cuando se ejecuta como servidor, rechaza todo acceso directo externo (403 Forbidden) a los recursos donde el nombre del directorio o archivo en la raíz comienza con un guion bajo (`_`).
   Esto bloquea el acceso no autorizado a información interna como `data.db` o componentes de inclusión (`_parts/`) a nivel de servidor web.
   * Nota: Los puntos finales de formulario oficiales (como `POST /_sys/data/*.json`) están exentos de esta restricción.
+- **Protección entre orígenes (Data API)**: toda petición `POST` / `PUT` / `DELETE` a `/_sys/data/*.json` (incluidas las sobrescrituras con `?_method=`) cuyo encabezado `Origin` difiera de `Host` se rechaza con 403 (se permiten las peticiones sin `Origin`, como los envíos de formulario normales).
 
 ## Contribuir
 

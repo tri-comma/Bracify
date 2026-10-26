@@ -102,7 +102,20 @@ Uma tela de gerenciamento integrada que consolida todas as operações.
     - O resultado (`status` = `running`/`stopped`, `pid`, porta real) é gravado no registro do projeto e exibido no painel.
     - Ao parar o servidor do sistema, todos os processos filhos iniciados também são parados.
 - **Gerenciador de Dados**:
-  - Edição de JSON, estimativa de esquema.
+  - Coleta automaticamente entidades e esquema do HTML do projeto e oferece listagem, criação/edição/exclusão (CRUD) e geração de modelos (Scaffold). As páginas são `studio/data/index.html?project=<id>` (lista de entidades) e `studio/data/entity.html?project=<id>&entity=<name>` (esquema, registros, formulário de criação), todas formulários SSR sem JavaScript.
+  - **Descoberta de entidades**: varre todos os `*.html` do projeto (exceto `node_modules`, `_sys` e pastas iniciadas por `.`; `_parts` é incluída) e coleta entidades de:
+    - o `href` de `data-t-source` (`_sys/data/<entity>.json`)
+    - `<form action="..._sys/data/<entity>.json">` e o `name` de seus `input` / `select` / `textarea` (`data-t-redirect` é ignorado; nomes com ponto como `a.b` são campos aninhados)
+    - marcadores `{<source>.<field>}` que usam uma fonte conhecida (tipo `unknown`)
+    - registros existentes no BD (campos não definidos por formulários inferem `number` / `boolean` / `string` / `object` a partir dos valores)
+  - **Informações de esquema**: por campo, o tipo (`text` / `number` / `email` / `date` / `checkbox` / `enum` (opções do `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` e `pattern`.
+  - **Limites de validação**: os nomes de campo devem corresponder a `[A-Za-z0-9_.-]` (os demais são ignorados). `required` não é aplicado a `checkbox` (uma caixa desmarcada não é enviada). Valores com mais de 1000 caracteres são rejeitados nas verificações de `pattern`. Um `pattern` com quantificadores aninhados (ex.: `(a+)+$`) não é aplicado por segurança e `patternSkipped` é `true` no esquema.
+  - **CRUD**: opera diretamente nos dados do projeto de destino (`<project>/_sys/data.db` e sua configuração de roteamento). O BD do Studio não é afetado.
+    - `POST /_sys/studio/records?project=<id>&entity=<name>` (criar), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (atualizar), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (excluir)
+    - Criar/atualizar são validados no servidor contra o esquema detectado (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / tipo); em caso de falha, redirecionamento 303 de volta com `?error=mensagem`. Em caso de sucesso, redireciona para `data-t-redirect` ou o Referer.
+    - Fontes de dados SSR (hrefs virtuais apenas para páginas do Studio): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>` (mesmos filtros, `_sort`, `_limit`, `_offset` da Data API) e `_sys/studio/schema.json?project=<id>&entity=<name>`.
+  - **Scaffold (somente desenvolvimento)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>` gera no projeto `<entity>/index.html` (lista e formulários de exclusão) e `<entity>/edit.html` (formulário de criação/edição com `type` / `required` / `maxlength` / `pattern` conforme o esquema). Usa apenas atributos documentados do Bracify e nunca sobrescreve arquivos existentes (retorna erro).
+  - Como `/_sys/server/*`, só está ativo no servidor do sistema (Studio) (404 nos demais), e POSTs com `Origin` diferente de `Host` são rejeitados com 403. `entity` aceita apenas letras, dígitos, `_` e `-` (sem iniciar por `_`).
 - **Monitor de API**:
   - Verificação de logs de comunicação.
 
@@ -637,6 +650,8 @@ As operações são feitas via HTTP, mas a resposta é sempre um "redirecionamen
 | `PUT` | Atualizar | Substitui informações existentes pelos dados enviados. |
 | `DELETE`| Deletar | Remove os dados especificados. |
 
+Os `<form>` padrão só enviam `GET` / `POST`; assim, um `POST` com `_method=PUT` ou `_method=DELETE` na query é tratado como esse método (ex.: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Especificação de Endpoint (File API)
 
 API para gerenciar arquivos estáticos (como imagens) no servidor.
@@ -803,6 +818,7 @@ Seleciona o banco por nome da entidade: Correspondência Exata > Padrão Mais Lo
   Quando rodando como servidor, nega todo acesso externo direto (403 Forbidden) a recursos onde o nome do diretório ou arquivo na raiz começa com underscore (`_`).
   Isso protege dados internos como `data.db` ou componentes de inclusão (`_parts/`) a nível de servidor web.
   * Nota: Endpoints oficiais de formulário (ex: `POST /_sys/data/*.json`) estão isentos.
+- **Proteção entre origens (Data API)**: qualquer requisição `POST` / `PUT` / `DELETE` para `/_sys/data/*.json` (incluindo substituições via `?_method=`) cujo cabeçalho `Origin` seja diferente de `Host` é rejeitada com 403 (requisições sem `Origin`, como envios de formulário normais, são permitidas).
 
 ## Contribuindo
 

@@ -102,7 +102,20 @@ An integrated management screen that consolidates all operations.
     - The result (`status` = `running`/`stopped`, `pid`, actual `port`) is written back to the project record and shown on the dashboard.
     - Stopping the system server also stops all child processes it started.
 - **Data Manager**:
-  - JSON editing, schema estimation.
+  - Automatically collects entities and schema from the project's HTML, and provides data listing, create/edit/delete (CRUD) and scaffolding. The pages are `studio/data/index.html?project=<id>` (entity list) and `studio/data/entity.html?project=<id>&entity=<name>` (schema, records, create form), all JavaScript-free SSR forms.
+  - **Entity discovery**: scans every `*.html` in the project (excluding `node_modules`, `_sys` and dot-folders; `_parts` is included) and collects entities from:
+    - the `href` of `data-t-source` (`_sys/data/<entity>.json`)
+    - `<form action="..._sys/data/<entity>.json">` and the `name` of its `input` / `select` / `textarea` (`data-t-redirect` is skipped; dotted names such as `a.b` are nested fields)
+    - `{<source>.<field>}` placeholders that use a known source name (type `unknown`)
+    - existing DB records (fields not defined by forms get `number` / `boolean` / `string` / `object` inferred from values)
+  - **Schema info**: per field, the type (`text` / `number` / `email` / `date` / `checkbox` / `enum` (options of a `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` and `pattern`.
+  - **Validation limits**: field names must match `[A-Za-z0-9_.-]` (others are ignored). `required` is not enforced for `checkbox` (an unchecked box is not submitted). Values longer than 1000 characters are rejected by `pattern` checks. A `pattern` containing nested quantifiers (e.g. `(a+)+$`) is not enforced for safety and the field's `patternSkipped` is `true` in the schema.
+  - **CRUD**: operates directly on the target project's data (`<project>/_sys/data.db` and that project's routing config). Studio's own DB is not affected.
+    - `POST /_sys/studio/records?project=<id>&entity=<name>` (create), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (update), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (delete)
+    - Create/update are validated server-side against the discovered schema (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / type); on failure the response is a 303 redirect back with `?error=message`. On success it redirects to `data-t-redirect`, or the Referer.
+    - SSR data sources (virtual hrefs for Studio pages only): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>` (supports the same filters, `_sort`, `_limit`, `_offset` as the Data API) and `_sys/studio/schema.json?project=<id>&entity=<name>`.
+  - **Scaffold (development only)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>` generates `<entity>/index.html` (list and delete forms) and `<entity>/edit.html` (create/edit form with `type` / `required` / `maxlength` / `pattern` matching the schema) in the target project. The output uses only documented Bracify attributes and never overwrites existing files (it returns an error instead).
+  - Like `/_sys/server/*`, these features are enabled only on the system server (Studio) (404 elsewhere), and POSTs whose `Origin` differs from `Host` are rejected with 403. `entity` may contain only letters, digits, `_` and `-` (not starting with `_`).
 - **API Monitor**:
   - Check communication logs.
 
@@ -640,6 +653,8 @@ Data operations are performed via HTTP requests, but the response is always a "r
 | `PUT` | Update | Replaces existing information with submitted data. |
 | `DELETE`| Delete | Deletes specified data. |
 
+Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_method=PUT` or `_method=DELETE` in the query string is handled as that method (e.g. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Endpoint Specification (File API)
 
 An API for managing static files (images, etc.) on the server.
@@ -909,6 +924,7 @@ Bracify includes several built-in protection features to support safe frontend d
   When running as a server, it rejects all external direct access (403 Forbidden) to resources where the directory or file name at the root starts with an underscore (`_`).
   This blocks unauthorized access to internal info like `data.db` or include components (`_parts/`) at the web server level.
   * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
+- **Cross-origin protection (Data API)**: any `POST` / `PUT` / `DELETE` request to `/_sys/data/*.json` (including `?_method=` overrides) whose `Origin` header differs from `Host` is rejected with 403 (requests without an `Origin` header, such as ordinary form submissions, are allowed).
 
 ## Contributing
 
