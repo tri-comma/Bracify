@@ -29,6 +29,12 @@ console.log(`  Port:    ${port}`);
 
 const server = new EngineServer(port, console.log, { sqlite3 });
 
+const shutdown = () => {
+    server.stop().catch(() => { }).then(() => process.exit(0));
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 (async () => {
     try {
         await server.start();

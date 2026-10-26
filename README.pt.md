@@ -92,6 +92,15 @@ Uma tela de gerenciamento integrada que consolida todas as operações.
 - **Controle de Projetos**:
   - **Abrir Projeto**: Abre um diálogo de seleção de pasta via API do sistema para carregar projetos.
   - **Iniciar/Parar Servidor**: Especifica uma porta para iniciar o servidor de preview do projeto selecionado.
+  - **Execução simultânea de vários projetos**: Cada projeto roda como um processo filho independente (`node engine/start.cjs <path> <port>`), permitindo vários ao mesmo tempo.
+    - Iniciar/parar usa `<form method="POST">` padrão (SSR), sem JavaScript.
+      - `POST /_sys/server/start` (campo: `id` = ID do projeto)
+      - `POST /_sys/server/stop` (campo: `id`)
+      - Após o processamento, redireciona (303) para `data-t-redirect`, senão o Referer, senão `/`. Em caso de erro, redireciona de volta com `?error=mensagem`, exibível com `{?error}`.
+    - Usa o `port` da entidade `projects`. Se vazio, a busca começa em 3000; se a porta configurada estiver ocupada, procura portas livres a partir dela, para cima. A porta realmente usada sobrescreve `port` no registro.
+    - Este recurso só está ativo no servidor que atua como servidor do sistema (Studio); nos demais, `/_sys/server/*` retorna 404. POSTs cujo cabeçalho `Origin` não corresponda ao `Host` são rejeitados com 403. Se um processo filho terminar inesperadamente, `status` passa para `stopped`.
+    - O resultado (`status` = `running`/`stopped`, `pid`, porta real) é gravado no registro do projeto e exibido no painel.
+    - Ao parar o servidor do sistema, todos os processos filhos iniciados também são parados.
 - **Gerenciador de Dados**:
   - Edição de JSON, estimativa de esquema.
 - **Monitor de API**:

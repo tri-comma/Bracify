@@ -92,6 +92,15 @@ GUI 앱에서 `Start Server` 버튼을 누르고 `localhost:3000`을 열면 `Hel
 - **Project Control**:
   - **Open Project**: 시스템 API를 통해 폴더 선택 창을 열고 프로젝트를 로드합니다.
   - **Start/Stop Server**: 포트 번호를 지정하여 대상 프로젝트의 프리뷰 서버를 실행합니다.
+  - **여러 프로젝트 동시 실행**: 각 프로젝트는 독립된 자식 프로세스(`node engine/start.cjs <path> <port>`)로 실행되어 여러 개를 동시에 실행할 수 있습니다.
+    - 시작/중지는 JavaScript 없이 표준 `<form method="POST">`(SSR)로 수행합니다.
+      - `POST /_sys/server/start` (필드: `id` = 프로젝트 ID)
+      - `POST /_sys/server/stop` (필드: `id`)
+      - 처리 후 `data-t-redirect`, 없으면 Referer, 없으면 `/`로 리다이렉트(303)합니다. 실패 시 `?error=메시지`를 붙여 돌아가므로 페이지에서 `{?error}`로 표시할 수 있습니다.
+    - `projects` 엔티티의 `port`를 사용합니다. 비어 있으면 3000부터, 지정한 포트가 사용 중이면 그 포트부터 순서대로 빈 포트를 탐색합니다. 실제로 사용된 포트는 레코드의 `port`에 덮어써집니다.
+    - 이 기능은 시스템 서버(Studio)로 실행된 서버에서만 활성화되며, 그 외에는 `/_sys/server/*`가 404를 반환합니다. `Origin` 헤더가 `Host`와 다른 POST는 403으로 거부됩니다. 자식 프로세스가 예기치 않게 종료되면 `status`가 `stopped`로 갱신됩니다.
+    - 결과(`status` = `running`/`stopped`, `pid`, 실제 `port`)는 프로젝트 레코드에 기록되어 대시보드에 표시됩니다.
+    - 시스템 서버를 중지하면 시작한 모든 자식 프로세스도 함께 중지됩니다.
 - **Data Manager**:
   - JSON 편집 및 스키마 추정 기능.
 - **API Monitor**:

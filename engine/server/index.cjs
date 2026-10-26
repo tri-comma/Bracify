@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
 const db = require('./db/index.cjs');
+const ProcessManager = require('./process-manager.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
@@ -18,6 +19,17 @@ class EngineServer {
         this.app = express();
         this.server = null;
         this.currentProjectPath = null;
+
+        // Child-process manager for multi-project execution (Issue #14)
+        // Only the system (Studio) server enables it: options.manageProjects
+        this.manageProjects = !!options.manageProjects;
+        this.processManager = new ProcessManager(this.logger, {
+            onUnexpectedExit: (id) => this.markProjectStopped(id)
+        });
+        if (this.manageProjects) {
+            // Never leave orphaned children if the parent dies
+            process.on('exit', () => this.processManager.killAllSync());
+        }
 
         // Cache loaded renderer
         this.renderer = null;
@@ -142,6 +154,57 @@ class EngineServer {
         this.app.post('/_sys/api/data/write', async (req, res) => {
             try { await db.put(req.body.name, req.body.data); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
         });
+
+        // --- Project Server Control (SSR forms, Issue #14) ---
+        // POST /_sys/server/start|stop  (urlencoded: id, data-t-redirect)
+        const serverControl = (action) => async (req, res, next) => {
+            if (!this.manageProjects) return next();
+            // CSRF: reject cross-origin form posts
+            const origin = req.header('Origin');
+            if (origin) {
+                let originHost = null;
+                try { originHost = new URL(origin).host; } catch (e) { /* invalid */ }
+                if (!originHost || originHost !== req.header('Host')) {
+                    this.logger(`[Security] Blocked cross-origin server control: ${origin}`);
+                    return res.status(403).send('Forbidden');
+                }
+            }
+            const body = req.body || {};
+            const base = body['data-t-redirect'] || req.header('Referer') || null;
+            const back = (error) => {
+                if (!base) {
+                    return error ? res.status(400).send(error) : res.redirect(303, '/');
+                }
+                if (!error) return res.redirect(303, base);
+                const hashIdx = base.indexOf('#');
+                let url = hashIdx >= 0 ? base.slice(0, hashIdx) : base;
+                const hash = hashIdx >= 0 ? base.slice(hashIdx) : '';
+                url = url.replace(/([?&])error=[^&]*&?/, '$1').replace(/[?&]$/, '');
+                url += (url.includes('?') ? '&' : '?') + 'error=' + encodeURIComponent(error);
+                res.redirect(303, url + hash);
+            };
+            try {
+                const id = body.id;
+                if (!id) throw new Error('Project id is required');
+                const records = await db.find('projects', { id });
+                const record = records && records[0];
+                if (!record) throw new Error(`Project not found: ${id}`);
+                if (action === 'start') {
+                    const projectPath = record.path ? path.resolve(record.path) : '';
+                    const info = await this.processManager.start(id, projectPath, record.port);
+                    await db.save('projects', id, { ...record, id, status: 'running', pid: info.pid, port: info.port });
+                } else {
+                    await this.processManager.stop(id);
+                    await db.save('projects', id, { ...record, id, status: 'stopped', pid: '' });
+                }
+                back(null);
+            } catch (e) {
+                this.logger(`[Engine] Server control error: ${e.message}`);
+                back(e.message);
+            }
+        };
+        this.app.post('/_sys/server/start', serverControl('start'));
+        this.app.post('/_sys/server/stop', serverControl('stop'));
 
         // --- System API ---
         this.app.post('/_sys/api/open-project', (req, res) => {
@@ -284,6 +347,32 @@ class EngineServer {
         this.openProjectHandler = handler;
     }
 
+    async markProjectStopped(id) {
+        try {
+            const records = await db.find('projects', { id });
+            if (records && records[0]) {
+                await db.save('projects', id, { ...records[0], id, status: 'stopped', pid: '' });
+            }
+        } catch (e) {
+            this.logger(`[Engine] Failed to mark project stopped: ${e.message}`);
+        }
+    }
+
+    // Mark 'running' project records not managed by this process as 'stopped'
+    async reconcileProjects() {
+        if (!this.manageProjects) return;
+        try {
+            const running = await db.find('projects', { status: 'running' });
+            for (const rec of (running || [])) {
+                if (!this.processManager.get(rec.id)) {
+                    await db.save('projects', rec.id, { ...rec, status: 'stopped', pid: '' });
+                }
+            }
+        } catch (e) {
+            // No 'projects' entity in this project: nothing to reconcile
+        }
+    }
+
     async setCurrentProjectPath(projectPath) {
         this.currentProjectPath = projectPath;
         this.logger(`[Bracify] Setting project: ${projectPath}`);
@@ -300,6 +389,7 @@ class EngineServer {
         // Re-init DB
         if (projectPath) {
             await db.init(projectPath);
+            await this.reconcileProjects();
 
             // Start watcher for hot-reload of cache (Windows-friendly recursive watch)
             try {
@@ -321,7 +411,9 @@ class EngineServer {
         return new Promise((resolve, reject) => {
             if (this.server) return resolve(this.port);
 
-            this.server = this.app.listen(this.port, () => {
+            this.server = this.app.listen(this.port, (err) => {
+                // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback
+                if (err) { this.server = null; return reject(err); }
                 const actualPort = this.server.address().port;
                 this.port = actualPort;
                 this.logger(`[Bracify] Server started at http://localhost:${this.port}`);
@@ -330,7 +422,8 @@ class EngineServer {
         });
     }
 
-    stop() {
+    async stop() {
+        await this.processManager.stopAll();
         return new Promise((resolve, reject) => {
             if (this.watcher) {
                 this.watcher.close();
