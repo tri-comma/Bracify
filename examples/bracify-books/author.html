@@ -28,7 +28,7 @@
             <p class="muted">{country | uppercase} &middot; born {born}</p>
             <p>{bio}</p>
             <p>
-                <span class="tag" data-t-list="author.genres">{author.genres}</span>
+                <span class="tag" data-t-list="author.genres" data-t-if="author.genres">{author.genres}</span>
             </p>
 
             <h3>Books ({authorBooks._length})</h3>

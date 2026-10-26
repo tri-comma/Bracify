@@ -37,10 +37,10 @@
             <p class="muted">Born {countryFilter.born}</p>
             <p>{countryFilter.bio | truncate: 70}</p>
             <p>
-                <span class="tag" data-t-list="countryFilter.genres">{countryFilter.genres}</span>
+                <span class="tag" data-t-list="countryFilter.genres" data-t-if="countryFilter.genres">{countryFilter.genres}</span>
             </p>
             <ul data-t-if="countryFilter.links">
-                <li data-t-list="countryFilter.links">
+                <li data-t-list="countryFilter.links" data-t-if="countryFilter.links.url">
                     <a href="{countryFilter.links.url}" target="_blank">{countryFilter.links.label}</a>
                 </li>
             </ul>
