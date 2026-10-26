@@ -651,6 +651,8 @@ POST /_sys/data/{entity}.json
 | `PUT` | 更新 | 使用提交的数据重写现有信息。 |
 | `DELETE`| 删除 | 删除指定数据。 |
 
+标准 `<form>` 只能发送 `GET` / `POST`，因此在查询字符串中带有 `_method=PUT` 或 `_method=DELETE` 的 `POST` 会按该方法处理（例如 `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
+
 ### 端点规范 (File API)
 
 管理服务器上静态文件的 API。

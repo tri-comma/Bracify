@@ -652,6 +652,8 @@ Data operations are performed via HTTP requests, but the response is always a "r
 | `PUT` | Update | Replaces existing information with submitted data. |
 | `DELETE`| Delete | Deletes specified data. |
 
+Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_method=PUT` or `_method=DELETE` in the query string is handled as that method (e.g. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Endpoint Specification (File API)
 
 An API for managing static files (images, etc.) on the server.

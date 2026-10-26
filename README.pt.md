@@ -649,6 +649,8 @@ As operações são feitas via HTTP, mas a resposta é sempre um "redirecionamen
 | `PUT` | Atualizar | Substitui informações existentes pelos dados enviados. |
 | `DELETE`| Deletar | Remove os dados especificados. |
 
+Os `<form>` padrão só enviam `GET` / `POST`; assim, um `POST` com `_method=PUT` ou `_method=DELETE` na query é tratado como esse método (ex.: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Especificação de Endpoint (File API)
 
 API para gerenciar arquivos estáticos (como imagens) no servidor.

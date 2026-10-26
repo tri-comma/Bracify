@@ -652,6 +652,8 @@ Las operaciones de datos se realizan a través de peticiones HTTP, pero la respu
 | `PUT` | Actualizar | Reemplaza la información existente con los datos enviados. |
 | `DELETE`| Eliminar | Elimina los datos especificados. |
 
+Los `<form>` estándar solo envían `GET` / `POST`, por lo que un `POST` con `_method=PUT` o `_method=DELETE` en la query se trata como ese método (p. ej. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
+
 ### Especificación de punto final (API de archivos)
 
 Una API para gestionar archivos estáticos (imágenes, etc.) en el servidor.

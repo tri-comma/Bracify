@@ -657,6 +657,8 @@ POST /_sys/data/{entity}.json
 | `PUT` | 更新 | 送信されたデータで既存の情報を書き換えます。 |
 | `DELETE`| 削除 | 指定されたデータを削除します。 |
 
+標準の `<form>` は `GET` / `POST` しか送信できないため、`POST` で送信しつつクエリに `_method=PUT` または `_method=DELETE` を付けると、そのメソッドとして処理されます（例: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
+
 ### エンドポイント仕様 (File API)
 
 サーバー上の静的ファイル（画像など）を管理するためのAPIです。
