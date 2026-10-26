@@ -6,6 +6,7 @@ const db = require('./db/index.cjs');
 const ProcessManager = require('./process-manager.cjs');
 const StudioData = require('./studio-data.cjs');
 const Bracify = require('../lib/engine.cjs');
+const UserError = require('./user-error.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
@@ -16,6 +17,9 @@ class EngineServer {
         if (options.sqlite3) {
             db.setDriver(options.sqlite3);
         }
+
+        // Request body size limit for JSON / urlencoded parsers (Issue #44)
+        this.bodyLimit = options.bodyLimit || '100kb';
 
         this.app = express();
         this.server = null;
@@ -77,8 +81,24 @@ class EngineServer {
     }
 
     setup() {
-        this.app.use(bodyParser.json());
-        this.app.use(bodyParser.urlencoded({ extended: true }));
+        this.app.use(bodyParser.json({ limit: this.bodyLimit }));
+        this.app.use(bodyParser.urlencoded({ extended: true, limit: this.bodyLimit }));
+
+        // Body parser failures: generic responses, real error only in the log (Issue #44)
+        this.app.use((err, req, res, next) => {
+            this.logger(`[Engine] Request error: ${err && err.message}`);
+            if (res.headersSent) return next(err);
+            const status = (err && Number.isInteger(err.status) && err.status >= 400 && err.status < 500) ? err.status : 500;
+            if (err && err.type === 'entity.too.large') return res.status(413).send('Payload Too Large');
+            if (status === 500) return res.status(500).send('Internal Server Error');
+            res.status(status === 413 ? 413 : 400).send('Bad Request');
+        });
+
+        // Requests without a parsed body (e.g. empty POST/DELETE) get an empty object
+        this.app.use((req, res, next) => {
+            if (!req.body || typeof req.body !== 'object') req.body = {};
+            next();
+        });
 
 
         // Logger middleware
@@ -132,6 +152,10 @@ class EngineServer {
                 return res.status(403).send('Access Denied');
             }
 
+            const wantsHtml = () => {
+                const ct = String(req.header('Content-Type') || '');
+                return /^application\/x-www-form-urlencoded/i.test(ct) || req.accepts(['json', 'html']) === 'html';
+            };
             try {
                 const redirect = req.body['data-t-redirect'] || req.header('Referer') || '/';
                 const unflattenedBody = this.unflatten(req.body);
@@ -146,6 +170,7 @@ class EngineServer {
                         const ownId = (o) => (o && Object.prototype.hasOwnProperty.call(o, 'id')) ? o.id : undefined;
                         const updateId = ownId(filters) || ownId(req.body);
                         if (!updateId) {
+                            if (wantsHtml()) return this.redirectBack(req, res, 'ID required for update');
                             return res.status(400).send('ID required for update');
                         }
                         await db.save(entity, updateId, unflattenedBody);
@@ -160,7 +185,8 @@ class EngineServer {
                 }
             } catch (e) {
                 this.logger(`[Engine] Data Error: ${e.message}`);
-                res.status(500).send(e.message);
+                if (wantsHtml()) return this.redirectBack(req, res, 'Internal Server Error');
+                res.status(500).json({ error: 'Internal Server Error' });
             }
         });
 
@@ -192,13 +218,14 @@ class EngineServer {
 
         // Legacy API routes (for compatibility if needed, though they map to same DB logic)
         this.app.get('/_sys/api/data/list', async (req, res) => {
-            try { res.json({ files: await db.list() }); } catch (e) { res.status(500).json({ error: e.message }); }
+            try { res.json({ files: await db.list() }); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
         });
         this.app.get('/_sys/api/data/read', async (req, res) => {
-            try { res.json(await db.get(req.query.name)); } catch (e) { res.status(500).json({ error: e.message }); }
+            try { res.json(await db.get(req.query.name)); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
         });
         this.app.post('/_sys/api/data/write', async (req, res) => {
-            try { await db.put(req.body.name, req.body.data); res.json({ ok: true }); } catch (e) { res.status(500).json({ error: e.message }); }
+            if (typeof req.body.name !== 'string' || !req.body.name) return res.status(400).json({ error: 'name required' });
+            try { await db.put(req.body.name, req.body.data); res.json({ ok: true }); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
         });
 
         // --- Project Server Control (SSR forms, Issue #14) ---
@@ -209,10 +236,10 @@ class EngineServer {
             const back = (error) => this.redirectBack(req, res, error);
             try {
                 const id = body.id;
-                if (!id) throw new Error('Project id is required');
+                if (!id) throw new UserError('Project id is required');
                 const records = await db.find('projects', { id });
                 const record = records && records[0];
-                if (!record) throw new Error(`Project not found: ${id}`);
+                if (!record) throw new UserError(`Project not found: ${id}`);
                 if (action === 'start') {
                     const projectPath = record.path ? path.resolve(record.path) : '';
                     const info = await this.processManager.start(id, projectPath, record.port);
@@ -224,7 +251,7 @@ class EngineServer {
                 back(null);
             } catch (e) {
                 this.logger(`[Engine] Server control error: ${e.message}`);
-                back(e.message);
+                back(e.userSafe ? e.message : 'Internal Server Error');
             }
         };
         this.app.post('/_sys/server/start', serverControl('start'));
@@ -366,12 +393,23 @@ class EngineServer {
                     res.send(processed);
                 } catch (e) {
                     this.logger(`[Bracify] SSR Error: ${e.message}`);
-                    res.status(500).send(`SSR Error: ${e.message}`);
+                    res.status(500).send('Internal Server Error');
                 }
             } else {
                 // Static file (images, css, etc.)
                 res.sendFile(filePath);
             }
+        });
+
+        // Final error handler: never fall through to Express's default HTML error page (Issue #44)
+        this.app.use((err, req, res, next) => {
+            this.logger(`[Engine] Unhandled error: ${err && err.message}`);
+            if (res.headersSent) return next(err);
+            // Honour 4xx from static/sendFile/URI decoding (e.g. 404 for a directory, 400 for bad %-escapes)
+            const st = (err && Number.isInteger(err.status) && err.status >= 400 && err.status < 500) ? err.status : 500;
+            if (st === 404) return res.status(404).send('Not Found');
+            if (st === 500) return res.status(500).send('Internal Server Error');
+            res.status(st === 413 ? 413 : (st === 403 ? 403 : 400)).send(st === 413 ? 'Payload Too Large' : (st === 403 ? 'Forbidden' : 'Bad Request'));
         });
     }
 
@@ -395,14 +433,14 @@ class EngineServer {
         const body = req.body || {};
         const base = body['data-t-redirect'] || req.header('Referer') || null;
         if (!base) {
-            return error ? res.status(400).send(error) : res.redirect(303, '/');
+            return error ? res.status(400).send('Bad Request') : res.redirect(303, '/');
         }
         if (!error) return res.redirect(303, base);
         const hashIdx = base.indexOf('#');
         let url = hashIdx >= 0 ? base.slice(0, hashIdx) : base;
         const hash = hashIdx >= 0 ? base.slice(hashIdx) : '';
         url = url.replace(/([?&])error=[^&]*&?/, '$1').replace(/[?&]$/, '');
-        url += (url.includes('?') ? '&' : '?') + 'error=' + encodeURIComponent(error);
+        url += (url.includes('?') ? '&' : '?') + 'error=' + encodeURIComponent(String(error).slice(0, 300));
         res.redirect(303, url + hash);
     }
 
