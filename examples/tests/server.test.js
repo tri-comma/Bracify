@@ -20,6 +20,9 @@ async function page(p) {
     assert.strictEqual(r.status, 200, `GET ${p} -> ${r.status}`);
     return new JSDOM(r.text).window.document;
 }
+// SSR escapes bound data (\{ \} \\) and the client engine unescapes it once at the end of hydration;
+// apply the same step so assertions compare what the user sees.
+const unescape = (s) => s.replace(/\\([\\{}])/g, '$1');
 const text = (el) => el.textContent.replace(/\s+/g, ' ').trim();
 const facts = (doc) => Array.from(doc.querySelector('dl.facts').children).map(text).join(' ');
 const texts = (doc, sel) => Array.from(doc.querySelectorAll(sel)).map(text);
@@ -237,7 +240,7 @@ describe('Bracify Books: server mode (SSR + SQLite over HTTP)', () => {
             assert.ok(texts(doc, '.notice').some(t => /Only a few copies left \(3\)/.test(t)), 'AND condition');
             assert.ok(text(doc.body).includes('Short: A RETIRED CARTOGRAPHER RETURNS TO A R...'), 'truncate | uppercase chain');
             assert.deepStrictEqual(texts(doc, '.tag'), ['novel', 'sea', 'memory']); // list of strings
-            assert.deepStrictEqual(JSON.parse(doc.querySelector('details pre').textContent), { isbn: '978-0-00-000001-1', publisher: 'Harbor Press' }); // json pipe
+            assert.deepStrictEqual(JSON.parse(unescape(doc.querySelector('details pre').textContent)), { isbn: '978-0-00-000001-1', publisher: 'Harbor Press' }); // json pipe
             // reviews: filtered by book_id, sorted desc by created_at
             assert.strictEqual(text(doc.querySelector('h3')), 'Reviews (2)');
             const reviews = texts(doc, '.reviews li');
@@ -346,7 +349,7 @@ describe('Bracify Books: server mode (SSR + SQLite over HTTP)', () => {
             assert.strictEqual(t('p-ternary-true'), 'featured');
             assert.strictEqual(t('p-ternary-false'), 'regular');
             assert.strictEqual(t('p-chain'), 'A RETIRED...');
-            assert.deepStrictEqual(JSON.parse(doc.getElementById('p-json').textContent), ['novel', 'sea', 'memory']);
+            assert.deepStrictEqual(JSON.parse(unescape(doc.getElementById('p-json').textContent)), ['novel', 'sea', 'memory']);
             assert.strictEqual(t('a-mul'), '1500 x 1.1 = 1650');
             assert.strictEqual(t('a-paren'), '(1500 + 100) x 3 = 4800');
             assert.strictEqual(t('a-mod'), '320 % 7 = 5');
@@ -380,7 +383,7 @@ describe('Bracify Books: server mode (SSR + SQLite over HTTP)', () => {
             assert.match(text(doc.querySelector('section.card')), /small library and reading-log app/);
             assert.ok(!/Fallback text/.test(r.text), 'include replaces the original content');
             assert.match(text(doc.body), /Query parameter from: test/);
-            assert.strictEqual(JSON.parse(doc.getElementById('site-json').textContent).owner, 'Bracify Examples');
+            assert.strictEqual(JSON.parse(unescape(doc.getElementById('site-json').textContent)).owner, 'Bracify Examples');
             assert.ok(r.text.includes('\\{book.title\\}'), 'escaped placeholder is left for the client to unescape');
         });
     });
