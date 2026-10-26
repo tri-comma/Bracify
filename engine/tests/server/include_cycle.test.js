@@ -183,18 +183,6 @@ test('Engine.processElement: sibling reuse renders every time (guard)', { timeou
     assert.strictEqual(r.html.split('CARD').length - 1, 2);
 });
 
-// Per-include cost of the server's resolveInclude (existsSync + 2x realpathSync + readFileSync) is dominated by
-// filesystem speed, which varies by orders of magnitude (Windows + antivirus/cloud sync: ~15ms; Linux: ~0.05ms).
-// The bounded fan-out does at most ~2 x MAX_INCLUDES_PER_RENDER (500) resolves on a cold request (render + cache
-// pass), so the 10s budget is extended by that many measured resolves. Unbounded fan-out (2^25) still blows it.
-function measureResolveMs(dir) {
-    const file = path.join(dir, 'index.html');
-    const t0 = process.hrtime.bigint();
-    const N = 20;
-    for (let i = 0; i < N; i++) { fs.existsSync(file); fs.realpathSync(file); fs.realpathSync(dir); fs.readFileSync(file, 'utf-8'); }
-    return Number(process.hrtime.bigint() - t0) / 1e6 / N;
-}
-
 // ---- Fan-out amplification: non-cyclic, depth-limited, but 2^N renders without a total budget ----
 test('Include budget: 2-way fan-out 25 levels deep responds quickly and server stays responsive', { timeout: TEST_TIMEOUT }, async () => {
     await withServer((d) => {
@@ -202,11 +190,15 @@ test('Include budget: 2-way fan-out 25 levels deep responds quickly and server s
         for (let i = 0; i < N; i++) w(d, `_parts/f${i}.html`, `<u>F${i}</u>${inc(`_parts/f${i + 1}.html`)}${inc(`_parts/f${i + 1}.html`)}`);
         w(d, `_parts/f${N}.html`, '<u>LEAF</u>');
         w(d, 'p_fan.html', `<html><body>${inc('_parts/f0.html')}</body></html>`);
-    }, async ({ get, dir }) => {
-        const budget = 10000 + Math.ceil(1100 * measureResolveMs(dir));
-        const r = await get('/p_fan.html', budget); // unbounded would be 2^25 renders
+    }, async ({ get }) => {
+        // Deterministic check: the NUMBER of expanded includes is bounded (each expansion emits exactly one <u>), which an
+        // unbounded 2^25 expansion cannot satisfy. The wall-clock ceiling is only a hang detector and is far above any
+        // legitimate bounded render, even at ~15ms per filesystem include on a slow machine (<= ~2 x 500 resolves).
+        const r = await get('/p_fan.html', 120000);
         assert.ok(!r.timeout, `fan-out amplification hung the server (${r.error})`);
         assert.ok(!LEAK_RE.test(r.body), 'fan-out leaked stack error');
+        const expanded = r.body.split('<u>').length - 1;
+        assert.ok(expanded >= 1 && expanded <= 500, `expected 1..500 expanded includes (MAX_INCLUDES_PER_RENDER), got ${expanded}`);
         const n = await get('/index.html', 3000);
         assert.ok(!n.timeout && n.status === 200 && n.body.includes('NORMAL-PAGE-OK'), 'server unresponsive after fan-out request');
     });

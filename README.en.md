@@ -356,6 +356,7 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
 
   ```html
   <code>\{user.name\}</code> <!-- Result: {user.name} -->
+  <code>C:\\temp</code> <!-- Result: C:\temp (write a literal backslash as \\) -->
   ```
 
 ### List Display (`data-t-list`)

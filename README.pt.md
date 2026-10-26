@@ -356,6 +356,7 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
 
   ```html
   <code>\{user.name\}</code> <!-- Resultado: {user.name} -->
+  <code>C:\\temp</code> <!-- Resultado: C:\temp (uma barra invertida literal é escrita como \\) -->
   ```
 
 ### Exibindo Listas (`data-t-list`)

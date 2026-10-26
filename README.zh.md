@@ -356,6 +356,7 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
 
   ```html
   <code>\{user.name\}</code> <!-- 显示结果: {user.name} -->
+  <code>C:\\temp</code> <!-- 显示结果: C:\temp（反斜杠本身写作 \\） -->
   ```
 
 ### 列表展示 (`data-t-list`)

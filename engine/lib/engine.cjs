@@ -416,7 +416,19 @@ const factory = function () {
         return cleanFloat(parseAddSub());
     }
 
-    function resolveValue(expression, data, ctx) {
+    // Issue #37: data-derived values written into the DOM are escaped so a later hydration/re-bind pass
+    // cannot treat them as placeholders; unescapeNodes() (end of initializeBracify) reverses this once.
+    function escapeBound(val) {
+        return String(val).replace(/[\\{}]/g, '\\$&');
+    }
+    const UNESCAPE_RE = /\\([\\{}])/g;
+    // Nodes/attributes already unescaped by the client (their braces are literal data now). A second
+    // initializeBracify() pass on the same DOM must neither re-evaluate nor re-unescape them.
+    const hydratedText = new WeakSet();
+    const hydratedAttrs = new WeakMap(); // Element -> Set<attribute name>
+
+    // escapeOutput: escape substituted data values (not the template's own text) for DOM output.
+    function resolveValue(expression, data, ctx, escapeOutput) {
         if (expression === null || expression === undefined) return '';
         const exprStr = String(expression);
         // If it's a simple path (no spaces, no ?, no {), resolve it as is
@@ -425,11 +437,13 @@ const factory = function () {
         }
 
         // Security: Block nested placeholders {...{...}...}
-        if (/\{[^{}]*\{/.test(exprStr)) {
+        if (/\{[^{}]*\{/.test(exprStr.replace(/\\[\\{}]/g, ''))) {
             return exprStr;
         }
 
-        return exprStr.replace(/(^|[^\\])\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, prefix, key, pipeExpr) => {
+        return exprStr.replace(/(^|[^\\])((?:\\\\)*)\{\s*([^{}|]+?)\s*(?:\|\s*([^}]+?)\s*)?\}/g, (match, prefix0, bs, key, pipeExpr) => {
+            // An even run of backslashes before '{' is escaped backslashes, not an escaped brace.
+            const prefix = prefix0 + bs;
             let lookupKey = key.trim();
             if (lookupKey.startsWith('?')) lookupKey = '_sys.query.' + lookupKey.substring(1);
             // Arithmetic expressions (e.g. "{price * 1.1}") are evaluated safely,
@@ -460,7 +474,8 @@ const factory = function () {
             // Return empty string if value is null
             if (val === null) return prefix + '';
             // Return original match if value is undefined (preserves template for SSR/CSR later)
-            return val !== undefined ? prefix + val : match;
+            if (val === undefined) return match;
+            return prefix + (escapeOutput ? escapeBound(val) : val);
         });
     }
 
@@ -709,7 +724,9 @@ const factory = function () {
             const name = link.getAttribute('data-t-source');
             let rawHref = link.getAttribute('href');
             if (!rawHref) return Promise.resolve();
-            const href = (rawHref.indexOf('{') !== -1) ? resolveValue(rawHref, { _sys: sys }) : rawHref;
+            // The href may come from SSR (data values already escaped as \{ \} \\) or from a raw template: resolve with
+            // escaping and unescape once so the URL is the literal text the server used, without re-evaluating it.
+            const href = (rawHref.indexOf('{') !== -1 ? resolveValue(rawHref, { _sys: sys }, undefined, true) : String(rawHref)).replace(UNESCAPE_RE, '$1');
             const fetcher = (typeof window !== 'undefined' && window.BracifyFetcher) || browserLocalFetcher;
             return fetcher(href, name).then(data => { if (data) globalData[name] = data; });
         });
@@ -739,16 +756,18 @@ const factory = function () {
     }
 
     function applyAttributeBindings(el, data, ctx) {
+        const doneAttrs = hydratedAttrs.get(el);
         for (const attr of Array.from(el.attributes)) {
             if (attr.name.startsWith('on')) continue;
+            if (doneAttrs && doneAttrs.has(attr.name)) continue;
             if (attr.value && attr.value.indexOf('{') !== -1) {
-                let val = resolveValue(attr.value, data, ctx);
+                let val = resolveValue(attr.value, data, ctx, true);
                 if (val !== undefined) {
                     val = sanitizeAttributeValue(el, attr.name, val);
                     if (val === null) { el.removeAttribute(attr.name); continue; }
                     if (attr.namespaceURI) el.setAttributeNS(attr.namespaceURI, attr.name, val);
                     else el.setAttribute(attr.name, val);
-                    if (el.tagName === 'SELECT' && attr.name === 'value') updateSelectOptions(el, val);
+                    if (el.tagName === 'SELECT' && attr.name === 'value') updateSelectOptions(el, String(val).replace(UNESCAPE_RE, '$1'));
                 }
             }
         }
@@ -758,9 +777,10 @@ const factory = function () {
         if (['STYLE', 'SCRIPT'].includes(el.tagName)) return;
         for (const node of Array.from(el.childNodes)) {
             if (node.nodeType === 3) {
+                if (hydratedText.has(node)) continue;
                 const content = node.nodeValue;
                 if (content && content.indexOf('{') !== -1) {
-                    const val = resolveValue(content, data, ctx);
+                    const val = resolveValue(content, data, ctx, true);
                     if (val !== undefined) node.nodeValue = val;
                 }
             }
@@ -789,9 +809,13 @@ const factory = function () {
         }
         if (val !== undefined && val !== null) {
             if (engine && engine.logger) engine.logger(`[Engine] BINDING: name="${name}" val="${val}"`);
+            // Property gets the raw value; the attribute gets the escaped form (unescaped by unescapeNodes on the client).
+            const escVal = escapeBound(val);
+            const doneAttrs = hydratedAttrs.get(el);
+            if (doneAttrs) doneAttrs.delete('value'); // re-escaped below, so the next unescape pass must handle it again
             if (tagName === 'SELECT') {
                 el.value = val;
-                el.setAttribute('value', val);
+                el.setAttribute('value', escVal);
                 updateSelectOptions(el, val);
             } else if (tagName === 'INPUT') {
                 if (el.type === 'checkbox') {
@@ -802,11 +826,11 @@ const factory = function () {
                     else { el.checked = false; el.removeAttribute('checked'); }
                 } else {
                     el.value = val;
-                    el.setAttribute('value', val);
+                    el.setAttribute('value', escVal);
                 }
             } else if (tagName === 'TEXTAREA') {
                 el.value = val;
-                el.innerHTML = val;
+                el.innerHTML = escVal;
             }
         }
     }
@@ -989,7 +1013,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
+        Engine, resolveValue, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
@@ -1052,19 +1076,38 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // Final unescape
         unescapeNodes(document.body);
+        // SSR also binds <head> (title, meta, link) with escaped data values; the client never re-binds it, only unescapes.
+        if (document.head) unescapeNodes(document.head);
 
         ensureDisconnectButton();
     }
 
+    // Reverses escapeBound() and template-author \{ \} \\ escapes in a single pass (never re-run on the same DOM).
+    const UNESC = /\\([\\{}])/g;
+    const hydrated = BracifyLib._hydrated;
     function unescapeNodes(node) {
         if (node.nodeType === 3) { // Text node
-            node.nodeValue = node.nodeValue.replace(/\\\{/g, '{').replace(/\\\}/g, '}');
+            if (node.parentNode && ['SCRIPT', 'STYLE'].includes(node.parentNode.tagName)) return;
+            if (hydrated.text.has(node)) return; // already unescaped by an earlier pass: never unescape twice
+            if (node.nodeValue.indexOf('\\') !== -1) {
+                const v = node.nodeValue.replace(UNESC, '$1');
+                if (v !== node.nodeValue) { node.nodeValue = v; hydrated.text.add(node); }
+            }
         } else if (node.nodeType === 1) { // Element node
+            let done = hydrated.attrs.get(node);
             for (const attr of Array.from(node.attributes)) {
-                if (attr.value.indexOf('\\{') !== -1 || attr.value.indexOf('\\}') !== -1) {
-                    node.setAttribute(attr.name, attr.value.replace(/\\\{/g, '{').replace(/\\\}/g, '}'));
+                if (attr.name.startsWith('on')) continue;
+                if (done && done.has(attr.name)) continue;
+                if (attr.value.indexOf('\\') !== -1) {
+                    const v = attr.value.replace(UNESC, '$1');
+                    if (v !== attr.value) {
+                        node.setAttribute(attr.name, v);
+                        if (!done) { done = new Set(); hydrated.attrs.set(node, done); }
+                        done.add(attr.name);
+                    }
                 }
             }
+            if (['SCRIPT', 'STYLE'].includes(node.tagName)) return;
             for (const child of Array.from(node.childNodes)) unescapeNodes(child);
         }
     }
@@ -1390,7 +1433,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
                     .find(e => e.tagName === el.tagName);
                 if (existing) {
                     // Update attributes if changed
-                    Array.from(el.attributes).forEach(attr => existing.setAttribute(attr.name, attr.value));
+                    Array.from(el.attributes).forEach(attr => {
+                        existing.setAttribute(attr.name, attr.value);
+                        const done = BracifyLib._hydrated.attrs.get(existing);
+                        if (done) done.delete(attr.name); // fresh (still escaped) value: the next unescape pass must handle it
+                    });
                     return;
                 }
             }
