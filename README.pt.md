@@ -699,6 +699,16 @@ Desenvolvimento abrindo o `index.html` via `file://` sem necessidade de servidor
 1. **Seleção de Pasta**: Ao abrir via `file://`, selecione a pasta raiz para que o navegador opere nos arquivos.
 2. **Preview Instantâneo**: Como os arquivos são lidos diretamente, as mudanças aparecem ao recarregar ou navegar.
 
+#### Redefinir o acesso à pasta
+
+O identificador da pasta selecionada é salvo no IndexedDB do navegador e restaurado automaticamente na próxima vez. Para trocar de projeto ou refazer a permissão, redefina de uma destas formas (somente no modo `file://`).
+
+- **Botão Disconnect Folder**: enquanto uma pasta está conectada, o motor exibe um pequeno botão "Disconnect Folder" no canto inferior direito. Ao clicar, o identificador salvo é descartado e a sobreposição de seleção de pasta é exibida novamente.
+- **API JavaScript**: `Bracify.resetRootAccess()` (retorna uma Promise). Remove o identificador do IndexedDB, descarta o da memória e exibe novamente a sobreposição de seleção de pasta.
+- **Parâmetro de URL**: abrir com `?bracify_reset=1` descarta o identificador salvo em vez de restaurá-lo e exibe a sobreposição. O parâmetro é removido da URL automaticamente via `history.replaceState`.
+
+Nada dessa interface é incluído na saída SSR (servidor).
+
 #### Navegação SPA
 
 Conforme descrito em [Navegação SPA Unificada (Unified SPA)](#3-navegação-spa-unificada-unified-spa), todas as transições no modo CSR são tratadas como SPA. Isso resolve o grande desafio de perder as permissões de acesso à pasta ao recarregar um ambiente `file://`.
