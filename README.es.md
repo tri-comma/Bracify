@@ -109,6 +109,7 @@ Una pantalla de gestión integrada que consolida todas las operaciones.
     - marcadores `{<source>.<field>}` que usan un origen conocido (tipo `unknown`)
     - registros existentes en la BD (los campos no definidos por formularios infieren `number` / `boolean` / `string` / `object` a partir de los valores)
   - **Información de esquema**: por campo, el tipo (`text` / `number` / `email` / `date` / `checkbox` / `enum` (opciones de `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` y `pattern`.
+  - **Límites de validación**: los nombres de campo deben coincidir con `[A-Za-z0-9_.-]` (los demás se ignoran). `required` no se aplica a `checkbox` (una casilla sin marcar no se envía). Los valores de más de 1000 caracteres se rechazan en las comprobaciones de `pattern`. Un `pattern` con cuantificadores anidados (p. ej. `(a+)+$`) no se aplica por seguridad y `patternSkipped` es `true` en el esquema.
   - **CRUD**: opera directamente sobre los datos del proyecto de destino (`<project>/_sys/data.db` y su configuración de enrutamiento). No afecta a la BD de Studio.
     - `POST /_sys/studio/records?project=<id>&entity=<name>` (crear), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (actualizar), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (eliminar)
     - Crear/actualizar se validan en el servidor contra el esquema detectado (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / tipo); si falla, redirección 303 de vuelta con `?error=mensaje`. Si tiene éxito, redirige a `data-t-redirect` o al Referer.
@@ -923,6 +924,7 @@ Bracify incluye varias funciones de protección integradas para apoyar el desarr
   Cuando se ejecuta como servidor, rechaza todo acceso directo externo (403 Forbidden) a los recursos donde el nombre del directorio o archivo en la raíz comienza con un guion bajo (`_`).
   Esto bloquea el acceso no autorizado a información interna como `data.db` o componentes de inclusión (`_parts/`) a nivel de servidor web.
   * Nota: Los puntos finales de formulario oficiales (como `POST /_sys/data/*.json`) están exentos de esta restricción.
+- **Protección entre orígenes (Data API)**: toda petición `POST` / `PUT` / `DELETE` a `/_sys/data/*.json` (incluidas las sobrescrituras con `?_method=`) cuyo encabezado `Origin` difiera de `Host` se rechaza con 403 (se permiten las peticiones sin `Origin`, como los envíos de formulario normales).
 
 ## Contribuir
 

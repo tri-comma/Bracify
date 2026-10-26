@@ -109,6 +109,7 @@ GUI 앱에서 `Start Server` 버튼을 누르고 `localhost:3000`을 열면 `Hel
     - 알려진 소스 이름을 쓰는 `{<source>.<field>}` 플레이스홀더(타입 `unknown`)
     - 기존 DB 레코드(폼에 정의되지 않은 필드는 값에서 `number` / `boolean` / `string` / `object`를 추정)
   - **스키마 정보**: 필드별로 타입(`text` / `number` / `email` / `date` / `checkbox` / `enum`(`select`의 선택지) / `unknown` 등), `required`, `maxlength`, `minlength`, `min`, `max`, `pattern`을 수집합니다.
+  - **검증 제한**: 필드 이름은 `[A-Za-z0-9_.-]`만 허용됩니다(그 외는 무시). `checkbox`의 `required`는 검증하지 않습니다(체크하지 않으면 전송되지 않기 때문). `pattern` 검사에서 1000자를 넘는 값은 거부합니다. 중첩된 수량자를 포함한 `pattern`(예: `(a+)+$`)은 안전을 위해 적용하지 않으며 스키마의 `patternSkipped`가 `true`가 됩니다.
   - **CRUD**: 대상 프로젝트의 데이터(`<project>/_sys/data.db` 및 해당 프로젝트의 라우팅 설정)를 직접 조작합니다. Studio 자체 DB에는 영향이 없습니다.
     - `POST /_sys/studio/records?project=<id>&entity=<name>`(등록), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`(수정), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`(삭제)
     - 등록·수정 시 탐지한 스키마에 따라 서버에서 검증(`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 타입)하며, 실패하면 `?error=메시지`를 붙여 303 리다이렉트합니다. 성공 시 `data-t-redirect` 또는 Referer로 이동합니다.
@@ -832,6 +833,7 @@ GUI 또는 `config` 테이블에 직접 연결 정보(JSON)를 입력합니다.
 - **언더스코어 가드 (SSR 전용)**:
   서버 동작 시, 루트의 언더스코어(`_`)로 시작하는 리소스(예: `data.db`, `_parts/`)에 대한 외부 직접 접근을 전면 차단(403 Forbidden)합니다.
   * 참고: 공식 폼 엔드포인트(예: `POST /_sys/data/*.json`)는 이 제한에서 제외됩니다.
+- **교차 출처 보호 (Data API)**: `/_sys/data/*.json`에 대한 `POST` / `PUT` / `DELETE` 요청(`?_method=` 재정의 포함)은 `Origin` 헤더가 `Host`와 다르면 403으로 거부됩니다(`Origin` 헤더가 없는 일반 폼 전송은 허용됩니다).
 
 ## 기여하기 (Contributing)
 

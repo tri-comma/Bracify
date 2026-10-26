@@ -109,6 +109,7 @@ An integrated management screen that consolidates all operations.
     - `{<source>.<field>}` placeholders that use a known source name (type `unknown`)
     - existing DB records (fields not defined by forms get `number` / `boolean` / `string` / `object` inferred from values)
   - **Schema info**: per field, the type (`text` / `number` / `email` / `date` / `checkbox` / `enum` (options of a `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` and `pattern`.
+  - **Validation limits**: field names must match `[A-Za-z0-9_.-]` (others are ignored). `required` is not enforced for `checkbox` (an unchecked box is not submitted). Values longer than 1000 characters are rejected by `pattern` checks. A `pattern` containing nested quantifiers (e.g. `(a+)+$`) is not enforced for safety and the field's `patternSkipped` is `true` in the schema.
   - **CRUD**: operates directly on the target project's data (`<project>/_sys/data.db` and that project's routing config). Studio's own DB is not affected.
     - `POST /_sys/studio/records?project=<id>&entity=<name>` (create), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (update), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (delete)
     - Create/update are validated server-side against the discovered schema (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / type); on failure the response is a 303 redirect back with `?error=message`. On success it redirects to `data-t-redirect`, or the Referer.
@@ -923,6 +924,7 @@ Bracify includes several built-in protection features to support safe frontend d
   When running as a server, it rejects all external direct access (403 Forbidden) to resources where the directory or file name at the root starts with an underscore (`_`).
   This blocks unauthorized access to internal info like `data.db` or include components (`_parts/`) at the web server level.
   * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
+- **Cross-origin protection (Data API)**: any `POST` / `PUT` / `DELETE` request to `/_sys/data/*.json` (including `?_method=` overrides) whose `Origin` header differs from `Host` is rejected with 403 (requests without an `Origin` header, such as ordinary form submissions, are allowed).
 
 ## Contributing
 

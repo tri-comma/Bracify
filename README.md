@@ -109,6 +109,7 @@ Admin Dashboard を起動するための薄いラッパーアプリケーショ�
     - 既知のソース名を使った `{<source>.<field>}` プレースホルダー（型は `unknown`）
     - 既存のDBレコード（フォームで定義されていないフィールドは値から `number` / `boolean` / `string` / `object` を推定）
   - **スキーマ情報**: フィールドごとに型（`text` / `number` / `email` / `date` / `checkbox` / `enum`（`select` の選択肢）/ `unknown` など）、`required`、`maxlength`、`minlength`、`min`、`max`、`pattern` を収集します。
+  - **検証の制限**: フィールド名は `[A-Za-z0-9_.-]` のみ（それ以外は無視）。`checkbox` の `required` は検証しません（未チェックは送信されないため）。`pattern` の検証は 1000 文字までで、それを超える値は拒否します。入れ子の量指定子を含む `pattern`（例: `(a+)+$`）は安全のため強制せず、スキーマの `patternSkipped` が `true` になります。
   - **CRUD**: 対象プロジェクトのデータ（`<project>/_sys/data.db` および、そのプロジェクトのルーティング設定）を直接操作します。Studio 自身のDBには影響しません。
     - `POST /_sys/studio/records?project=<id>&entity=<name>`（登録）、`POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`（更新）、`POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`（削除）
     - 登録・更新時は検出したスキーマに基づきサーバー側で検証（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 型）し、失敗時は `?error=メッセージ` を付けて 303 リダイレクトで戻ります。成功時は `data-t-redirect`、なければ Referer へ戻ります。
@@ -928,6 +929,7 @@ Bracify は安全なフロントエンド開発をサポートするため、標
   サーバー動作時、ルート直下のディレクトリ名またはファイル名がアンダースコア（`_`）で始まるリソースへの外部からの直接アクセスをすべて拒否（403 Forbidden）します。
   これにより、`data.db` やインクルード用部品（`_parts/`）などの内部情報への不用意なアクセスをWebサーバーレベルで一括して遮断します。
   ※ フォーム送信用の公式エンドポイント（`POST /_sys/data/*.json` 等）はこの制限の対象外となります。
+- **クロスオリジン保護 (Data API)**: `POST` / `PUT` / `DELETE`（`?_method=` による上書きを含む）で `/_sys/data/*.json` に送信されたリクエストは、`Origin` ヘッダーが `Host` と異なる場合 403 で拒否されます（`Origin` ヘッダーのない通常のフォーム送信は許可されます）。
 
 ## コントリビューション (Contributing)
 

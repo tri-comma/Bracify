@@ -109,6 +109,7 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
     - 使用已知数据源名称的 `{<source>.<field>}` 占位符（类型为 `unknown`）
     - 数据库中的现有记录（表单未定义的字段根据值推断 `number` / `boolean` / `string` / `object`）
   - **模式信息**：每个字段收集类型（`text` / `number` / `email` / `date` / `checkbox` / `enum`（`select` 的选项）/ `unknown` 等）、`required`、`maxlength`、`minlength`、`min`、`max`、`pattern`。
+  - **验证限制**：字段名只能匹配 `[A-Za-z0-9_.-]`（其他名称会被忽略）。`checkbox` 的 `required` 不做验证（未勾选不会提交）。`pattern` 检查会拒绝超过 1000 个字符的值。包含嵌套量词的 `pattern`（如 `(a+)+$`）出于安全考虑不会强制执行，模式中的 `patternSkipped` 为 `true`。
   - **CRUD**：直接操作目标项目的数据（`<project>/_sys/data.db` 及该项目的路由配置），不影响 Studio 自身的数据库。
     - `POST /_sys/studio/records?project=<id>&entity=<name>`（新增）、`POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`（更新）、`POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`（删除）
     - 新增/更新时按已发现的模式在服务器端验证（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 类型）；失败时以 303 重定向返回并附带 `?error=消息`。成功时重定向到 `data-t-redirect` 或 Referer。
@@ -832,6 +833,7 @@ SSR（服务器）输出中不包含任何此类 UI。
 - **下划线保护 (仅限 SSR)**：
   作为服务器运行时，拒绝所有对根目录下以下划线 (`_`) 开头的资源（如 `data.db`, `_parts/`）的直接外部访问 (403 Forbidden)。
   * 注意：官方表单端点（如 `POST /_sys/data/*.json`）不受此限。
+- **跨源保护 (Data API)**：对 `/_sys/data/*.json` 的 `POST` / `PUT` / `DELETE` 请求（包括 `?_method=` 覆盖），若 `Origin` 头与 `Host` 不一致，将被 403 拒绝（没有 `Origin` 头的普通表单提交不受影响）。
 
 ## 贡献 (Contributing)
 

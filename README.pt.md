@@ -109,6 +109,7 @@ Uma tela de gerenciamento integrada que consolida todas as operações.
     - marcadores `{<source>.<field>}` que usam uma fonte conhecida (tipo `unknown`)
     - registros existentes no BD (campos não definidos por formulários inferem `number` / `boolean` / `string` / `object` a partir dos valores)
   - **Informações de esquema**: por campo, o tipo (`text` / `number` / `email` / `date` / `checkbox` / `enum` (opções do `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` e `pattern`.
+  - **Limites de validação**: os nomes de campo devem corresponder a `[A-Za-z0-9_.-]` (os demais são ignorados). `required` não é aplicado a `checkbox` (uma caixa desmarcada não é enviada). Valores com mais de 1000 caracteres são rejeitados nas verificações de `pattern`. Um `pattern` com quantificadores aninhados (ex.: `(a+)+$`) não é aplicado por segurança e `patternSkipped` é `true` no esquema.
   - **CRUD**: opera diretamente nos dados do projeto de destino (`<project>/_sys/data.db` e sua configuração de roteamento). O BD do Studio não é afetado.
     - `POST /_sys/studio/records?project=<id>&entity=<name>` (criar), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (atualizar), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (excluir)
     - Criar/atualizar são validados no servidor contra o esquema detectado (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / tipo); em caso de falha, redirecionamento 303 de volta com `?error=mensagem`. Em caso de sucesso, redireciona para `data-t-redirect` ou o Referer.
@@ -817,6 +818,7 @@ Seleciona o banco por nome da entidade: Correspondência Exata > Padrão Mais Lo
   Quando rodando como servidor, nega todo acesso externo direto (403 Forbidden) a recursos onde o nome do diretório ou arquivo na raiz começa com underscore (`_`).
   Isso protege dados internos como `data.db` ou componentes de inclusão (`_parts/`) a nível de servidor web.
   * Nota: Endpoints oficiais de formulário (ex: `POST /_sys/data/*.json`) estão isentos.
+- **Proteção entre origens (Data API)**: qualquer requisição `POST` / `PUT` / `DELETE` para `/_sys/data/*.json` (incluindo substituições via `?_method=`) cujo cabeçalho `Origin` seja diferente de `Host` é rejeitada com 403 (requisições sem `Origin`, como envios de formulário normais, são permitidas).
 
 ## Contribuindo
 
