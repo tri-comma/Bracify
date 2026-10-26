@@ -106,6 +106,23 @@ for (const mode of ['ssr', 'csr']) {
             assert.strictEqual($(doc, '#p').textContent, 'Top');
         });
 
+        test('scoped form auto-binding does not follow relations; foreign key is still filled', async () => {
+            const doc = await page(
+                '<form data-t-scope="article"><input id="a" name="category.name"><input id="b" name="category"><input id="c" name="category_id"></form>',
+                { article: { id: 1, category_id: 2 }, categories: CATEGORIES });
+            assert.strictEqual($(doc, '#a').value, '');
+            assert.strictEqual($(doc, '#b').value, '');
+            assert.strictEqual($(doc, '#c').value, '2');
+        });
+
+        test('duplicate ids resolve to the first record; whole record usable in data-t-if', async () => {
+            const doc = await page('<p id="p">{article.category.name}</p><i id="i" data-t-if="article.category">yes</i>', {
+                article: { id: 1, category_id: 2 }, categories: [{ id: 2, name: 'First' }, { id: '2', name: 'Second' }]
+            });
+            assert.strictEqual($(doc, '#p').textContent, 'First');
+            assert.ok($(doc, '#i'));
+        });
+
         test('self-referential data terminates (finite path, no infinite loop)', async () => {
             const doc = await page('<p id="p">{a.category.category.category.name}</p>', {
                 a: { id: 1, category_id: 1 }, categories: [{ id: 1, name: 'Loop', category_id: 1 }]

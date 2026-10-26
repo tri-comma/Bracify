@@ -33,6 +33,19 @@ const factory = function () {
     // Automatic data relation: `obj.X` resolves through `X_id` / `XId` to the record
     // (matched by `id`) in the root data source named after the plural of X.
     const NO_RELATION = {};
+    // Per-array id index (first record wins), built on first use.
+    const relationIndexes = new WeakMap();
+    function relationIndex(arr) {
+        let idx = relationIndexes.get(arr);
+        if (!idx) {
+            idx = new Map();
+            for (const r of arr) {
+                if (r && typeof r === 'object' && r.id !== undefined && r.id !== null && !idx.has(String(r.id))) idx.set(String(r.id), r);
+            }
+            relationIndexes.set(arr, idx);
+        }
+        return idx;
+    }
     function lookupRelated(root, obj, key) {
         if (!root || typeof root !== 'object' || !key) return NO_RELATION;
         let fk = obj[key + '_id'];
@@ -45,14 +58,14 @@ const factory = function () {
         for (const n of names) {
             if (!has(n) || root[n] === undefined || root[n] === null || typeof root[n] !== 'object') continue;
             const src = root[n];
-            const rec = Array.isArray(src) ? src.find(r => r && typeof r === 'object' && String(r.id) === String(fk))
+            const rec = Array.isArray(src) ? relationIndex(src).get(String(fk))
                 : (String(src.id) === String(fk) ? src : undefined);
             return rec;
         }
         return NO_RELATION;
     }
 
-    function getNestedValue(data, path, noExpand = false) {
+    function getNestedValue(data, path, noExpand = false, noRelation = false) {
         if (!path) return undefined;
         let isNegative = false;
         if (path.startsWith('!')) {
@@ -103,7 +116,7 @@ const factory = function () {
             }
 
             if (value === undefined || value === null) break;
-            if (typeof value === 'object' && !Array.isArray(value) && !(key in value)) {
+            if (!noRelation && typeof value === 'object' && !Array.isArray(value) && !(key in value)) {
                 const related = lookupRelated(data, value, key);
                 if (related !== NO_RELATION) { value = related; continue; }
             }
@@ -712,7 +725,7 @@ const factory = function () {
         if (config && config.requireScope && !config.inScope) return;
         if (!name || !['INPUT', 'SELECT', 'TEXTAREA'].includes(tagName)) return;
 
-        let val = getNestedValue(data, name);
+        let val = getNestedValue(data, name, false, true); // form auto-binding never follows relations
         // Deep collision prevention: Only fallback to query params if we are in an explicit scope or not in strict mode
         if (val === undefined && data._sys && data._sys.query) {
             if (!config || !config.requireScope || config.inScope) {
