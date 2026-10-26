@@ -776,3 +776,7 @@ GUI 또는 `config` 테이블에 직접 연결 정보(JSON)를 입력합니다.
 - **언더스코어 가드 (SSR 전용)**:
   서버 동작 시, 루트의 언더스코어(`_`)로 시작하는 리소스(예: `data.db`, `_parts/`)에 대한 외부 직접 접근을 전면 차단(403 Forbidden)합니다.
   * 참고: 공식 폼 엔드포인트(예: `POST /_sys/data/*.json`)는 이 제한에서 제외됩니다.
+
+## 기여하기 (Contributing)
+
+이 프로젝트는 작성자 1인이 개발하는 방침이므로 제3자의 Pull Request는 받지 않습니다. 버그 보고, 기능 제안, 질문 등의 Issue는 환영합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참조하세요.

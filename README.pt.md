@@ -761,3 +761,7 @@ Seleciona o banco por nome da entidade: Correspondência Exata > Padrão Mais Lo
   Quando rodando como servidor, nega todo acesso externo direto (403 Forbidden) a recursos onde o nome do diretório ou arquivo na raiz começa com underscore (`_`).
   Isso protege dados internos como `data.db` ou componentes de inclusão (`_parts/`) a nível de servidor web.
   * Nota: Endpoints oficiais de formulário (ex: `POST /_sys/data/*.json`) estão isentos.
+
+## Contribuindo
+
+Este projeto é desenvolvido por um único mantenedor, portanto Pull Requests de terceiros não são aceitos. Issues (relatos de bugs, solicitações de recursos e dúvidas) são bem-vindos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
