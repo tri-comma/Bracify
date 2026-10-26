@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('./db/index.cjs');
 const ProcessManager = require('./process-manager.cjs');
+const StudioData = require('./studio-data.cjs');
 
 class EngineServer {
     constructor(port, logger, options = {}) {
@@ -27,6 +28,7 @@ class EngineServer {
             onUnexpectedExit: (id) => this.markProjectStopped(id)
         });
         if (this.manageProjects) {
+            this.studioData = new StudioData(this);
             // Never leave orphaned children if the parent dies
             process.on('exit', () => this.processManager.killAllSync());
         }
@@ -79,7 +81,10 @@ class EngineServer {
 
         this.app.all('/_sys/data/:entity.json', async (req, res) => {
             const entity = req.params.entity;
-            const filters = req.query || {};
+            const { _method, ...filters } = req.query || {};
+            // HTML forms can only send GET/POST: allow POST ... ?_method=PUT|DELETE
+            const override = String(_method || '').toUpperCase();
+            const method = (req.method === 'POST' && (override === 'PUT' || override === 'DELETE')) ? override : req.method;
 
             // Security Check
             if (!/^[a-zA-Z0-9_-]+$/.test(entity) || entity.startsWith('_')) {
@@ -87,7 +92,7 @@ class EngineServer {
                 return res.status(400).send('Invalid entity name');
             }
 
-            if (req.method === 'GET') {
+            if (method === 'GET') {
                 this.logger(`[Security] Blocked direct GET access to data entity: ${entity}`);
                 return res.status(403).send('Access Denied');
             }
@@ -96,7 +101,7 @@ class EngineServer {
                 const redirect = req.body['data-t-redirect'] || req.header('Referer') || '/';
                 const unflattenedBody = this.unflatten(req.body);
 
-                switch (req.method) {
+                switch (method) {
                     case 'POST':
                         await db.save(entity, null, unflattenedBody);
                         res.redirect(redirect);
@@ -159,30 +164,9 @@ class EngineServer {
         // POST /_sys/server/start|stop  (urlencoded: id, data-t-redirect)
         const serverControl = (action) => async (req, res, next) => {
             if (!this.manageProjects) return next();
-            // CSRF: reject cross-origin form posts
-            const origin = req.header('Origin');
-            if (origin) {
-                let originHost = null;
-                try { originHost = new URL(origin).host; } catch (e) { /* invalid */ }
-                if (!originHost || originHost !== req.header('Host')) {
-                    this.logger(`[Security] Blocked cross-origin server control: ${origin}`);
-                    return res.status(403).send('Forbidden');
-                }
-            }
+            if (!this.checkOrigin(req, res)) return;
             const body = req.body || {};
-            const base = body['data-t-redirect'] || req.header('Referer') || null;
-            const back = (error) => {
-                if (!base) {
-                    return error ? res.status(400).send(error) : res.redirect(303, '/');
-                }
-                if (!error) return res.redirect(303, base);
-                const hashIdx = base.indexOf('#');
-                let url = hashIdx >= 0 ? base.slice(0, hashIdx) : base;
-                const hash = hashIdx >= 0 ? base.slice(hashIdx) : '';
-                url = url.replace(/([?&])error=[^&]*&?/, '$1').replace(/[?&]$/, '');
-                url += (url.includes('?') ? '&' : '?') + 'error=' + encodeURIComponent(error);
-                res.redirect(303, url + hash);
-            };
+            const back = (error) => this.redirectBack(req, res, error);
             try {
                 const id = body.id;
                 if (!id) throw new Error('Project id is required');
@@ -205,6 +189,9 @@ class EngineServer {
         };
         this.app.post('/_sys/server/start', serverControl('start'));
         this.app.post('/_sys/server/stop', serverControl('stop'));
+
+        // --- Studio Data Manager (SSR forms, Issue #9) ---
+        if (this.manageProjects) this.studioData.register(this.app);
 
         // --- System API ---
         this.app.post('/_sys/api/open-project', (req, res) => {
@@ -260,6 +247,12 @@ class EngineServer {
                         return null;
                     }, async (href) => {
                         // Data fetcher for SSR
+                        // Studio Data Manager virtual sources (system server only)
+                        if (this.manageProjects) {
+                            const studioResult = await this.studioData.fetch(href);
+                            if (studioResult !== undefined) return studioResult;
+                        }
+
                         // Security Validation
                         const validHrefPattern = /^(\/|\\)?_sys(\/|\\)data(\/|\\)([a-zA-Z0-9_-]+)\.json(\?.*)?$/;
                         const match = href.match(validHrefPattern);
@@ -341,6 +334,37 @@ class EngineServer {
                 res.sendFile(filePath);
             }
         });
+    }
+
+    // CSRF: reject cross-origin form posts. Returns false (and responds 403) when rejected.
+    checkOrigin(req, res) {
+        const origin = req.header('Origin');
+        if (origin) {
+            let originHost = null;
+            try { originHost = new URL(origin).host; } catch (e) { /* invalid */ }
+            if (!originHost || originHost !== req.header('Host')) {
+                this.logger(`[Security] Blocked cross-origin request: ${origin}`);
+                res.status(403).send('Forbidden');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // 303 back to data-t-redirect / Referer (with ?error=... on failure)
+    redirectBack(req, res, error) {
+        const body = req.body || {};
+        const base = body['data-t-redirect'] || req.header('Referer') || null;
+        if (!base) {
+            return error ? res.status(400).send(error) : res.redirect(303, '/');
+        }
+        if (!error) return res.redirect(303, base);
+        const hashIdx = base.indexOf('#');
+        let url = hashIdx >= 0 ? base.slice(0, hashIdx) : base;
+        const hash = hashIdx >= 0 ? base.slice(hashIdx) : '';
+        url = url.replace(/([?&])error=[^&]*&?/, '$1').replace(/[?&]$/, '');
+        url += (url.includes('?') ? '&' : '?') + 'error=' + encodeURIComponent(error);
+        res.redirect(303, url + hash);
     }
 
     setOpenProjectHandler(handler) {
