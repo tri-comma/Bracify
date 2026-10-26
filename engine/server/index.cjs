@@ -411,7 +411,9 @@ class EngineServer {
         return new Promise((resolve, reject) => {
             if (this.server) return resolve(this.port);
 
-            this.server = this.app.listen(this.port, () => {
+            this.server = this.app.listen(this.port, (err) => {
+                // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback
+                if (err) { this.server = null; return reject(err); }
                 const actualPort = this.server.address().port;
                 this.port = actualPort;
                 this.logger(`[Bracify] Server started at http://localhost:${this.port}`);
