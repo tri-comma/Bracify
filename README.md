@@ -285,6 +285,29 @@ HTMLのテキスト中や属性値に `{データソース名.項目名}` と記
   <p>都市名: {user.address.city}</p>
   ```
 
+- **データの自動リレーション（関連データの参照）**:
+  `data-t-source` で複数のデータを読み込んでいる場合、外部キーを持つデータから関連データへドット記法のまま辿れます。`article.category` のように、オブジェクトに `category` というプロパティがなく `category_id`（または `categoryId`）がある場合、Bracify は `categories`（`category` の複数形）という名前のデータソースから `id` が一致するレコードを自動的に探して解決します。追加の属性や記述は不要です。
+
+  ```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <link data-t-source="categories" href="/_sys/data/categories.json">
+
+  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
+  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
+  <ul>
+    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
+  </ul>
+  ```
+
+  - データソース名は `X + s` → `X + es` → （`y` で終わる場合）`ies` → `X` そのまま、の順に探し、最初に存在したものを使用します。
+  - `id` は文字列として比較します。該当レコードがない場合は他の未定義値と同様に扱われます。
+  - オブジェクトに実際の `category` プロパティがある場合は、そちらが常に優先されます。
+  - `article.category.parent.name` のように連鎖して辿ることも可能です。
+  - `article.category` 自体も関連レコード全体に解決されるため、`data-t-scope="article.category"` や `data-t-if="article.category"` にも使えます。
+  - フォームの自動バインディング（`name` 属性による値の自動入力）は関連を辿りません。外部キーのフィールド（例: `name="category_id"`）を使用してください。
+  - 名前が一致する最初のデータソースが使用され、そこに該当レコードがなくても次の候補は探しません。
+  - `{ }`、`data-t-if`、`data-t-list`、`data-t-scope`、属性バインディング（`href="/cat.html?id={article.category.id}"`）のいずれでも利用でき、SSR・CSR で同じ動作をします。
+
 - **数値の計算（四則演算）**:
   プレースホルダー `{ }` 内で四則演算（`+`, `-`, `*`, `/`, `%`）と括弧 `()` を使用し、JavaScript を書かずに数値の算出ができます。データ値・数値リテラルを組み合わせて計算でき、結果を後続のパイプ（`|`）にも渡せます。
 

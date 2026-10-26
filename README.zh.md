@@ -280,6 +280,29 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
   <p>城市: {user.address.city}</p>
   ```
 
+- **自动数据关联（查找）**:
+  使用 `data-t-source` 加载多个数据时，可以沿用点号写法通过外键访问关联数据。对于 `article.category`，如果对象没有 `category` 属性但有 `category_id`（或 `categoryId`），Bracify 会在以 `category` 的复数命名的数据源（`categories`）中自动查找 `id` 匹配的记录。无需任何额外属性或语法。
+
+  ```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <link data-t-source="categories" href="/_sys/data/categories.json">
+
+  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
+  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
+  <ul>
+    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
+  </ul>
+  ```
+
+  - 数据源名称依次尝试 `X + s`、`X + es`、（以 `y` 结尾时）`ies`，最后是 `X` 本身，使用第一个存在的。
+  - `id` 按字符串比较。没有匹配记录时，与其他未定义值的处理相同。
+  - 对象上存在真实的 `category` 属性时，始终优先使用该属性。
+  - 也可以像 `article.category.parent.name` 这样链式访问。
+  - `article.category` 本身会解析为完整的关联记录，因此可用于 `data-t-scope="article.category"` 或 `data-t-if="article.category"`。
+  - 表单自动绑定（按 `name` 自动填充输入）不会跟随关联；请使用外键字段（例如 `name="category_id"`）。
+  - 使用第一个存在的数据源，即使其中没有匹配记录也不会尝试后续候选。
+  - 可用于 `{ }`、`data-t-if`、`data-t-list`、`data-t-scope` 和属性绑定（`href="/cat.html?id={article.category.id}"`），SSR 与 CSR 行为一致。
+
 - **数值计算（四则运算）**：
   可以在占位符 `{ }` 内使用四则运算（`+`, `-`, `*`, `/`, `%`）和括号 `()`，无需编写 JavaScript 即可计算数值。可以组合数据值和数字字面量进行计算，并可将结果传递给后续的管道（`|`）。
 

@@ -280,6 +280,29 @@ HTML 텍스트나 속성값에 `{데이터소스명.항목명}`이라고 작성�
   <p>도시명: {user.address.city}</p>
   ```
 
+- **자동 데이터 관계 (룩업)**:
+  `data-t-source`로 여러 데이터를 불러온 경우, 점 표기법 그대로 외래 키를 따라 관련 데이터에 접근할 수 있습니다. `article.category`에서 객체에 `category` 속성이 없고 `category_id`(또는 `categoryId`)가 있으면, Bracify는 `category`의 복수형 이름(`categories`)의 데이터 소스에서 `id`가 일치하는 레코드를 자동으로 찾습니다. 추가 속성이나 문법은 필요 없습니다.
+
+  ```html
+  <link data-t-source="articles" href="/_sys/data/articles.json">
+  <link data-t-source="categories" href="/_sys/data/categories.json">
+
+  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
+  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
+  <ul>
+    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
+  </ul>
+  ```
+
+  - 소스 이름은 `X + s`, `X + es`, (`y`로 끝나면) `ies`, 마지막으로 `X` 자체 순으로 찾으며, 처음 존재하는 것을 사용합니다.
+  - `id`는 문자열로 비교합니다. 일치하는 레코드가 없으면 다른 정의되지 않은 값과 동일하게 처리됩니다.
+  - 객체에 실제 `category` 속성이 있으면 항상 그쪽이 우선합니다.
+  - `article.category.parent.name`처럼 연쇄적으로 따라갈 수도 있습니다.
+  - `article.category` 자체도 관련 레코드 전체로 해석되므로 `data-t-scope="article.category"`나 `data-t-if="article.category"`에 사용할 수 있습니다.
+  - 폼 자동 바인딩(`name`으로 입력값 자동 채움)은 관계를 따라가지 않습니다. 외래 키 필드(예: `name="category_id"`)를 사용하세요.
+  - 존재하는 첫 번째 소스 이름이 사용되며, 일치하는 레코드가 없어도 다음 후보는 찾지 않습니다.
+  - `{ }`, `data-t-if`, `data-t-list`, `data-t-scope`, 속성 바인딩(`href="/cat.html?id={article.category.id}"`) 모두에서 사용할 수 있으며 SSR과 CSR에서 동일하게 동작합니다.
+
 - **숫자 계산(사칙 연산)**:
   플레이스홀더 `{ }` 안에서 사칙 연산(`+`, `-`, `*`, `/`, `%`)과 괄호 `()`를 사용하여 JavaScript를 작성하지 않고도 숫자 계산을 할 수 있습니다. 데이터 값과 숫자 리터럴을 조합해 계산할 수 있으며, 결과를 이후의 파이프(`|`)에도 전달할 수 있습니다.
 
