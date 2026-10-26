@@ -356,6 +356,7 @@ HTML 텍스트나 속성값에 `{데이터소스명.항목명}`이라고 작성�
 
   ```html
   <code>\{user.name\}</code> <!-- 표시 결과: {user.name} -->
+  <code>C:\\temp</code> <!-- 표시 결과: C:\temp (백슬래시 자체는 \\ 로 표기) -->
   ```
 
 ### 리스트 표시 (`data-t-list`)

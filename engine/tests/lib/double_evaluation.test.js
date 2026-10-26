@@ -35,7 +35,7 @@ test('Security: Double Evaluation Protection', async (t) => {
         const engine = new Engine();
         await engine.processElement(document.body, data);
 
-        assert.strictEqual(document.body.innerHTML, '<div>I am {secret}</div>', 'Should not resolve {secret} from the data');
+        assert.strictEqual(document.body.innerHTML, '<div>I am \\{secret\\}</div>', 'Should not resolve {secret} from the data (stays escaped until the client unescape pass)');
 
         delete global.document;
         delete global.Node;

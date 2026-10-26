@@ -374,7 +374,7 @@ test('Integration: text/attribute bindings via Engine.processElement', async (t)
         const div = document.createElement('div');
         div.innerHTML = '<span>{note | uppercase}</span>';
         await engine.processElement(div, { note: 'value is {secret}', secret: 'SHOULD_NOT_APPEAR' });
-        assert.strictEqual(div.textContent, 'VALUE IS {SECRET}');
+        assert.strictEqual(div.textContent, 'VALUE IS \\{SECRET\\}'); // escaped until the client unescape pass
     });
 
     await t.test('data-t-scope: short property reference resolves default/ternary as loaded', async () => {

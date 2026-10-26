@@ -361,6 +361,7 @@ HTMLのテキスト中や属性値に `{データソース名.項目名}` と記
 
   ```html
   <code>\{user.name\}</code> <!-- 表示結果: {user.name} -->
+  <code>C:\\temp</code> <!-- 表示結果: C:\temp（バックスラッシュ自体は \\ で表記） -->
   ```
 
 ### リスト表示 (`data-t-list`)
