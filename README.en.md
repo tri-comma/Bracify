@@ -92,6 +92,14 @@ An integrated management screen that consolidates all operations.
 - **Project Control**:
   - **Open Project**: Opens a folder selection dialog via the system API to load projects.
   - **Start/Stop Server**: Specifies a port number to start the preview server for the target project.
+  - **Concurrent multi-project execution**: Each project runs as an independent child process (`node engine/start.cjs <path> <port>`), so several can run at the same time.
+    - Start/stop uses plain `<form method="POST">` (SSR), no JavaScript required.
+      - `POST /_sys/server/start` (field: `id` = project ID)
+      - `POST /_sys/server/stop` (field: `id`)
+      - After processing, redirects (303) to `data-t-redirect`, else the Referer, else `/`. On failure it redirects back with `?error=message` appended so the page can show `{?error}`.
+    - The port from the `projects` entity's `port` is used; if empty or already in use, a free port is found automatically (probing upward from 3000).
+    - The result (`status` = `running`/`stopped`, `pid`, actual `port`) is written back to the project record and shown on the dashboard.
+    - Stopping the system server also stops all child processes it started.
 - **Data Manager**:
   - JSON editing, schema estimation.
 - **API Monitor**:

@@ -92,6 +92,14 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 - **项目控制 (Project Control)**：
   - **打开项目 (Open Project)**：通过系统 API 打开文件夹选择对话框以加载项目。
   - **启动/停止服务器 (Start/Stop Server)**：指定端口号，启动目标项目的预览服务器。
+  - **多项目同时运行**：每个项目作为独立的子进程（`node engine/start.cjs <path> <port>`）运行，可同时运行多个。
+    - 启动/停止无需 JavaScript，使用标准的 `<form method="POST">`（SSR）。
+      - `POST /_sys/server/start`（字段：`id` = 项目ID）
+      - `POST /_sys/server/stop`（字段：`id`）
+      - 处理后重定向（303）到 `data-t-redirect`，否则为 Referer，再否则为 `/`。失败时附加 `?error=消息` 返回，页面可通过 `{?error}` 显示。
+    - 使用 `projects` 实体的 `port`；若为空或已被占用，则自动查找空闲端口（从 3000 起向上探测）。
+    - 结果（`status` = `running`/`stopped`、`pid`、实际 `port`）会写回项目记录并显示在仪表板上。
+    - 停止系统服务器时，也会停止其启动的所有子进程。
 - **数据管理器 (Data Manager)**：
   - JSON 编辑、模式 (Schema) 推断。
 - **API 监视器 (API Monitor)**：

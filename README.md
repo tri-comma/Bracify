@@ -92,6 +92,14 @@ Admin Dashboard を起動するための薄いラッパーアプリケーショ�
 - **Project Control**:
   - **Open Project**: システムAPI経由でフォルダ選択ダイアログを開き、プロジェクトをロードします。
   - **Start/Stop Server**: ポート番号を指定して、対象プロジェクトのプレビューサーバーを起動します。
+  - **複数プロジェクトの同時起動**: 各プロジェクトは独立した子プロセス（`node engine/start.cjs <path> <port>`）として起動され、複数を同時に実行できます。
+    - 起動・停止は JavaScript を使わず、標準の `<form method="POST">`（SSR）で行います。
+      - `POST /_sys/server/start`（フィールド: `id` = プロジェクトID）
+      - `POST /_sys/server/stop`（フィールド: `id`）
+      - 処理後は `data-t-redirect`、なければ Referer、なければ `/` へリダイレクト（303）します。失敗時は `?error=メッセージ` を付けて戻るため、ページ側で `{?error}` として表示できます。
+    - ポートは `projects` エンティティの `port` を使用し、未指定または使用中の場合は空いているポートを自動で探して割り当てます（3000 から順に探索）。
+    - 起動・停止の結果（`status` = `running`/`stopped`、`pid`、実際の `port`）はプロジェクトレコードに書き戻され、ダッシュボードに表示されます。
+    - システムサーバー停止時は、起動したすべての子プロセスも停止します。
 - **Data Manager**:
   - JSON編集、スキーマ推定。
 - **API Monitor**:
