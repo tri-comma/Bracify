@@ -758,6 +758,24 @@ const factory = function () {
     }
 
     // --- Engine ---
+    // Maximum nesting of data-t-include (guards against runaway/cyclic includes, Issue #34)
+    const MAX_INCLUDE_DEPTH = 32;
+    // Maximum number of includes expanded in ONE render (whole tree, not per subtree). Stops
+    // exponential fan-out (a includes b twice, b includes c twice, ...) that depth/cycle checks allow.
+    const MAX_INCLUDES_PER_RENDER = 500;
+
+    function normalizeIncludePath(p) {
+        let n = String(p).trim().replace(/\\/g, '/');
+        const parts = [];
+        for (const seg of n.split('/')) {
+            if (seg === '' || seg === '.') continue;
+            if (seg === '..') parts.pop(); else parts.push(seg);
+        }
+        n = parts.join('/');
+        const isWin = (typeof process !== 'undefined' && process.platform === 'win32');
+        return isWin ? n.toLowerCase() : n;
+    }
+
     class Engine {
         constructor(options = {}) {
             this.dataFetcher = options.dataFetcher || null;
@@ -779,10 +797,27 @@ const factory = function () {
                 if (!evaluateCondition(element.getAttribute('data-t-if'), data)) { element.remove(); return; }
                 if (localConfig.stripAttributes) element.removeAttribute('data-t-if');
             }
+            if (localConfig.processIncludes && !localConfig.includeBudget) {
+                // Per-render counter, shared by reference with every descendant call (never stored on the Engine instance)
+                localConfig = { ...localConfig, includeBudget: { count: 0 } };
+            }
             if (localConfig.processIncludes && element.hasAttribute('data-t-include')) {
                 const rawPath = element.getAttribute('data-t-include');
                 const includePath = (rawPath.indexOf('{') !== -1) ? resolveValue(rawPath, data) : rawPath;
-                const templateHtml = await this.includeResolver(includePath);
+                const includeStack = localConfig.includeStack || [];
+                const includeKey = normalizeIncludePath(includePath);
+                let templateHtml = null;
+                if (includeStack.includes(includeKey) || includeStack.length >= MAX_INCLUDE_DEPTH) {
+                    console.warn(`[Bracify] Skipped data-t-include "${includePath}": ${includeStack.includes(includeKey) ? 'circular include' : 'max include depth (' + MAX_INCLUDE_DEPTH + ') exceeded'}`);
+                } else if (localConfig.includeBudget.count >= MAX_INCLUDES_PER_RENDER) {
+                    if (localConfig.includeBudget.count === MAX_INCLUDES_PER_RENDER) console.warn(`[Bracify] Skipped data-t-include "${includePath}": max includes per render (${MAX_INCLUDES_PER_RENDER}) exceeded`);
+                    localConfig.includeBudget.count++;
+                } else {
+                    localConfig.includeBudget.count++;
+                    templateHtml = await this.includeResolver(includePath);
+                    // New array per subtree so siblings never share include state
+                    localConfig = { ...localConfig, includeStack: [...includeStack, includeKey] };
+                }
                 if (templateHtml) {
                     if (templateHtml.indexOf('data-t-content') !== -1) {
                         const container = (typeof document !== 'undefined') ? document.createElement('div') : new (require('jsdom').JSDOM)('').window.document.createElement('div');
