@@ -1,6 +1,6 @@
 {
   "name": "@bracify/gui",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "GUI Launcher for Bracify",
   "main": "main.js",
   "scripts": {
