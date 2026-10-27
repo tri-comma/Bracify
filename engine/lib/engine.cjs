@@ -483,6 +483,8 @@ const factory = function () {
             if (val === undefined && !wasArray && !pipeExpr && ctx && ctx.renderOutput && isLoadedContext(lookupKey, data, ctx)) return prefix + '';
             // Return original match if value is undefined (preserves template for SSR/CSR later)
             if (val === undefined) return match;
+            // ctx.encodeOutput: the value lands inside a URL query, so it must stay a single parameter value.
+            if (ctx && ctx.encodeOutput) return prefix + encodeURIComponent(String(val));
             return prefix + (escapeOutput ? escapeBound(val) : val);
         });
     }
@@ -736,6 +738,27 @@ const factory = function () {
         return String(href).replace(/([?&])([^?&#=:{}%]+)=\{\?\}(?=[&#]|$)/g, (m, sep, key) => sep + key + '={?' + key + '}');
     }
 
+    // Issue #85: resolves a data-t-source href. Values substituted into the query part (after `?`, before `#`) are
+    // encodeURIComponent-ed so `x&id=1` stays one parameter value; the path and fragment keep their raw substitution.
+    function resolveSourceHref(rawHref, data, escapeOutput) {
+        const resolve = (str, ctx) => str.indexOf('{') !== -1 ? resolveValue(str, data, ctx, escapeOutput) : str;
+        const href = String(rawHref);
+        // `?` / `#` inside a {...} placeholder (e.g. `{?a}`) are not URL delimiters; `\{` is an escaped literal brace.
+        let q = -1, h = href.length, depth = 0;
+        for (let i = 0; i < href.length; i++) {
+            const c = href[i];
+            if (c === '\\') i++;
+            else if (c === '{') depth++;
+            else if (c === '}') { if (depth > 0) depth--; }
+            else if (depth === 0) {
+                if (c === '#') { h = i; break; }
+                if (c === '?' && q === -1) q = i;
+            }
+        }
+        if (q === -1) return resolve(href.slice(0, h)) + resolve(href.slice(h));
+        return resolve(href.slice(0, q + 1)) + resolve(href.slice(q + 1, h), { encodeOutput: true }) + resolve(href.slice(h));
+    }
+
     async function preloadSources() {
         if (typeof document === 'undefined') return {};
         const globalData = (typeof window !== 'undefined' ? window.__BRACIFY_DATA__ : null) || {};
@@ -749,7 +772,7 @@ const factory = function () {
             // The href may come from SSR (data values already escaped as \{ \} \\) or from a raw template: resolve with
             // escaping and unescape once so the URL is the literal text the server used, without re-evaluating it.
             rawHref = expandAutoBind(rawHref);
-            const href = (rawHref.indexOf('{') !== -1 ? resolveValue(rawHref, { _sys: sys }, undefined, true) : String(rawHref)).replace(UNESCAPE_RE, '$1');
+            const href = resolveSourceHref(rawHref, { _sys: sys }, true).replace(UNESCAPE_RE, '$1');
             const fetcher = (typeof window !== 'undefined' && window.BracifyFetcher) || browserLocalFetcher;
             return fetcher(href, name).then(data => { if (data) globalData[name] = data; });
         });
@@ -997,7 +1020,7 @@ const factory = function () {
             let rawHref = element.getAttribute('href');
             if (!rawHref) return;
             rawHref = expandAutoBind(rawHref);
-            const href = (rawHref.indexOf('{') !== -1) ? resolveValue(rawHref, data) : rawHref;
+            const href = resolveSourceHref(rawHref, data);
             const fetcher = this.dataFetcher || (typeof window !== 'undefined' && window.BracifyFetcher) || browserLocalFetcher;
             try {
                 const fetchedData = await fetcher(href, name);
@@ -1070,7 +1093,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, expandAutoBind, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
+        Engine, resolveValue, resolveSourceHref, expandAutoBind, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
