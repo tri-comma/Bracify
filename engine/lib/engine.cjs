@@ -1439,6 +1439,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             }
         }
 
+        // The DOM now shows this URL: record it before the awaits below, so a failure or a Back during them cannot leave it stale
+        BracifyLib._renderedPath = location.pathname + location.search;
+
         // Deep update window._sys from the new URL
         try {
             const url = new URL(path, 'http://bracify-internal.local');
@@ -1550,6 +1553,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     BracifyLib.initializeBracify = initializeBracify;
 
     document.addEventListener('DOMContentLoaded', async () => {
+        BracifyLib._renderedPath = location.pathname + location.search; // path+search currently rendered (hash excluded)
         let forceReset = false;
         if (location.protocol === 'file:') {
             try {
@@ -1625,10 +1629,21 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         });
 
         // --- History Support ---
+        // Entries without state.path (the initial entry, browser-made or foreign pushState entries) follow the URL.
         window.addEventListener('popstate', (e) => {
-            if (e.state && e.state.path) {
-                BracifyLib.navigate(e.state.path, false);
+            let target = e.state && e.state.path;
+            if (!target) {
+                // Known limitation (rootHandle mode only): file:// paths are filesystem paths, not project-relative,
+                // so the initial entry (no state.path) cannot be re-rendered on Back there.
+                if (location.protocol === 'file:') return;
+                target = location.pathname + location.search;
             }
+            // A hash-only history change keeps the rendered page
+            try {
+                const u = new URL(target, location.href);
+                if (u.pathname + u.search === BracifyLib._renderedPath) return;
+            } catch (err) { /* unparsable target: let navigate handle it */ }
+            BracifyLib.navigate(target, false);
         });
 
     });
