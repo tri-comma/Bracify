@@ -589,6 +589,12 @@ const factory = function () {
     }
 
     // --- Data Fetching (Browser/Local) ---
+    // True when an `id` filter value is empty or an unresolved placeholder like "{?}" / "{_sys.query.id}".
+    function isBlankIdFilter(val) {
+        return val === undefined || val === null || val === '' ||
+            (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1);
+    }
+
     function filterLocalData(data, href) {
         if (!Array.isArray(data) || !href || !href.includes('?')) return data;
         try {
@@ -602,6 +608,8 @@ const factory = function () {
 
             // Filter
             for (const [key, val] of Object.entries(params)) {
+                // An empty/unresolved `id` filter matches nothing (never "ignored", which would return the first record).
+                if (key === 'id' && isBlankIdFilter(val)) return [];
                 if (val === undefined || val === null || val === '' || val === '{?}') continue;
                 // Ignore unresolved placeholders to avoid filtering out everything (e.g. content="{_sys.query.q}" -> val="{_sys.query.q}")
                 if (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1) continue;

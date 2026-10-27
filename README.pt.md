@@ -771,6 +771,7 @@ Opera em modo "Mock Somente Leitura" com filtros limitados e sem salvamento.
 #### Filtros e Controle (Especificações Comuns)
 
 - **Filtros**: Apenas correspondência exata.
+  - **Exceção do `id` vazio**: um filtro sobre a chave `id` é a exceção: se o valor estiver vazio ou for um marcador não resolvido (ex.: `{?}`), não retorna nenhum registro em vez de ser ignorado (assim, `?id={?id}&_limit=1` sem id mostra "não encontrado" em vez do primeiro registro).
 - **Parâmetros**: `_limit`, `_offset`, `_sort`, `_order` funcionam de forma simples.
 
 #### Comportamento do JavaScript

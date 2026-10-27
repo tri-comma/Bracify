@@ -832,6 +832,7 @@ In local development mode (both True Zero Server and Mock Mode), simple data pro
 - **Filter Limitations**:
   - **Exact Match Only**: Returns data only when the specified key and value match exactly.
   - **Ignore Empty Values**: If the filter value is an empty string (`?name=`), that condition is ignored (all items are displayed).
+  - **Empty `id` Exception**: A filter on the key `id` is the one exception: if its value is empty or an unresolved placeholder (e.g. `{?}`), it returns no records instead of being ignored (so `?id={?id}&_limit=1` with no id shows "not found" rather than the first record).
   - **Advanced Operators Not Supported**: Operators like `:gt` or `:lt` do not function and are ignored.
 
 - **Supported Control Parameters**:
