@@ -359,6 +359,11 @@ You can display data by writing `{datasource_name.item_name}` in the HTML text o
   <code>C:\\temp</code> <!-- Result: C:\temp (write a literal backslash as \\) -->
   ```
 
+- **When a value does not exist**:
+  When the data itself exists (a `data-t-source`, a `data-t-scope`, or the current `data-t-list` item) but the field or related record is missing (e.g. `{book.author.name}` for a deleted author), the placeholder renders as an **empty string**, in both text and attributes (`class="s-{book.status}"` becomes `class="s-"`). Use `data-t-if` to control what is displayed. `{...}` is left as-is only when the data itself is not available (an unloaded or undefined source/scope).
+  - `{?x}` / `{_sys.query.x}` with an absent URL parameter also render empty (`_sys` is always available). A `data-t-scope` on a missing related record (e.g. `data-t-scope="book.author"`) is a valid empty scope, so its inner placeholders render empty.
+  - **Filter value limitation**: in a `data-t-source` `href`, a filter value that contains both `{` and `}` (e.g. searching for a book titled `{foo}` with `?title={foo}`) is treated as an unresolved placeholder and the filter is ignored (SSR and CSR).
+
 ### List Display (`data-t-list`)
 
 If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.

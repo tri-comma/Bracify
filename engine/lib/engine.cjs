@@ -427,6 +427,14 @@ const factory = function () {
     const hydratedText = new WeakSet();
     const hydratedAttrs = new WeakMap(); // Element -> Set<attribute name>
 
+    // Undefined can mean either "not loaded yet" (keep the placeholder for a later pass) or
+    // "loaded, but this property is missing" (resolve now). Only the data's top-level key tells
+    // them apart; scope/list contexts (ctx.inScope) count as loaded since their
+    // properties are flattened, unless the scope's root itself is not loaded (ctx.scopeMissing).
+    function isLoadedContext(lookupKey, data, ctx) {
+        return !!((ctx && ctx.inScope && !ctx.scopeMissing) || isTopLevelLoaded(lookupKey, data));
+    }
+
     // escapeOutput: escape substituted data values (not the template's own text) for DOM output.
     function resolveValue(expression, data, ctx, escapeOutput) {
         if (expression === null || expression === undefined) return '';
@@ -451,11 +459,7 @@ const factory = function () {
             let val = isArithmeticExpression(lookupKey) ? evaluateExpression(lookupKey, data) : getNestedValue(data, lookupKey);
 
             if (pipeExpr) {
-                // Undefined can mean either "not loaded yet" (keep the placeholder for a
-                // later pass) or "loaded, but this property is empty" (resolve now).
-                // Only the data's top-level key tells them apart; scope/list contexts
-                // (ctx.inScope) always count as loaded since their properties are flattened.
-                if (val === undefined && !((ctx && ctx.inScope) || isTopLevelLoaded(lookupKey, data))) {
+                if (val === undefined && !isLoadedContext(lookupKey, data, ctx)) {
                     return match;
                 }
                 for (const { name, args } of parsePipes(pipeExpr)) {
@@ -469,10 +473,14 @@ const factory = function () {
             }
             // If the final value is still an array (and no pipe was used), treat it as undefined
             // to avoid rendering "item1,item2" in the UI.
-            if (Array.isArray(val) && !pipeExpr) val = undefined;
+            const wasArray = Array.isArray(val) && !pipeExpr;
+            if (wasArray) val = undefined;
 
             // Return empty string if value is null
             if (val === null) return prefix + '';
+            // Rendered output only (ctx.renderOutput): a missing field of loaded data becomes empty,
+            // like the piped form. Other callers rely on the literal to detect "unresolved".
+            if (val === undefined && !wasArray && !pipeExpr && ctx && ctx.renderOutput && isLoadedContext(lookupKey, data, ctx)) return prefix + '';
             // Return original match if value is undefined (preserves template for SSR/CSR later)
             if (val === undefined) return match;
             return prefix + (escapeOutput ? escapeBound(val) : val);
@@ -776,7 +784,7 @@ const factory = function () {
             if (attr.name.startsWith('on')) continue;
             if (doneAttrs && doneAttrs.has(attr.name)) continue;
             if (attr.value && attr.value.indexOf('{') !== -1) {
-                let val = resolveValue(attr.value, data, ctx, true);
+                let val = resolveValue(attr.value, data, { ...ctx, renderOutput: true }, true);
                 if (val !== undefined) {
                     val = sanitizeAttributeValue(el, attr.name, val);
                     if (val === null) { el.removeAttribute(attr.name); continue; }
@@ -795,7 +803,7 @@ const factory = function () {
                 if (hydratedText.has(node)) continue;
                 const content = node.nodeValue;
                 if (content && content.indexOf('{') !== -1) {
-                    const val = resolveValue(content, data, ctx, true);
+                    const val = resolveValue(content, data, { ...ctx, renderOutput: true }, true);
                     if (val !== undefined) node.nodeValue = val;
                 }
             }
@@ -940,10 +948,15 @@ const factory = function () {
             }
             if (localConfig.processBindings && element.hasAttribute('data-t-scope')) {
                 // Create a NEW config object for children to avoid sibling leakage
-                localConfig = { ...localConfig, inScope: true };
                 const scopeKey = element.getAttribute('data-t-scope');
                 let val = getNestedValue(data, scopeKey);
-                if (val !== undefined) {
+                localConfig = { ...localConfig, inScope: true };
+                if (val === undefined) {
+                    // Root loaded but the path is missing (e.g. a deleted relation): an empty scope, inner
+                    // placeholders render empty. Unknown root: "not loaded", they stay literal.
+                    localConfig.scopeMissing = !isTopLevelLoaded(scopeKey, data);
+                } else {
+                    localConfig.scopeMissing = false;
                     if (Array.isArray(val) && val.length === 1) val = val[0];
                     this.log(`[Engine] Scope: ${scopeKey} -> Object(${Object.keys(val || {}).join(',')})`);
                     data = { ...data, [scopeKey]: val };

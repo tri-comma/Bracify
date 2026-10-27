@@ -359,6 +359,11 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
   <code>C:\\temp</code> <!-- 显示结果: C:\temp（反斜杠本身写作 \\） -->
   ```
 
+- **值不存在时的显示**:
+  当数据本身存在（`data-t-source`、`data-t-scope` 或当前 `data-t-list` 项）但缺少该字段或关联记录时（例如已删除作者的 `{book.author.name}`），占位符在文本和属性中均输出为**空字符串**（`class="s-{book.status}"` 变为 `class="s-"`）。请使用 `data-t-if` 控制显示。仅当数据本身不可用（未加载或未定义的数据源/作用域）时，才会原样保留 `{...}`。
+  - URL 参数缺失时，`{?x}` / `{_sys.query.x}` 同样渲染为空（`_sys` 始终可用）。作用于缺失关联记录的 `data-t-scope`（例如 `data-t-scope="book.author"`）视为有效的空作用域，其内部占位符渲染为空。
+  - **过滤值限制**: 在 `data-t-source` 的 `href` 中，同时包含 `{` 和 `}` 的过滤值（例如用 `?title={foo}` 搜索标题为 `{foo}` 的书）会被视为未解析的占位符，该过滤条件将被忽略（SSR/CSR 均如此）。
+
 ### 列表展示 (`data-t-list`)
 
 若要展示多条数据，您必须在需要重复的元素上指定 `data-t-list="数据源名称"`。

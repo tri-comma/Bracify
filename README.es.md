@@ -359,6 +359,11 @@ Puedes mostrar datos escribiendo `{nombre_fuente_datos.nombre_item}` en el texto
   <code>C:\\temp</code> <!-- Resultado: C:\temp (una barra invertida literal se escribe \\) -->
   ```
 
+- **Cuando un valor no existe**:
+  Cuando los datos existen (un `data-t-source`, un `data-t-scope` o el elemento actual de `data-t-list`) pero falta el campo o el registro relacionado (p. ej. `{book.author.name}` de un autor eliminado), el marcador se renderiza como **cadena vacía**, tanto en texto como en atributos (`class="s-{book.status}"` pasa a `class="s-"`). Use `data-t-if` para controlar qué se muestra. `{...}` solo se deja tal cual cuando los propios datos no están disponibles (fuente/ámbito no cargado o no definido).
+  - `{?x}` / `{_sys.query.x}` con un parámetro de URL ausente también se renderizan vacíos (`_sys` siempre está disponible). Un `data-t-scope` sobre un registro relacionado inexistente (p. ej. `data-t-scope="book.author"`) es un ámbito vacío válido y sus marcadores internos se renderizan vacíos.
+  - **Limitación de valores de filtro**: en el `href` de un `data-t-source`, un valor de filtro que contenga a la vez `{` y `}` (p. ej. buscar un libro titulado `{foo}` con `?title={foo}`) se trata como marcador sin resolver y el filtro se ignora (SSR y CSR).
+
 ### Visualización de lista (`data-t-list`)
 
 Si hay múltiples elementos de datos que deseas mostrar, debes especificar `data-t-list="Nombre de la Fuente de Datos"` en el elemento (rango) que deseas repetir.
