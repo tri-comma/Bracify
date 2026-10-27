@@ -167,6 +167,21 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
 - **自动拦截链接**：自动检测标准 `<a>` 标签的内部链接，并将其提升为 SPA 跳转。开发者无需编写 JavaScript 即可构建 SPA 应用。
 - **浏览器历史记录支持**：利用 `history.pushState` API，确保 URL 更新以及浏览器的“后退/前进”按钮在 SPA 跳转过程中仍能按预期工作。
 
+#### 4. 加载客户端引擎
+
+仅通过 SSR 显示的页面不需要 `<script>`，但如果要使用 SPA 跳转、本地开发模式（`file://`）或 CSR，则需要在每个页面的 `<head>` 中加载客户端引擎。
+
+- **服务器模式**：服务器通过 `/engine/engine.cjs` 提供引擎。
+
+  ```html
+  <script src="/engine/engine.cjs"></script>
+  ```
+
+- **本地开发模式**：由于没有服务器，请将引擎本体（仓库中的 `engine/lib/engine.cjs`）放在项目内，并以相对于该页面的路径加载。
+- **两种模式使用同一文件时**：像 [`examples/`](./examples/) 那样并排写上两个 `<script>`。在各模式下不存在的那个会加载失败并被忽略。
+
+能在两种模式下仅用一个 `<script>` 加载的方法正在 [#55](https://github.com/tri-comma/Bracify/issues/55) 中讨论。
+
 ---
 
 ## 参考文档 (Reference)
@@ -243,6 +258,26 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
     ```
 
 - **注意点**：在开发服务器运行或通过浏览器中的 File System Access API 进行合并。
+
+---
+
+##### 动态插入（通过占位符指定路径）
+
+插入的路径可以使用占位符 `{ }`，例如可以通过 URL 参数切换要加载的文件。
+
+```html
+<!-- 当 ?p=_parts/help.html 时，展开 _parts/help.html -->
+<div data-t-include="{?p}"></div>
+```
+
+- 当值为空（例如未指定参数）或因下述限制而拒绝加载时，不会展开任何内容，元素的原有内容将原样保留（发生循环引用、超过嵌套上限或单次渲染的上限时也同样处理）。
+- **路径限制**：展开后的路径仅限于项目内。包含 `..` 的路径、包含 `_sys` 目录的路径、包含 `:` 的路径（`C:`、`http:` 等）以及以 `\` 开头的路径不会被加载（SSR 与 CSR 通用）。指定不存在的文件时也不会展开。
+- **安全提示**：如果将 URL 参数直接用作路径，访客可以插入项目内的任意 HTML（包括 `_parts/` 内的部件）。如果切换目标是固定的，建议使用 `data-t-if` 为每个候选项分别输出固定路径的 include。
+
+  ```html
+  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
+  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
+  ```
 
 #### `data-t-source`
 
@@ -488,7 +523,7 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
 
     - **比较运算符**：使用与 [数据访问 API 运算符](#运算符) 相同的记法（`=`, `:ne=`, `:gt=` 等）。
     - **逻辑运算 (AND/OR)**：空格分隔表示 **AND**，值中的逗号分隔表示 **OR**。
-    - **使用变量**：通过用 `{ }` 包围，可以在条件中使用数据的值。
+    - **使用变量**：通过用 `{ }` 包围，可以在条件中使用数据的值。在 `{ }` 中也可以使用[四则运算](#数据展示通用占位符)（例如：`matched._length:gt={_sys.query._offset + 10}`）。
 
     ```html
     <!-- 状态为已发布 (status == 'published') -->
@@ -506,6 +541,9 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
     <div data-t-if="user.id={post.author_id}">
       <a href="/edit">编辑文章</a>
     </div>
+
+    <!-- 仅当存在下一页时显示“下一页”。allArticles 是不带 _limit / _offset 单独加载的数据源，用于计数（件数 > 当前偏移量 + 10） -->
+    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">下一页</a>
     ```
 
 #### `data-t-redirect`
@@ -525,6 +563,7 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
 - **重定向 (PRG 模式)**：服务端保存后，自动跳转至 `data-t-redirect` 指定的 URL 或原页面。防止表单重复提交。
 - **数据绑定（初值）**：在 `<form>` 上指定 `data-t-scope`，可将现有数据设置为输入初值。
 - **输入项**：`<input>` 或 `<textarea>` 的 `name` 属性即为数据的项目名。
+- **仅限服务器模式**：数据仅在服务端（SSR）保存。本地开发模式（`file://`）没有写入机制，`POST` / `PUT` / `DELETE` 表单不会被保存（[#56](https://github.com/tri-comma/Bracify/issues/56) 中讨论支持方案）。
 
 ### 处理过滤器 (Pipes)
 
@@ -656,29 +695,20 @@ POST /_sys/data/{entity}.json
 | 方法 | 行为 | 说明 |
 | :--- | :--- | :--- |
 | `POST` | 创建 | 创建新数据。 |
-| `PUT` | 更新 | 使用提交的数据重写现有信息。 |
+| `PUT` | 更新 | 用提交的数据**整体替换**由 `id` 指定的记录（若该 `id` 不存在则创建记录）。 |
 | `DELETE`| 删除 | 删除指定数据。 |
 
 标准 `<form>` 只能发送 `GET` / `POST`，因此在查询字符串中带有 `_method=PUT` 或 `_method=DELETE` 的 `POST` 会按该方法处理（例如 `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
 
+`PUT` 必须指定目标 `id`（查询中的 `?id=` 或表单中的 `id` 项），且不是部分更新。表单中未包含的项目会从保存后的记录中**消失**。想保留现有值的项目，请作为通过 `data-t-scope` 设置了初值的输入框（必要时使用 `type="hidden"`）包含在表单中。
+
 `DELETE` 至少需要一个数据过滤条件（如 `id`）。没有过滤条件的 `DELETE`（包括只带 `_limit` 等参数的情况）会以 400 拒绝，以避免清空整个实体。
 
-### 端点规范 (File API)
+> **关于 File API**：旧版本中记载的文件管理端点（`/_sys/file/{filename}.{ext}` 的 GET/POST/PUT/DELETE）**尚未实现**。图片等静态文件请放在项目内，并通过普通 URL（如 `/images/logo.png`）引用。
 
-管理服务器上静态文件的 API。
+### 数据获取的条件指定
 
-```text
-/_sys/file/{filename}.{ext}
-```
-
-#### 文件操作方法
-
-| 方法 | 行为 | 说明 |
-| :--- | :--- | :--- |
-| `GET` | 获取 | 获取文件。 |
-| `POST` | 创建 | 上传·创建文件。 |
-| `PUT` | 更新 | 覆盖更新文件内容。 |
-| `DELETE` | 删除 | 删除指定文件。 |
+通过附加在 `data-t-source` 的 `href` 上的查询参数来筛选要获取的数据（`DELETE` 的筛选条件也使用相同的写法）。
 
 #### 参数
 
@@ -697,11 +727,39 @@ POST /_sys/data/{entity}.json
 | `:lt` | 小于 | `?stock:lt=10` | 库存**少于** 10 |
 | `:lte` | 小于等于 | `?stock:lte=10` | 库存 10 **或以下** |
 
+#### 通配符（`*`）
+
+在不带运算符（等于）的条件中，如果值包含 `*`，则变为 `*` 匹配任意字符串的模式搜索（相当于 SQL 的 `LIKE`）。
+
+| 书写示例 | 匹配对象 |
+| :--- | :--- |
+| `?title=Web*` | 以 `Web` 开头的标题 |
+| `?title=*入门*` | 包含 `入门` 的标题 |
+
+- 仅在服务器模式（Data API）下有效。本地开发模式仅支持完全一致，`*` 也会作为普通字符直接比较。
+- 在 `id` 条件和 `DELETE` 的筛选条件中，`*` 被视为普通字符（不会变为模式搜索）。
+- **注意**：像 `?title={?q}` 这样将用户输入直接作为条件时，用户可以指定模式搜索，例如 `q=*` 会匹配所有具有该字段的记录。此外，当值包含 `*` 时，与 SQL 的 `LIKE` 相同，`_` 也会匹配任意单个字符，`%` 匹配任意字符串，且英文字母不区分大小写。
+
 ### 系统保留变量 (`_sys`)
 
 | 变量名 | 说明 | 示例 |
 | :--- | :--- | :--- |
 | `_sys.query` | GET 查询参数。获取 URL 中的 `?id=123` 等数值。 | `{_sys.query.id}` |
+
+#### 缩写 `{?xxx}`
+
+`{?xxx}` 是 `{_sys.query.xxx}` 的缩写，不仅限于 `data-t-source` 的 `href`，在正文文本、属性值、`data-t-if`、`data-t-include` 等所有可使用占位符的位置都可以使用。管道和四则运算同样适用。
+
+```html
+<!-- URL 为 ?q=bracify 时 -->
+<p>“{?q}”的搜索结果</p>                   <!-- “bracify”的搜索结果 -->
+<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
+<a href="books.html?q={?q | default: ''}&_sort=title">按标题排序</a>
+```
+
+- 参数不存在时为空字符串。
+- **关于 URL 编码**：嵌入 `data-t-source` 的 `href` 查询部分的值会自动进行 URL 编码，但在普通属性（如 `<a href>`）中只做 HTML 转义，不做 URL 编码。如果将可能包含 `&` 或 `=` 的值放入链接的查询中，可能会被解释为其他参数。
+- 不指定值的 `{?}`（自动绑定）只能在 `data-t-source` 的 `href` 内使用（见下文）。
 
 #### 在 `data-t-source` 中利用（动态参数绑定）
 

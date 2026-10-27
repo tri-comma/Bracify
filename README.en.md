@@ -167,6 +167,21 @@ Bracify treats **all page transitions as SPA by default** in both SSR and CSR mo
 - **Automatic Interception**: Standard `<a>` tags for internal links are automatically detected and promoted to SPA transitions. Developers can build SPA apps without writing a single line of JavaScript.
 - **Browser History Support**: Utilizes the `history.pushState` API so that URL updates and "Back/Forward" buttons work exactly as expected even during SPA transitions.
 
+#### 4. Loading the Client-Side Engine
+
+Pages displayed by SSR alone don't need a `<script>`, but to use SPA transitions, Local Development Mode (`file://`), or CSR, each page must load the client-side engine in its `<head>`.
+
+- **Server mode**: The server serves the engine at `/engine/engine.cjs`.
+
+  ```html
+  <script src="/engine/engine.cjs"></script>
+  ```
+
+- **Local Development Mode**: Since there is no server, place the engine itself (`engine/lib/engine.cjs` in the repository) inside your project and load it by a path relative to that page.
+- **Using the same file in both modes**: Line up both `<script>` tags, as in [`examples/`](./examples/). The one that doesn't exist in each mode fails to load and is ignored.
+
+A way to load the engine with a single `<script>` in both modes is under consideration in [#55](https://github.com/tri-comma/Bracify/issues/55).
+
 ---
 
 ## Reference
@@ -243,6 +258,26 @@ Loads a common "framework (layout)" and fills specific areas within it with its 
     ```
 
 - **Note**: Merging occurs on the server side during development server use or via File System Access API in the browser.
+
+---
+
+##### Dynamic Include (Path via Placeholder)
+
+The include path can contain the placeholder `{ }`, so you can switch the file to load with a URL parameter, for example.
+
+```html
+<!-- If ?p=_parts/help.html, _parts/help.html is expanded -->
+<div data-t-include="{?p}"></div>
+```
+
+- If the value is empty (e.g. the parameter is not specified) or loading is rejected by the restrictions below, nothing is expanded and the element's original content is left as is (the same applies when a circular include, the nesting limit, or the per-render include limit is hit).
+- **Path restrictions**: The expanded path must stay inside the project. Paths containing `..`, paths containing the `_sys` directory, paths containing `:` (such as `C:` or `http:`), and paths starting with `\` are not loaded (same for SSR and CSR). Nothing is expanded if the specified file does not exist, either.
+- **Security note**: If you use a URL parameter directly as the path, visitors can insert any HTML in the project (including parts in `_parts/`). If the possible targets are known, we recommend using `data-t-if` to output a fixed-path include for each candidate.
+
+  ```html
+  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
+  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
+  ```
 
 #### `data-t-source`
 
@@ -488,7 +523,7 @@ Displays or hides elements based on conditions. The element is displayed if the 
 
     - **Comparison Operators**: Uses the same notation as the [Data Access API Operators](#operators) (`=`, `:ne=`, `:gt=`, etc.).
     - **Logical Operations (AND/OR)**: Space separation represents **AND**, and comma separation in values represents **OR**.
-    - **Using Variables**: By enclosing in `{ }`, you can use data values in conditions.
+    - **Using Variables**: By enclosing in `{ }`, you can use data values in conditions. [Arithmetic](#data-display-universal-placeholder) is also available inside `{ }` (e.g. `matched._length:gt={_sys.query._offset + 10}`).
     - **Single Key**: If you write only a key without operators, it determines the presence (truthiness) of that value as before.
 
     ```html
@@ -507,6 +542,9 @@ Displays or hides elements based on conditions. The element is displayed if the 
     <div data-t-if="user.id={post.author_id}">
       <a href="/edit">Edit Article</a>
     </div>
+
+    <!-- Show "Next" only when there is a next page. allArticles is a separate source loaded without _limit / _offset, used for counting (count > current offset + 10) -->
+    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">Next</a>
     ```
 
 #### `data-t-redirect`
@@ -526,6 +564,7 @@ You can create and update data using standard `<form>` tags. Bracify works with 
 - **Redirect (PRG Pattern)**: Once saved on the server, it automatically redirects to the URL specified by `data-t-redirect` or the original page. This prevents "form resubmission" and allows for safe navigation.
 - **Data Binding (Initial values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as default values for input fields.
 - **Input Items**: The `name` attribute of `<input>` and `<textarea>` becomes the data item name (property).
+- **Server mode only**: Data is saved only on the server (SSR). Local Development Mode (`file://`) has no write mechanism, so `POST` / `PUT` / `DELETE` forms are not saved (support is under consideration in [#56](https://github.com/tri-comma/Bracify/issues/56)).
 
 ### Processing Filters (Pipes)
 
@@ -657,29 +696,20 @@ Data operations are performed via HTTP requests, but the response is always a "r
 | Method | Action | Description |
 | :--- | :--- | :--- |
 | `POST` | Create | Creates new data. |
-| `PUT` | Update | Replaces existing information with submitted data. |
+| `PUT` | Update | **Replaces the whole** record identified by `id` with the submitted data (a record is created if the `id` does not exist). |
 | `DELETE`| Delete | Deletes specified data. |
 
 Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_method=PUT` or `_method=DELETE` in the query string is handled as that method (e.g. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
 
+`PUT` requires the target `id` (`?id=` in the query or an `id` field in the form) and is not a partial update. Fields not included in the form are **removed** from the saved record. For values you want to keep, include them in the form as input fields pre-filled with `data-t-scope` (using `type="hidden"` if needed).
+
 A `DELETE` requires at least one data filter (such as `id`). A `DELETE` without a filter (including one with only `_limit` and similar parameters) is rejected with 400 so that it can never wipe the whole entity.
 
-### Endpoint Specification (File API)
+> **About the File API**: The file management endpoints described in earlier versions (GET/POST/PUT/DELETE on `/_sys/file/{filename}.{ext}`) are **not implemented**. Place static files such as images inside the project and reference them by normal URLs (e.g. `/images/logo.png`).
 
-An API for managing static files (images, etc.) on the server.
+### Filtering Data
 
-```text
-/_sys/file/{filename}.{ext}
-```
-
-#### File Operation Methods
-
-| Method | Action | Description |
-| :--- | :--- | :--- |
-| `GET` | Read | Fetches the file. |
-| `POST` | Create | Uploads/creates a new file. |
-| `PUT` | Update | Overwrites and updates the content of the specified file. |
-| `DELETE` | Delete | Deletes the specified file. |
+Query parameters attached to the `href` of `data-t-source` narrow down the data to fetch (the same notation is used for `DELETE` filter conditions).
 
 #### Parameters
 
@@ -700,6 +730,19 @@ By adding symbols (operators) after the item name, you can specify more detailed
 | `:lt` | Less than | `?stock:lt=10` | Stock is **less than** 10 (~9) |
 | `:lte` | Less than or equal | `?stock:lte=10` | Stock is 10 **or less** (~10) |
 
+#### Wildcard (`*`)
+
+If the value of a condition without an operator (equal) contains `*`, it becomes a pattern search (like SQL `LIKE`) where `*` matches any string.
+
+| Example | Matches |
+| :--- | :--- |
+| `?title=Web*` | Titles starting with `Web` |
+| `?title=*Guide*` | Titles containing `Guide` |
+
+- Only effective in server mode (Data API). Local Development Mode supports exact match only, and `*` is compared as a plain character.
+- In the `id` condition and in `DELETE` filter conditions, `*` is treated as a normal character (no pattern search).
+- **Note**: If you use user input directly as a condition, as in `?title={?q}`, users can specify a pattern search, for example `q=*` matches every record that has that field. Also, when the value contains `*`, `_` matches any single character and `%` matches any string, as in SQL `LIKE`, and Latin letters are matched case-insensitively.
+
 ### System Reserved Variable (`_sys`)
 
 A reserved variable named `_sys` is provided to get the overall application context and browser request information.
@@ -707,6 +750,21 @@ A reserved variable named `_sys` is provided to get the overall application cont
 | Variable Name | Description | Example |
 | :--- | :--- | :--- |
 | `_sys.query` | GET query parameters. Gets values such as `?id=123` from the URL. | `{_sys.query.id}` |
+
+#### Shorthand `{?xxx}`
+
+`{?xxx}` is a shorthand for `{_sys.query.xxx}`. It can be used not only in the `href` of `data-t-source` but anywhere placeholders are available, such as body text, attribute values, `data-t-if`, and `data-t-include`. Pipes and arithmetic work the same way.
+
+```html
+<!-- If the URL is ?q=bracify -->
+<p>Search results for "{?q}"</p>          <!-- Search results for "bracify" -->
+<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
+<a href="books.html?q={?q | default: ''}&_sort=title">Sort by title</a>
+```
+
+- If the parameter is absent, it becomes an empty string.
+- **About URL encoding**: Values embedded in the query part of the `href` of `data-t-source` are URL-encoded automatically, but in ordinary attributes (such as `<a href>`) they are only HTML-escaped, not URL-encoded. Putting a value that may contain `&` or `=` into a link's query may cause it to be interpreted as separate parameters.
+- The no-value `{?}` (auto binding) can only be used inside the `href` of `data-t-source` (see below).
 
 #### Usage in `data-t-source` (Dynamic Parameter Binding)
 
