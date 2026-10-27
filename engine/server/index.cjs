@@ -247,18 +247,6 @@ class EngineServer {
             return result;
         };
 
-        // Legacy API routes (for compatibility if needed, though they map to same DB logic)
-        this.app.get('/_sys/api/data/list', async (req, res) => {
-            try { res.json({ files: await db.list() }); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
-        });
-        this.app.get('/_sys/api/data/read', async (req, res) => {
-            try { res.json(await db.get(req.query.name)); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
-        });
-        this.app.post('/_sys/api/data/write', async (req, res) => {
-            if (typeof req.body.name !== 'string' || !req.body.name) return res.status(400).json({ error: 'name required' });
-            try { await db.put(req.body.name, req.body.data); res.json({ ok: true }); } catch (e) { this.logger(`[Engine] Data API Error: ${e.message}`); res.status(500).json({ error: 'Internal Server Error' }); }
-        });
-
         // --- Project Server Control (SSR forms, Issue #14) ---
         // POST /_sys/server/start|stop  (urlencoded: id, data-t-redirect)
         const serverControl = (action) => async (req, res, next) => {

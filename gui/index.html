@@ -174,20 +174,6 @@
     <textarea id="logs" readonly></textarea>
   </div>
 
-  <div class="card">
-    <h1>Data Tools (Debug)</h1>
-    <div class="control-group">
-      <button onclick="listData()">List Data</button>
-      <span id="db-status"></span>
-    </div>
-    <ul id="data-list" style="max-height: 100px; overflow-y: auto; background: #eee; padding: 10px; list-style: none;">
-    </ul>
-    <div style="margin-top: 10px; display: flex; gap: 10px;">
-      <input type="text" id="new-data-name" placeholder="Name">
-      <button onclick="createData()">Create Dummy</button>
-    </div>
-  </div>
-
   <script src="renderer.js"></script>
   <script>
     function toggleLogs() {
