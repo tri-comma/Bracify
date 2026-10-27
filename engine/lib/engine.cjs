@@ -1525,7 +1525,15 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const newHead = newDoc.head;
 
         const getKey = (el) => {
-            if (el.tagName === 'META') return el.getAttribute('name') || el.getAttribute('property') || 'no-key';
+            if (el.tagName === 'META') {
+                const named = el.getAttribute('name') || el.getAttribute('property');
+                if (named) return named;
+                if (el.hasAttribute('charset')) return 'meta:charset'; // singleton
+                // http-equiv is matched ASCII case-insensitively (HTML spec)
+                if (el.hasAttribute('http-equiv')) return 'meta:http-equiv:' + el.getAttribute('http-equiv').toLowerCase();
+                // Other metas (e.g. itemprop) have no identity: match only an identical element
+                return 'meta:html:' + el.outerHTML;
+            }
             if (el.tagName === 'LINK') {
                 if (el.rel === 'stylesheet') return 'css:' + el.getAttribute('href');
                 if (el.getAttribute('data-t-source')) return 'source:' + el.getAttribute('data-t-source');
@@ -1559,7 +1567,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             const key = getKey(el);
             if (key) {
                 // Same key as getKey, so a same-name data-t-source link is updated in place, never duplicated
-                const existing = key === 'no-key' ? null : Array.from(currentHead.querySelectorAll('meta, link'))
+                const existing = Array.from(currentHead.querySelectorAll('meta, link'))
                     .find(e => e.tagName === el.tagName && getKey(e) === key);
                 if (existing) {
                     // Update attributes if changed
