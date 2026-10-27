@@ -654,6 +654,8 @@ As operações são feitas via HTTP, mas a resposta é sempre um "redirecionamen
 
 Os `<form>` padrão só enviam `GET` / `POST`; assim, um `POST` com `_method=PUT` ou `_method=DELETE` na query é tratado como esse método (ex.: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
 
+Um `DELETE` exige pelo menos um filtro de dados (como `id`). Um `DELETE` sem filtro (inclusive com apenas `_limit` e parâmetros semelhantes) é rejeitado com 400 para que nunca apague toda a entidade.
+
 ### Especificação de Endpoint (File API)
 
 API para gerenciar arquivos estáticos (como imagens) no servidor.

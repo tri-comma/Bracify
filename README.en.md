@@ -657,6 +657,8 @@ Data operations are performed via HTTP requests, but the response is always a "r
 
 Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_method=PUT` or `_method=DELETE` in the query string is handled as that method (e.g. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
 
+A `DELETE` requires at least one data filter (such as `id`). A `DELETE` without a filter (including one with only `_limit` and similar parameters) is rejected with 400 so that it can never wipe the whole entity.
+
 ### Endpoint Specification (File API)
 
 An API for managing static files (images, etc.) on the server.

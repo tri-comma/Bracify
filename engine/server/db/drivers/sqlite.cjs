@@ -226,7 +226,10 @@ class SQLiteAdapter extends BaseAdapter {
             if (!this.db) return reject(new Error('No DB connected'));
             let sql = "DELETE FROM data_records WHERE entity = ?";
             let params = [entity];
-            for (const [key, val] of Object.entries(filters)) {
+            // Skip reserved query params (as find does) and refuse to wipe the whole entity without a data filter
+            const dataFilters = Object.entries(filters || {}).filter(([key]) => !['_limit', '_offset', '_sort', '_order'].includes(key));
+            if (dataFilters.length === 0) return reject(new Error('remove requires at least one filter'));
+            for (const [key, val] of dataFilters) {
                 sql += buildFilter(key, val, params, false);
             }
             this.db.run(sql, params, (err) => {
