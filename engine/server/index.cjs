@@ -302,8 +302,13 @@ class EngineServer {
         this.app.use(async (req, res, next) => {
             if (!this.currentProjectPath) return next();
 
-            // Handle root
-            const reqPath = req.path === '/' ? '/index.html' : req.path;
+            // Handle root; decode the percent-encoded URL path exactly once (Issue #86), a malformed escape is a 400
+            let reqPath;
+            try {
+                reqPath = decodeURIComponent(req.path === '/' ? '/index.html' : req.path);
+            } catch (e) {
+                return res.status(400).send('Bad Request');
+            }
 
             // A raw "/../" request target is not normalized by Express, and links inside the project
             // may point outside it or into _ directories: serve only the canonical in-project file
@@ -428,6 +433,7 @@ class EngineServer {
             } else {
                 // Static file (images, css, etc.)
                 // Relative to the real root so dotfile checks ignore dot-directories above the project (Issue #41)
+                // Express's sendFile encodes the path itself, so the decoded names are passed as-is (Issue #86)
                 res.sendFile(loc.segments.join('/'), { root: loc.root });
             }
         });
