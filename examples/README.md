@@ -91,15 +91,14 @@ The deployment CLI (`cli/`) is not part of the tests: the README documents deplo
 ## Limitations and engine notes
 
 These came up while building the app; the app avoids them or works around them with documented syntax only.
+Some workarounds remain in the app although the engine has since been fixed: radio lists instead of a `<select>` with
+`data-t-list` options (#43), `data-t-scope="_sys.query"` on the search form (#47), and hidden `data-t-redirect`
+fields with root-relative paths (the `<form data-t-redirect>` attribute works too, and relative paths now resolve
+against the page holding the form, #45). They are still valid syntax.
 
-* **Local mode cannot save forms.** There is no engine code that handles `POST` / `PUT` / `DELETE` forms on `file://`.
+* **Local mode cannot save forms.** There is no engine code that handles `POST` / `PUT` / `DELETE` forms on `file://`
+  (#56).
 * **Source operators (`:gt` ...) in `data-t-source` URLs** work on the server only (README: local mode is exact-match only).
   The server previously treated them as part of the field name and could not match numeric / boolean fields at all
   (fixed in the same pull request).
-* **`<select>` with `data-t-list` options is not auto-selected** (the `selected` state is computed before the options
-  exist). The app uses radio lists for foreign keys instead; static `<option>`s are selected correctly.
-* **Unscoped inputs are not filled from the URL in local mode**, but are on the server. The search form therefore
-  uses `data-t-scope="_sys.query"`.
-* **`data-t-redirect` must be a hidden form field** (`<input type="hidden" name="data-t-redirect" value="/books.html">`);
-  the value is resolved relative to the Data API URL, so use a root-relative path.
 * **Seed JSON files are imported once per entity**, so later edits to a seed file do not affect an existing `_sys/data.db`; delete `_sys/data.db` to re-seed.

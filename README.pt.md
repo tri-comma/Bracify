@@ -167,6 +167,21 @@ Bracify trata **todas as transições de página como SPA por padrão**, tanto n
 - **Interceptação Automática**: Links internos através de tags `<a>` padrão são detectados automaticamente e promovidos a transições SPA. Desenvolvedores podem criar apps SPA sem escrever uma única linha de JavaScript.
 - **Suporte ao Histórico**: Utiliza a API `history.pushState` para que as atualizações de URL e os botões de "Voltar/Avançar" funcionem exatamente como o esperado, mesmo em transições SPA.
 
+#### 4. Carregando o Motor do Lado do Cliente
+
+Páginas exibidas apenas com SSR não precisam de `<script>`, mas para usar transições SPA, o Modo de Desenvolvimento Local (`file://`) ou CSR, cada página precisa carregar o motor do lado do cliente no seu `<head>`.
+
+- **Modo servidor**: O servidor serve o motor em `/engine/engine.cjs`.
+
+  ```html
+  <script src="/engine/engine.cjs"></script>
+  ```
+
+- **Modo de Desenvolvimento Local**: Como não há servidor, coloque o próprio motor (`engine/lib/engine.cjs` do repositório) dentro do projeto e carregue-o por um caminho relativo àquela página.
+- **Usando o mesmo arquivo nos dois modos**: Coloque as duas tags `<script>` lado a lado, como em [`examples/`](./examples/). A que não existe em cada modo falha ao carregar e é ignorada.
+
+Uma forma de carregar o motor com um único `<script>` nos dois modos está em estudo em [#55](https://github.com/tri-comma/Bracify/issues/55).
+
 ---
 
 ## Referência
@@ -243,6 +258,26 @@ Carrega uma estrutura comum ("layout") e preenche áreas específicas dentro del
     ```
 
 - **Nota**: A mesclagem ocorre no lado do servidor durante o uso do servidor de desenvolvimento ou via File System Access API no navegador.
+
+---
+
+##### Inclusão Dinâmica (Caminho via Placeholder)
+
+O caminho do include pode usar o placeholder `{ }`, permitindo trocar o arquivo carregado por um parâmetro de URL, por exemplo.
+
+```html
+<!-- Se ?p=_parts/help.html, expande _parts/help.html -->
+<div data-t-include="{?p}"></div>
+```
+
+- Se o valor estiver vazio (por exemplo, o parâmetro não foi informado) ou o carregamento for recusado pelas restrições abaixo, nada é expandido e o conteúdo original do elemento é mantido (o mesmo vale quando se atinge uma inclusão circular, o limite de aninhamento ou o limite de includes por renderização).
+- **Restrições de caminho**: O caminho expandido deve ficar dentro do projeto. Caminhos que contenham `..`, que contenham o diretório `_sys`, que contenham `:` (como `C:` ou `http:`) ou que comecem com `\` não são carregados (igual em SSR e CSR). Também não é expandido se o arquivo informado não existir.
+- **Nota de segurança**: Se você usar um parâmetro de URL diretamente como caminho, os visitantes poderão inserir qualquer HTML do projeto (inclusive partes em `_parts/`). Se os destinos possíveis forem conhecidos, recomenda-se usar `data-t-if` para exibir um include de caminho fixo para cada candidato.
+
+  ```html
+  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
+  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
+  ```
 
 #### `data-t-source`
 
@@ -485,7 +520,7 @@ Exibe ou esconde elementos baseado em condições. O elemento é exibido se o va
 
     - **Operadores de Comparação**: Usa a mesma notação que os [Operadores da API de Acesso a Dados](#operadores) (`=`, `:ne=`, `:gt=`, etc.).
     - **Operações Lógicas (AND/OR)**: A separação por espaços representa **AND**, e a separação por vírgulas nos valores representa **OR**.
-    - **Uso de Variáveis**: Ao inserir entre `{ }`, você pode usar valores de dados nas condições.
+    - **Uso de Variáveis**: Ao inserir entre `{ }`, você pode usar valores de dados nas condições. Dentro de `{ }` também é possível usar [operações aritméticas](#exibição-de-dados-placeholder-universal) (ex.: `matched._length:gt={_sys.query._offset + 10}`).
     - **Chave Única**: Se você escrever apenas a chave sem operadores, será determinada a presença (veracidade) desse valor como antes.
 
     ```html
@@ -504,6 +539,9 @@ Exibe ou esconde elementos baseado em condições. O elemento é exibido se o va
     <div data-t-if="user.id={post.author_id}">
       <a href="/edit">Editar Artigo</a>
     </div>
+
+    <!-- Exibir "Próxima" apenas se houver uma próxima página. allArticles é uma fonte separada carregada sem _limit / _offset, usada para contagem (quantidade > offset atual + 10) -->
+    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">Próxima</a>
     ```
 
 #### `data-t-redirect`
@@ -523,6 +561,7 @@ Você pode criar e atualizar dados usando tags `<form>` padrão. O Bracify utili
 - **Redirecionamento (Padrão PRG)**: Após salvar no servidor, redireciona automaticamente para a URL definida em `data-t-redirect` ou para a página original. Isso evita o "reenvio de formulário" e permite uma navegação segura.
 - **Data Binding (Valores Iniciais)**: Ao usar `data-t-scope` na tag `<form>`, você pode preencher os campos com dados existentes.
 - **Nomes dos Campos**: O atributo `name` de `<input>` e `<textarea>` corresponde à propriedade no objeto de dados.
+- **Somente no modo servidor**: Os dados são salvos apenas no servidor (SSR). O Modo de Desenvolvimento Local (`file://`) não tem mecanismo de escrita, então formulários `POST` / `PUT` / `DELETE` não são salvos (suporte em estudo em [#56](https://github.com/tri-comma/Bracify/issues/56)).
 
 ### Filtros de Processamento (Pipes)
 
@@ -654,29 +693,20 @@ As operações são feitas via HTTP, mas a resposta é sempre um "redirecionamen
 | Método | Ação | Descrição |
 | :--- | :--- | :--- |
 | `POST` | Criar | Cria novos dados. |
-| `PUT` | Atualizar | Substitui informações existentes pelos dados enviados. |
+| `PUT` | Atualizar | **Substitui por completo** o registro indicado por `id` pelos dados enviados (se o `id` não existir, o registro é criado). |
 | `DELETE`| Deletar | Remove os dados especificados. |
 
 Os `<form>` padrão só enviam `GET` / `POST`; assim, um `POST` com `_method=PUT` ou `_method=DELETE` na query é tratado como esse método (ex.: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
 
+`PUT` exige o `id` de destino (`?id=` na query ou um campo `id` no formulário) e não é uma atualização parcial. Campos não incluídos no formulário são **removidos** do registro salvo. Para os valores que deseja manter, inclua-os no formulário como campos preenchidos com `data-t-scope` (com `type="hidden"`, se necessário).
+
 Um `DELETE` exige pelo menos um filtro de dados (como `id`). Um `DELETE` sem filtro (inclusive com apenas `_limit` e parâmetros semelhantes) é rejeitado com 400 para que nunca apague toda a entidade.
 
-### Especificação de Endpoint (File API)
+> **Sobre a File API**: Os endpoints de gerenciamento de arquivos descritos em versões anteriores (GET/POST/PUT/DELETE em `/_sys/file/{filename}.{ext}`) **não estão implementados**. Coloque arquivos estáticos, como imagens, dentro do projeto e referencie-os por URLs normais (ex.: `/images/logo.png`).
 
-API para gerenciar arquivos estáticos (como imagens) no servidor.
+### Condições de Filtragem de Dados
 
-```text
-/_sys/file/{filename}.{ext}
-```
-
-#### Métodos de Arquivos
-
-| Método | Ação | Descrição |
-| :--- | :--- | :--- |
-| `GET` | Ler | Busca o arquivo. |
-| `POST` | Criar | Upload de novo arquivo. |
-| `PUT` | Atualizar | Sobrescreve um arquivo. |
-| `DELETE` | Deletar | Deleta um arquivo. |
+Parâmetros de consulta adicionados ao `href` de `data-t-source` filtram os dados a serem obtidos (a mesma notação é usada nas condições de filtro do `DELETE`).
 
 #### Parâmetros
 
@@ -695,11 +725,39 @@ API para gerenciar arquivos estáticos (como imagens) no servidor.
 | `:lt` | Menor que | `?stock:lt=10` | Menor que 10 |
 | `:lte` | Menor ou igual | `?stock:lte=10` | 10 ou menor |
 
+#### Curinga (`*`)
+
+Se o valor de uma condição sem operador (igual) contiver `*`, ela se torna uma busca por padrão (como o `LIKE` do SQL), em que `*` corresponde a qualquer string.
+
+| Exemplo | Corresponde a |
+| :--- | :--- |
+| `?title=Web*` | Títulos que começam com `Web` |
+| `?title=*Guia*` | Títulos que contêm `Guia` |
+
+- Válido apenas no modo servidor (Data API). O Modo de Desenvolvimento Local só aceita correspondência exata, e `*` é comparado como um caractere comum.
+- Na condição de `id` e nas condições de filtro do `DELETE`, `*` é tratado como caractere comum (não há busca por padrão).
+- **Atenção**: Se você usar a entrada do usuário diretamente como condição, como em `?title={?q}`, os usuários podem especificar uma busca por padrão; por exemplo, `q=*` corresponde a todos os registros que têm esse campo. Além disso, quando o valor contém `*`, assim como no `LIKE` do SQL, `_` corresponde a qualquer caractere único e `%` a qualquer string, e letras latinas não diferenciam maiúsculas de minúsculas.
+
 ### Variável Reservada (`_sys`)
 
 | Nome | Descrição | Exemplo |
 | :--- | :--- | :--- |
 | `_sys.query` | Parâmetros GET da URL. | `{_sys.query.id}` |
+
+#### Atalho `{?xxx}`
+
+`{?xxx}` é uma forma abreviada de `{_sys.query.xxx}` e pode ser usada não só no `href` de `data-t-source`, mas em qualquer lugar onde placeholders sejam aceitos, como texto, valores de atributos, `data-t-if` e `data-t-include`. Pipes e operações aritméticas funcionam da mesma forma.
+
+```html
+<!-- Se a URL for ?q=bracify -->
+<p>Resultados da busca por "{?q}"</p>     <!-- Resultados da busca por "bracify" -->
+<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
+<a href="books.html?q={?q | default: ''}&_sort=title">Ordenar por título</a>
+```
+
+- Se o parâmetro não existir, vira uma string vazia.
+- **Sobre a codificação de URL**: Valores embutidos na parte de consulta do `href` de `data-t-source` são codificados em URL automaticamente, mas em atributos comuns (como `<a href>`) é feito apenas o escape de HTML, sem codificação de URL. Colocar na query de um link um valor que possa conter `&` ou `=` pode fazer com que seja interpretado como outro parâmetro.
+- O `{?}` sem valor (auto binding) só pode ser usado dentro do `href` de `data-t-source` (veja abaixo).
 
 #### Uso no `data-t-source`
 
