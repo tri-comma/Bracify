@@ -169,7 +169,6 @@ describe('SSR {?} URL parameter shorthands in data-t-source href', () => {
     });
 
     test('bare {?} auto-binds the URL parameter with the same name as the key (README spec)',
-        { todo: 'bug: bare {?} is documented as auto-binding "category={?}" to ?category=..., but it is never resolved and is silently ignored' },
         async () => {
             const { doc } = await page('auto.html', '?category=Life');
             assert.deepStrictEqual(titles(doc), ['Elder', 'apple']);

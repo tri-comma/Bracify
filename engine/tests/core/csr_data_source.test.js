@@ -124,7 +124,6 @@ describe('CSR query parameters: filtering', () => {
     });
 
     test('bare {?} auto-binds the URL parameter with the same name as the key (README spec)',
-        { todo: 'bug: bare {?} is documented as auto-binding "category={?}" to ?category=..., but it is never resolved and is silently ignored' },
         async () => {
             assert.deepStrictEqual((await list(U + '?category={?}', { category: 'Life' })).sort(), ['Elder', 'apple']);
         });
