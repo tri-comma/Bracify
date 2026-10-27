@@ -722,6 +722,12 @@ const factory = function () {
         });
     }
 
+    // README `key={?}` auto-bind: a query value that is exactly `{?}` means `key={?key}`. Plain keys only
+    // (operator keys such as `price:gt` and mixed values such as `pre{?}` are left unchanged).
+    function expandAutoBind(href) {
+        return String(href).replace(/([?&])([^?&#=:{}%]+)=\{\?\}(?=[&#]|$)/g, (m, sep, key) => sep + key + '={?' + key + '}');
+    }
+
     async function preloadSources() {
         if (typeof document === 'undefined') return {};
         const globalData = (typeof window !== 'undefined' ? window.__BRACIFY_DATA__ : null) || {};
@@ -734,6 +740,7 @@ const factory = function () {
             if (!rawHref) return Promise.resolve();
             // The href may come from SSR (data values already escaped as \{ \} \\) or from a raw template: resolve with
             // escaping and unescape once so the URL is the literal text the server used, without re-evaluating it.
+            rawHref = expandAutoBind(rawHref);
             const href = (rawHref.indexOf('{') !== -1 ? resolveValue(rawHref, { _sys: sys }, undefined, true) : String(rawHref)).replace(UNESCAPE_RE, '$1');
             const fetcher = (typeof window !== 'undefined' && window.BracifyFetcher) || browserLocalFetcher;
             return fetcher(href, name).then(data => { if (data) globalData[name] = data; });
@@ -963,6 +970,7 @@ const factory = function () {
             const name = element.getAttribute('data-t-source');
             let rawHref = element.getAttribute('href');
             if (!rawHref) return;
+            rawHref = expandAutoBind(rawHref);
             const href = (rawHref.indexOf('{') !== -1) ? resolveValue(rawHref, data) : rawHref;
             const fetcher = this.dataFetcher || (typeof window !== 'undefined' && window.BracifyFetcher) || browserLocalFetcher;
             try {
@@ -1036,7 +1044,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
+        Engine, resolveValue, expandAutoBind, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
