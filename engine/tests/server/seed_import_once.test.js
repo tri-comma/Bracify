@@ -158,16 +158,25 @@ test('seed import: runs inside a single transaction (BEGIN ... COMMIT), not one 
     }, { sqlite3: spied });
 });
 
-test('seed import: 2000 seed records import quickly (< 5s)', async () => {
+// The slowness came from one autocommit per record. A wall-clock bound was flaky under parallel test load,
+// so assert the cause instead: a large seed is imported with a single BEGIN/COMMIT pair.
+test('seed import: 2000 seed records are imported in one transaction, not one commit per record', async () => {
+    const log = [];
+    class SpyDatabase extends sqlite3.Database {
+        run(sql, ...rest) { log.push(String(sql)); return super.run(sql, ...rest); }
+        exec(sql, ...rest) { log.push(String(sql)); return super.exec(sql, ...rest); }
+    }
+    const spied = { Database: SpyDatabase, verbose: () => spied };
+
     await withProject(async ({ dataDir, start }) => {
         const N = 2000;
         writeSeed(dataDir, 'books', Array.from({ length: N }, (_, i) => ({ id: String(i), title: `T${i}` })));
-        const t0 = Date.now();
         const a = await start();
-        const elapsed = Date.now() - t0;
         assert.strictEqual((await a.find('books')).length, N);
-        assert.ok(elapsed < 5000, `init took ${elapsed}ms for ${N} records`);
-    });
+        const norm = log.map(s => s.trim().toUpperCase());
+        assert.strictEqual(norm.filter(s => s.startsWith('BEGIN')).length, 1, 'one BEGIN for the whole seed');
+        assert.strictEqual(norm.filter(s => s.startsWith('COMMIT')).length, 1, 'one COMMIT for the whole seed');
+    }, { sqlite3: spied });
 });
 
 test('seed import: a pre-existing DB without markers keeps its rows and is not re-seeded', async () => {
