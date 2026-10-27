@@ -1504,6 +1504,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // The DOM now shows this URL: record it before the awaits below, so a failure or a Back during them cannot leave it stale
         BracifyLib._renderedPath = location.pathname + location.search;
+        BracifyLib._renderedProjectPath = path.split('#')[0];
         navCommitted = true; // a popstate skip no longer cancels this navigation; only a newer navigate() does
 
         // Deep update window._sys from the new URL
@@ -1626,6 +1627,32 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
     BracifyLib.initializeBracify = initializeBracify;
 
+    // file:// + rootHandle: navigate() reads project-relative paths from the folder handle, but the initial history
+    // entry has no state and a filesystem location. Give it { path } (project-relative, like navigate's pushState)
+    // so Back to it re-renders. The folder's position inside the location is discovered by probing the handle with
+    // every suffix of the URL path, longest first (a failed lookup stops at the first missing directory).
+    async function seedInitialHistoryState(rootHandle) {
+        if (!rootHandle) return;
+        const st = history.state;
+        if (st && (typeof st !== 'object' || Array.isArray(st) || st.path)) return; // foreign non-object state / already set
+        const href = location.href;
+        const segs = location.pathname.split('/').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch (e) { return s; } });
+        for (let i = 0; i < segs.length; i++) {
+            const rel = segs.slice(i).join('/');
+            const h = await BracifyLib.resolvePathHandle(rootHandle, rel);
+            if (h && h.kind === 'file') {
+                // Still the untouched initial entry? (a quick navigate() may have pushed its own state meanwhile)
+                const cur = history.state;
+                if (location.href !== href || (cur && (typeof cur !== 'object' || Array.isArray(cur) || cur.path))) return;
+                const path = rel + location.search;
+                // Merge into an existing plain-object state (re-read, a page script may have changed it) instead of replacing it
+                try { history.replaceState({ ...(cur || {}), path }, ''); } catch (e) { return; }
+                BracifyLib._renderedProjectPath = path;
+                return;
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
         BracifyLib._renderedPath = location.pathname + location.search; // path+search currently rendered (hash excluded)
         let forceReset = false;
@@ -1657,6 +1684,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         } else if (location.protocol === 'file:' && !BracifyLib.rootHandle) {
             showInitOverlay();
         } else {
+            if (location.protocol === 'file:') seedInitialHistoryState(BracifyLib.rootHandle).catch(() => { });
             initializeBracify();
         }
 
@@ -1710,10 +1738,19 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         window.addEventListener('popstate', (e) => {
             let target = e.state && e.state.path;
             if (!target) {
-                // Known limitation (rootHandle mode only): file:// paths are filesystem paths, not project-relative,
-                // so the initial entry (no state.path) cannot be re-rendered on Back there.
+                // file:// paths are filesystem paths, not project-relative: only a foreign state-less entry is left
+                // here (the initial entry gets state.path in seedInitialHistoryState), so there is nothing to render.
                 if (location.protocol === 'file:') return;
                 target = location.pathname + location.search;
+            }
+            if (BracifyLib.rootHandle && location.protocol === 'file:' && e.state && e.state.path) {
+                // The URL is a filesystem location and can collide with another project file: state.path is authoritative
+                if (target.split('#')[0] === BracifyLib._renderedProjectPath) {
+                    if (!navCommitted) cancelNavigation();
+                    return;
+                }
+                BracifyLib.navigate(target, false);
+                return;
             }
             // A hash-only history change keeps the rendered page
             try {
