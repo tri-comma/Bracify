@@ -81,7 +81,7 @@ async function build() {
             try {
                 const html = fs.readFileSync(filepath, 'utf-8');
                 // Execute includes (and bind mock data) so the output works on file:///
-                const processed = await processHTML(html, structuredClone(data), async (includePath) => resolveInclude(includePath), async () => null, null, { stripAttributes: true });
+                const processed = await processHTML(html, structuredClone(data), async (includePath) => resolveInclude(includePath), async () => null, null, { stripAttributes: true, markBound: true });
                 fs.writeFileSync(dest, processed);
                 console.log(`Processed: ${relative}`);
             } catch (e) {

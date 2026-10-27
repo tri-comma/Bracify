@@ -847,16 +847,21 @@ const factory = function () {
         // Deep collision prevention: in strict (hydration) mode a control outside any data-t-scope never binds from the
         // data context (global data could collide with its name).
         const strictOutOfScope = !!(config && config.requireScope && !config.inScope);
+        let fromQuery = false;
         let val = strictOutOfScope ? undefined : getNestedValue(data, name, false, true); // form auto-binding never follows relations
         // _sys.query fallback (Issue #47): SSR fills scope-less controls from it, so CSR/local rendering does too.
         // Not when hydrating SSR output (window.__BRACIFY_SSR__, set by the server's state script): the server already
         // applied it, and data-t-scope is stripped from SSR output, so a scoped control would look scope-less here and
         // a colliding query param would clobber its server-rendered value.
         const hydratingSsr = strictOutOfScope && typeof window !== 'undefined' && window.__BRACIFY_SSR__ === true;
-        if (val === undefined && !hydratingSsr && data._sys && data._sys.query) {
-            if (Object.prototype.hasOwnProperty.call(data._sys.query, name)) val = data._sys.query[name];
+        // data-t-bound: set by the CLI build via the markBound option on controls bound from data; like SSR output, they skip the query fallback.
+        const builtBound = el.hasAttribute('data-t-bound');
+        if (val === undefined && !hydratingSsr && !builtBound && data._sys && data._sys.query) {
+            if (Object.prototype.hasOwnProperty.call(data._sys.query, name)) { val = data._sys.query[name]; fromQuery = true; }
             if (engine && engine.logger) engine.logger(`[Engine] Query Fallback: name="${name}" val="${val}"`);
         }
+        // Mark data-bound controls (null included, as SSR hydration keeps them). fromQuery only guards a build that carries a query.
+        if (config && config.markBound && val !== undefined && !fromQuery) el.setAttribute('data-t-bound', '');
         if (val !== undefined && val !== null) {
             if (engine && engine.logger) engine.logger(`[Engine] BINDING: name="${name}" val="${val}"`);
             // Property gets the raw value; the attribute gets the escaped form (unescaped by unescapeNodes on the client).
