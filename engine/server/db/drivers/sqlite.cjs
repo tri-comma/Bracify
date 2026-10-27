@@ -64,69 +64,88 @@ class SQLiteAdapter extends BaseAdapter {
         const dbDir = path.dirname(dbPath);
         if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
-        return new Promise((resolve, reject) => {
-            this.db = new this.sqlite3.Database(dbPath, (err) => {
-                if (err) return reject(err);
-
-                this.db.serialize(() => {
-                    // Main Table
-                    this.db.run(`CREATE TABLE IF NOT EXISTS data_records (
-                        entity TEXT,
-                        id TEXT,
-                        value TEXT,
-                        PRIMARY KEY (entity, id)
-                    )`);
-
-                    // System Config Table
-                    this.db.run(`CREATE TABLE IF NOT EXISTS config (
-                        name TEXT PRIMARY KEY,
-                        value TEXT
-                    )`);
-
-                    // Migrate from legacy kv_store if exists
-                    this.db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='kv_store'", (err, table) => {
-                        if (table) {
-                            this.db.run(`INSERT OR IGNORE INTO data_records (entity, id, value) 
-                                    SELECT name, '__default__', data FROM kv_store`);
-                        }
-                    });
-
-                    // Auto-migrate from JSON files in _sys/data/
-                    // Only do this for the "main" data.db, usually.
-                    // For now, keep original logic.
-                    const dataDir = path.join(this.projectPath, '_sys', 'data');
-                    if (fs.existsSync(dataDir)) {
-                        const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
-                        for (const file of files) {
-                            const entity = file.replace('.json', '');
-                            try {
-                                const content = fs.readFileSync(path.join(dataDir, file), 'utf-8');
-                                const data = JSON.parse(content);
-                                if (Array.isArray(data)) {
-                                    for (const item of data) {
-                                        const id = item.id || Math.random().toString(36).substring(2, 15);
-                                        this.db.run(`INSERT OR IGNORE INTO data_records (entity, id, value) VALUES (?, ?, ?)`, [entity, id, JSON.stringify(item)]);
-                                    }
-                                } else if (data && typeof data === 'object') {
-                                    const id = data.id || '__default__';
-                                    this.db.run(`INSERT OR IGNORE INTO data_records (entity, id, value) VALUES (?, ?, ?)`, [entity, id, content]);
-                                }
-                            } catch (e) {
-                                console.error(`[DB-SQLite] Failed to migrate ${file}: ${e.message}`);
-                            }
-                        }
-                    }
-
-                    this.db.run("SELECT 1", (err) => {
-                        if (err) reject(err);
-                        else {
-                            console.log(`[DB-SQLite] Connected and initialized: ${dbPath}`);
-                            resolve();
-                        }
-                    });
-                });
-            });
+        await new Promise((resolve, reject) => {
+            this.db = new this.sqlite3.Database(dbPath, (err) => err ? reject(err) : resolve());
         });
+
+        const db = this.db;
+        const run = (sql, params = []) => new Promise((res, rej) => db.run(sql, params, (e) => e ? rej(e) : res()));
+        const get = (sql, params = []) => new Promise((res, rej) => db.get(sql, params, (e, row) => e ? rej(e) : res(row)));
+
+        // Main Table
+        await run(`CREATE TABLE IF NOT EXISTS data_records (
+            entity TEXT,
+            id TEXT,
+            value TEXT,
+            PRIMARY KEY (entity, id)
+        )`);
+
+        // System Config Table
+        await run(`CREATE TABLE IF NOT EXISTS config (
+            name TEXT PRIMARY KEY,
+            value TEXT
+        )`);
+
+        // Migrate from legacy kv_store if exists
+        const legacy = await get("SELECT name FROM sqlite_master WHERE type='table' AND name='kv_store'");
+        if (legacy) {
+            await run(`INSERT OR IGNORE INTO data_records (entity, id, value)
+                    SELECT name, '__default__', data FROM kv_store`);
+        }
+
+        await this._importSeeds(run, get);
+
+        console.log(`[DB-SQLite] Connected and initialized: ${dbPath}`);
+    }
+
+    // Import _sys/data/*.json seeds once per entity. A `seed_imported:<entity>` marker in the config table is
+    // written in the same transaction as the entity's inserts, so records deleted later (even all of them) are
+    // never re-seeded, and edits to the seed files after the first import are ignored. A DB that predates the
+    // marker and already holds rows for the entity just gets the marker; an entity without rows is imported.
+    async _importSeeds(run, get) {
+        const dataDir = path.join(this.projectPath, '_sys', 'data');
+        if (!fs.existsSync(dataDir)) return;
+
+        const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+        for (const file of files) {
+            const entity = file.replace('.json', '');
+            const marker = `seed_imported:${entity}`;
+            let inTransaction = false;
+            let stmt = null;
+            try {
+                if (await get("SELECT 1 AS x FROM config WHERE name = ?", [marker])) continue;
+
+                const content = fs.readFileSync(path.join(dataDir, file), 'utf-8');
+                const data = JSON.parse(content);
+                const hasRows = await get("SELECT 1 AS x FROM data_records WHERE entity = ? LIMIT 1", [entity]);
+
+                await run("BEGIN");
+                inTransaction = true;
+                if (!hasRows) {
+                    stmt = await new Promise((res, rej) => {
+                        const st = this.db.prepare(`INSERT OR IGNORE INTO data_records (entity, id, value) VALUES (?, ?, ?)`, (e) => e ? rej(e) : res(st));
+                    });
+                    const insert = (id, json) => new Promise((res, rej) => stmt.run([entity, id, json], (e) => e ? rej(e) : res()));
+                    if (Array.isArray(data)) {
+                        for (const item of data) {
+                            const id = item.id || Math.random().toString(36).substring(2, 15);
+                            await insert(id, JSON.stringify(item));
+                        }
+                    } else if (data && typeof data === 'object') {
+                        await insert(data.id || '__default__', content);
+                    }
+                    await new Promise((res, rej) => stmt.finalize((e) => e ? rej(e) : res()));
+                    stmt = null;
+                }
+                await run("INSERT OR REPLACE INTO config (name, value) VALUES (?, ?)", [marker, JSON.stringify(true)]);
+                await run("COMMIT");
+                inTransaction = false;
+            } catch (e) {
+                console.error(`[DB-SQLite] Failed to migrate ${file}: ${e.message}`);
+                if (stmt) await new Promise(res => stmt.finalize(() => res()));
+                if (inTransaction) await run("ROLLBACK").catch(() => {});
+            }
+        }
     }
 
     async close() {
