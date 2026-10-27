@@ -70,12 +70,16 @@ class EngineServer {
         const root = path.resolve(this.currentProjectPath);
         const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;
         const within = (p, base) => norm(p).startsWith(norm(base + path.sep));
+        // A ":" never occurs in a legitimate project path; on Windows it opens NTFS alternate data streams
+        // ("page.html::$DATA" would serve the raw template), so refuse it on every platform
+        if (relPath.includes(':')) return null;
         const file = path.resolve(root, relPath.replace(/^[\/\\]+/, ''));
         if (!within(file, root)) return false;
         if (!fs.existsSync(file)) return null;
         try {
-            const real = fs.realpathSync(file);
-            const realRoot = fs.realpathSync(root);
+            // .native yields the true on-disk case, so case variants of a request resolve to one canonical file
+            const real = fs.realpathSync.native(file);
+            const realRoot = fs.realpathSync.native(root);
             if (!within(real, realRoot)) return false;
             // Canonical path (8.3 names, trailing dots/spaces, ADS resolved) for segment checks
             return { file: real, segments: path.relative(realRoot, real).split(path.sep), root: realRoot };
@@ -321,10 +325,10 @@ class EngineServer {
             const filePath = loc.file;
 
             // If HTML, Perform SSR
-            if (filePath.endsWith('.html')) {
+            if (filePath.toLowerCase().endsWith('.html')) {
                 try {
                     let htmlContent;
-                    const cacheKey = reqPath;
+                    const cacheKey = filePath;
 
                     if (this.templateCache.has(cacheKey)) {
                         htmlContent = this.templateCache.get(cacheKey);
