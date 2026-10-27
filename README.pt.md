@@ -359,6 +359,11 @@ Você pode exibir dados escrevendo `{nome_da_fonte.nome_do_item}` no texto HTML 
   <code>C:\\temp</code> <!-- Resultado: C:\temp (uma barra invertida literal é escrita como \\) -->
   ```
 
+- **Quando um valor não existe**:
+  Quando os dados existem (um `data-t-source`, um `data-t-scope` ou o item atual de `data-t-list`) mas falta o campo ou o registro relacionado (p. ex. `{book.author.name}` de um autor excluído), o placeholder é renderizado como **string vazia**, tanto em texto quanto em atributos (`class="s-{book.status}"` vira `class="s-"`). Use `data-t-if` para controlar a exibição. `{...}` só permanece como está quando os próprios dados não estão disponíveis (fonte/escopo não carregado ou indefinido).
+  - `{?x}` / `{_sys.query.x}` com um parâmetro de URL ausente também são renderizados vazios (`_sys` está sempre disponível). Um `data-t-scope` sobre um registro relacionado inexistente (p. ex. `data-t-scope="book.author"`) é um escopo vazio válido e seus placeholders internos são renderizados vazios.
+  - **Limitação de valores de filtro**: no `href` de um `data-t-source`, um valor de filtro que contenha `{` e `}` ao mesmo tempo (p. ex. buscar um livro intitulado `{foo}` com `?title={foo}`) é tratado como placeholder não resolvido e o filtro é ignorado (SSR e CSR).
+
 ### Exibindo Listas (`data-t-list`)
 
 Se houver vários itens de dados que você deseja exibir, você deve especificar `data-t-list="Nome da Fonte de Dados"` no elemento (intervalo) que deseja repetir.

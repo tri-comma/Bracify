@@ -41,7 +41,7 @@ for (const mode of ['ssr', 'csr']) {
         test('inside data-t-list, ids compared as strings, missing record renders like any missing value', async () => {
             const doc = await page('<ul id="l"><li data-t-list="articles">{articles.title}:{articles.category.name}</li></ul>',
                 { articles: ARTICLES, categories: CATEGORIES });
-            assert.deepStrictEqual([...doc.querySelectorAll('#l li')].map(l => l.textContent), ['A1:Tech', 'A2:Life', 'A3:{articles.category.name}']);
+            assert.deepStrictEqual([...doc.querySelectorAll('#l li')].map(l => l.textContent), ['A1:Tech', 'A2:Life', 'A3:']);
         });
 
         test('data-t-if on a related field', async () => {
@@ -87,7 +87,7 @@ for (const mode of ['ssr', 'csr']) {
             const doc = await page('<p id="p">{article.category.name}|{b.category.name}</p>', {
                 article: { id: 1, category_id: 5 }, b: { id: 1, category_id: 6 }, categories: { id: 5, name: 'Solo' }
             });
-            assert.strictEqual($(doc, '#p').textContent, 'Solo|{b.category.name}');
+            assert.strictEqual($(doc, '#p').textContent, 'Solo|');
         });
 
         test('looked-up values are HTML-escaped', async () => {

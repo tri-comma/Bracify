@@ -42,12 +42,13 @@ for (const mode of ['ssr', 'csr']) {
             assert.strictEqual(doc.querySelector('#d').getAttribute('title'), payload);
         });
 
-        test('missing values keep the placeholder; null becomes an empty string', async () => {
-            const doc = await render(mode, '<p id="a">[{item.ghost}]</p><p id="b">[{item.nul}]</p>', {
+        test('missing field of a loaded source renders empty (null too); an unloaded root keeps the placeholder', async () => {
+            const doc = await render(mode, '<p id="a">[{item.ghost}]</p><p id="b">[{item.nul}]</p><p id="c">[{nosuch.x}]</p>', {
                 head, sources: { item: { nul: null } }
             });
-            assert.strictEqual(doc.querySelector('#a').textContent, '[{item.ghost}]');
+            assert.strictEqual(doc.querySelector('#a').textContent, '[]');
             assert.strictEqual(doc.querySelector('#b').textContent, '[]');
+            assert.strictEqual(doc.querySelector('#c').textContent, '[{nosuch.x}]');
         });
 
         test('backslash-escaped placeholders are not evaluated', async () => {
@@ -109,9 +110,9 @@ for (const mode of ['ssr', 'csr']) {
             assert.strictEqual(doc.querySelector('#p').textContent, '<b>bold</b> & more');
         });
 
-        test('an absent parameter keeps the placeholder text', async () => {
+        test('an absent parameter renders empty (_sys is loaded, same as the piped form)', async () => {
             const doc = await render(mode, '<p id="p">{_sys.query.nothing}</p>');
-            assert.strictEqual(doc.querySelector('#p').textContent, '{_sys.query.nothing}');
+            assert.strictEqual(doc.querySelector('#p').textContent, '');
         });
 
         test('arithmetic on a query parameter (pagination link)', async () => {
