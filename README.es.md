@@ -832,6 +832,7 @@ En el modo de desarrollo local (tanto True Zero Server como Modo de simulación)
 - **Limitaciones de filtrado**:
   - **Solo coincidencia exacta**: Devuelve datos solo cuando la clave y el valor especificados coinciden exactamente.
   - **Ignorar valores vacíos**: Si el valor del filtro es una cadena vacía (`?nombre=`), esa condición se ignora (se muestran todos los elementos).
+  - **Excepción del `id` vacío**: un filtro sobre la clave `id` es la excepción: si su valor está vacío o es un marcador sin resolver (p. ej. `{?}`), no devuelve ningún registro en lugar de ignorarse (así, `?id={?id}&_limit=1` sin id muestra «no encontrado» en vez del primer registro).
   - **Operadores avanzados no compatibles**: Los operadores como `:gt` o `:lt` no funcionan y se ignoran.
 
 - **Parámetros de control compatibles**:

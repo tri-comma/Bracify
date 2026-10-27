@@ -9,6 +9,12 @@ const OPERATORS = { ne: '!=', gt: '>', gte: '>=', lt: '<', lte: '<=' };
 // '2' / '1.5', booleans 'true' / 'false' (same as String(item[key]) in the CSR filter).
 const TEXT_EXPR = "CASE json_type(value, ?) WHEN 'true' THEN 'true' WHEN 'false' THEN 'false' ELSE CAST(json_extract(value, ?) AS TEXT) END";
 
+// True when an `id` filter value is empty or an unresolved placeholder like "{?}" / "{_sys.query.id}".
+function isBlankIdFilter(val) {
+    return val === undefined || val === null || val === '' ||
+        (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1);
+}
+
 // Returns the SQL fragment (starting with " AND ") for one filter and pushes its parameters.
 function buildFilter(rawKey, val, params, allowWildcard = true) {
     let key = rawKey;
@@ -182,6 +188,8 @@ class SQLiteAdapter extends BaseAdapter {
 
             const dataFilters = {};
             for (const [key, val] of Object.entries(filters)) {
+                // An empty/unresolved `id` filter matches nothing (never "ignored", which would return the first record).
+                if (key === 'id' && isBlankIdFilter(val)) return resolve([]);
                 if (val === undefined || val === null || val === '' || val === '{?}') continue;
                 // Ignore unresolved placeholders (e.g. "{_sys.query.q}" when the URL parameter is absent),
                 // consistent with the CSR filterLocalData(); otherwise they would filter out every record.
