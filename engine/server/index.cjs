@@ -57,7 +57,7 @@ class EngineServer {
 
     // Locates a project-relative path on disk, confined to the project both lexically and after
     // following symlinks/junctions (Issues #36, #68).
-    // Returns { file, segments } (canonical path and its segments relative to the real project root),
+    // Returns { file, segments, root } (canonical path, its segments relative to the real project root, and that root),
     // false when the path escapes the project, null when it does not exist.
     locateProjectFile(relPath) {
         const root = path.resolve(this.currentProjectPath);
@@ -71,7 +71,7 @@ class EngineServer {
             const realRoot = fs.realpathSync(root);
             if (!within(real, realRoot)) return false;
             // Canonical path (8.3 names, trailing dots/spaces, ADS resolved) for segment checks
-            return { file: real, segments: path.relative(realRoot, real).split(path.sep) };
+            return { file: real, segments: path.relative(realRoot, real).split(path.sep), root: realRoot };
         } catch (e) { return null; }
     }
 
@@ -419,7 +419,8 @@ class EngineServer {
                 }
             } else {
                 // Static file (images, css, etc.)
-                res.sendFile(filePath);
+                // Relative to the real root so dotfile checks ignore dot-directories above the project (Issue #41)
+                res.sendFile(loc.segments.join('/'), { root: loc.root });
             }
         });
 
