@@ -1102,6 +1102,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     };
 
     async function initializeBracify(initOptions = {}) {
+        // navigate() re-creates every script of the swapped-in body itself (hydrateScripts); the initial load only
+        // re-creates the scripts the engine inserted (includes/slots), since the page's own ones already ran at parse.
+        const { skipScriptHydration, ...processOptions } = initOptions;
+        const existingScripts = skipScriptHydration ? null : new Set(document.querySelectorAll('body script'));
         const data = await BracifyLib.preloadSources();
         const options = {
             includeResolver: async (path) => {
@@ -1129,12 +1133,17 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         options.logger = console.log;
 
         const engine = new BracifyLib.Engine(options);
-        await engine.processElement(document.body, { ...data, _sys: window._sys }, { requireScope: true, ...initOptions });
+        await engine.processElement(document.body, { ...data, _sys: window._sys }, { requireScope: true, ...processOptions });
 
         // Final unescape
         unescapeNodes(document.body);
         // SSR also binds <head> (title, meta, link) with escaped data values; the client never re-binds it, only unescapes.
         if (document.head) unescapeNodes(document.head);
+
+        // innerHTML-inserted scripts never execute: run those that were not part of the loaded document
+        if (existingScripts) {
+            await hydrateScripts(Array.from(document.querySelectorAll('body script')).filter(s => !existingScripts.has(s)));
+        }
 
         ensureDisconnectButton();
     }
@@ -1440,7 +1449,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         } catch (e) { }
 
         window.scrollTo(0, 0);
-        await initializeBracify({ requireScope: true });
+        await initializeBracify({ requireScope: true, skipScriptHydration: true });
         await hydrateScripts(document.body);
     };
 
@@ -1505,18 +1514,30 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         });
     }
 
-    async function hydrateScripts(container) {
-        const scripts = Array.from(container.querySelectorAll('script'));
+    const CLASSIC_SCRIPT_TYPES = ['text/javascript', 'application/javascript', 'text/ecmascript', 'application/ecmascript'];
+
+    // Known limitation: a page script inside a data-t-list template runs at parse plus once per cloned row (CSR).
+    // `target` is a container element (all its scripts) or an array of <script> elements.
+    async function hydrateScripts(target) {
+        const scripts = Array.isArray(target) ? target : Array.from(target.querySelectorAll('script'));
         for (const oldScript of scripts) {
             // Skip engine script
             if (oldScript.src && (oldScript.src.includes('engine.js') || oldScript.src.includes('engine.cjs'))) continue;
+
+            // Only executable scripts are re-created; data blocks (application/json, text/template, ...) stay untouched
+            const type = (oldScript.getAttribute('type') || '').split(';')[0].trim().toLowerCase();
+            const isModule = type === 'module';
+            if (!isModule && type !== '' && !CLASSIC_SCRIPT_TYPES.includes(type)) continue;
 
             const newScript = document.createElement('script');
             Array.from(oldScript.attributes).forEach(attr => {
                 newScript.setAttribute(attr.name, attr.value);
             });
 
-            if (oldScript.innerHTML) {
+            if (isModule) {
+                // Modules are already scoped, and import/export cannot live inside a function: keep the text as is
+                newScript.textContent = oldScript.textContent;
+            } else if (oldScript.innerHTML) {
                 // IIFE Wrapping for scope isolation
                 newScript.innerHTML = `(function(){\n${oldScript.innerHTML}\n})();`;
             }
