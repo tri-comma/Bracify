@@ -887,7 +887,10 @@ const factory = function () {
                 // Per-render counter, shared by reference with every descendant call (never stored on the Engine instance)
                 localConfig = { ...localConfig, includeBudget: { count: 0 } };
             }
-            if (localConfig.processIncludes && element.hasAttribute('data-t-include')) {
+            // Include-only pass without bindings (SSR template cache build, Issue #67): there is no real data to
+            // resolve a dynamic path ({?p}, {_sys.query.p}, ...) against, so leave it for the per-request render.
+            if (localConfig.processIncludes && element.hasAttribute('data-t-include')
+                && !(localConfig.processBindings === false && element.getAttribute('data-t-include').indexOf('{') !== -1)) {
                 const rawPath = element.getAttribute('data-t-include');
                 const includePath = (rawPath.indexOf('{') !== -1) ? resolveValue(rawPath, data) : rawPath;
                 const includeStack = localConfig.includeStack || [];
