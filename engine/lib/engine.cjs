@@ -1388,23 +1388,57 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         };
     }
 
+    // Last navigation wins: a newer navigate() (or a popstate that keeps the rendered page) invalidates the older one
+    let navGeneration = 0;
+    let navController = null;
+    let navCommitted = false; // the in-flight navigation has already swapped the DOM (past the point of no return)
+    function cancelNavigation() {
+        navGeneration++;
+        if (navController) {
+            navController.abort();
+            navController = null;
+        }
+    }
+
     BracifyLib.navigate = async function (path, push = true) {
         if (!BracifyLib.rootHandle && location.protocol === 'file:') {
             window.location.assign(path);
             return;
         }
 
+        cancelNavigation();
+        navCommitted = false;
+        const token = navGeneration;
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        navController = controller;
+        const isStale = () => token !== navGeneration;
+
+        try {
+            await runNavigation(path, push, controller, isStale);
+        } catch (e) {
+            // An aborted (superseded) navigation ends quietly
+            if (isStale() || (e && e.name === 'AbortError')) return;
+            throw e;
+        } finally {
+            if (navController === controller) navController = null;
+        }
+    };
+
+    async function runNavigation(path, push, controller, isStale) {
         // 1. Fetch Page
         const cleanPath = path.split('?')[0].split('#')[0];
         let html = '';
         if (BracifyLib.rootHandle) {
             const h = await BracifyLib.resolvePathHandle(BracifyLib.rootHandle, cleanPath);
+            if (isStale()) return;
             html = await BracifyLib.readFileContent(h);
         } else {
             // Must use FULL path including query for SSR to work on server
-            const res = await fetch(path);
+            const res = await (controller ? fetch(path, { signal: controller.signal }) : fetch(path));
+            if (isStale()) return;
             if (res.ok) html = await res.text();
         }
+        if (isStale()) return;
 
         if (!html) {
             console.error('[Bracify] Failed to load path:', path);
@@ -1415,6 +1449,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
+        // Commit point: from here to pushState and `_renderedPath` there is no await, so nothing can interleave
         // 3. Sync Head
         syncHead(doc);
 
@@ -1441,6 +1476,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // The DOM now shows this URL: record it before the awaits below, so a failure or a Back during them cannot leave it stale
         BracifyLib._renderedPath = location.pathname + location.search;
+        navCommitted = true; // a popstate skip no longer cancels this navigation; only a newer navigate() does
 
         // Deep update window._sys from the new URL
         try {
@@ -1453,8 +1489,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         window.scrollTo(0, 0);
         await initializeBracify({ requireScope: true, skipScriptHydration: true });
+        if (isStale()) return;
         await hydrateScripts(document.body);
-    };
+    }
 
     function syncHead(newDoc) {
         // 1. Title
@@ -1498,8 +1535,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
             const key = getKey(el);
             if (key) {
-                const existing = Array.from(currentHead.querySelectorAll(`${el.tagName}[name="${el.getAttribute('name')}"], ${el.tagName}[property="${el.getAttribute('property')}"], ${el.tagName}[href="${el.getAttribute('href')}"]`))
-                    .find(e => e.tagName === el.tagName);
+                // Same key as getKey, so a same-name data-t-source link is updated in place, never duplicated
+                const existing = key === 'no-key' ? null : Array.from(currentHead.querySelectorAll('meta, link'))
+                    .find(e => e.tagName === el.tagName && getKey(e) === key);
                 if (existing) {
                     // Update attributes if changed
                     Array.from(el.attributes).forEach(attr => {
@@ -1588,8 +1626,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // --- SPA Link Interception ---
         document.addEventListener('click', (e) => {
+            if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
             const link = e.target.closest('a');
             if (!link) return;
+            if (link.hasAttribute('download')) return;
+            if ((link.getAttribute('rel') || '').toLowerCase().split(/\s+/).includes('external')) return;
 
             const href = link.getAttribute('href');
             const target = link.getAttribute('target');
@@ -1641,7 +1682,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
             // A hash-only history change keeps the rendered page
             try {
                 const u = new URL(target, location.href);
-                if (u.pathname + u.search === BracifyLib._renderedPath) return;
+                if (u.pathname + u.search === BracifyLib._renderedPath) {
+                    if (!navCommitted) cancelNavigation(); // the user went back to the rendered page: an in-flight navigation must not land later
+                    return;
+                }
             } catch (err) { /* unparsable target: let navigate handle it */ }
             BracifyLib.navigate(target, false);
         });
