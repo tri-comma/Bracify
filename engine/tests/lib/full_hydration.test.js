@@ -60,6 +60,7 @@ describe('Full Hydration & Collision Protection', () => {
         // Mock data and system state
         global.window.__BRACIFY_DATA__ = { project: { name: 'Bracify Studio' } };
         global.window._sys = { query: { name: 'OVERWRITTEN_BY_URL' }, params: {} };
+        global.window.__BRACIFY_SSR__ = true; // simulate hydrating server-rendered output (state script marker)
         global.window.BracifyFetcher = async () => global.window.__BRACIFY_DATA__;
 
         // Trigger Hydration

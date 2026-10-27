@@ -44,6 +44,7 @@ describe('The Smoking Gun Diagnostic', () => {
 
         // Query param ?name= is present (empty)
         global.window._sys = { query: { name: "" }, params: {} };
+        global.window.__BRACIFY_SSR__ = true; // simulate hydrating server-rendered output (state script marker)
         // Data is missing
         global.window.__BRACIFY_DATA__ = undefined;
 

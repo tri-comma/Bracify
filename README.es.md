@@ -415,7 +415,7 @@ Si se especifica un atributo `name` para los elementos `input`, `select` o `text
 
 - **Prioridad para la vinculación automática**:
     1. **Contexto de datos actual**: Establece el valor de las propiedades de los datos especificados por `data-t-scope`, etc.
-    2. **Parámetros de URL (`_sys.query`)**: Si hay un ítem con el mismo nombre que `name` en los parámetros de consulta de la URL de la página, se establece ese valor.
+    2. **Parámetros de URL (`_sys.query`)**: Si hay un ítem con el mismo nombre que `name` en los parámetros de consulta de la URL de la página, se establece ese valor. Si un parámetro se repite (`?tag=a&tag=b`), se usa el último valor (tanto en SSR como en CSR).
 
 - **Especificar datos con `data-t-scope`**:
     Al escribir `data-t-scope="article"` en un elemento contenedor (`div`, `form`, etc.), puedes especificar la "fuente de datos por defecto" dentro de ese elemento. Como resultado, el `name="title"` interno se referirá automáticamente a `article.title`.

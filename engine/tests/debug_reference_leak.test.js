@@ -44,6 +44,7 @@ describe('Reference Leak Debugging', () => {
         // Collision source at root (or query)
         global.window.__BRACIFY_DATA__ = { project: { name: "Project Name" } };
         global.window._sys = { query: { name: "CLEARED_BY_QUERY" }, params: {} };
+        global.window.__BRACIFY_SSR__ = true; // simulate hydrating server-rendered output (state script marker)
 
         const engine = new Bracify.Engine();
 

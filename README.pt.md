@@ -415,7 +415,7 @@ Se um atributo `name` for definido em elementos `input`, `select` ou `textarea`,
 
 - **Prioridade de Vinculação**:
     1. **Contexto de dados atual**: Define o valor baseado em propriedades de dados especificados por `data-t-scope`, etc.
-    2. **Parámetros de URL (`_sys.query`)**: Se houver um item na URL com o mesmo nome do atributo `name`, esse valor será usado.
+    2. **Parámetros de URL (`_sys.query`)**: Se houver um item na URL com o mesmo nome do atributo `name`, esse valor será usado. Se um parâmetro se repetir (`?tag=a&tag=b`), usa-se o último valor (tanto em SSR quanto em CSR).
 
 - **Exemplo (Formulário de Busca)**:
 
