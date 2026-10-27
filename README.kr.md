@@ -443,7 +443,7 @@ Bracify의 플레이스홀더 `{ }`는 HTML 속성이나 텍스트 노드에서 
     ```
 
 - **셀렉트 박스 자동 선택**:
-    `<select>` 태그에 바인딩된 값과 일치하는 `value`를 가진 `<option>` 요소에는 자동으로 `selected` 속성이 부여됩니다.
+    `<select>` 태그에 바인딩된 값과 일치하는 `value`를 가진 `<option>` 요소에는 자동으로 `selected` 속성이 부여됩니다. `data-t-list`로 생성된 `<option>`에도 적용됩니다.
 
 #### `data-t-if`
 

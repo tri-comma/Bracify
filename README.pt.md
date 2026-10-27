@@ -440,7 +440,7 @@ Se um atributo `name` for definido em elementos `input`, `select` ou `textarea`,
     ```
 
 - **Seleção Automática em Selects**:
-    O atributo `selected` é adicionado automaticamente ao `<option>` cujo `value` corresponder ao dado vinculado ao `<select>`.
+    O atributo `selected` é adicionado automaticamente ao `<option>` cujo `value` corresponder ao dado vinculado ao `<select>`. Também vale para opções geradas com `data-t-list`.
 
 #### `data-t-if`
 
