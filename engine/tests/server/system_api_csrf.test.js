@@ -41,9 +41,10 @@ async function withServer(fn, options = {}) {
     }
 }
 
-const writeReq = (base, name, v, headers = {}) => fetch(`${base}/_sys/api/data/write`, {
-    method: 'POST', headers: { ...JSON_H, ...headers }, body: JSON.stringify({ name, data: { v } })
+const writeReq = (base, name, v, headers = {}) => fetch(`${base}/_sys/data/${name}.json`, {
+    method: 'POST', headers: { ...JSON_H, ...headers }, body: JSON.stringify({ id: 'r1', v }), redirect: 'manual'
 });
+const stored = async (name) => (await db.find(name, { id: 'r1' }))[0];
 const closeReq = (base, headers = {}) => fetch(`${base}/_sys/api/close-project`, {
     method: 'POST', headers: { ...JSON_H, ...headers }, body: '{}'
 });
@@ -54,12 +55,12 @@ const projectStatus = async (base) => (await fetch(`${base}/index.html`)).status
 
 // ---------- Cross-origin POSTs must be rejected, with no side effect ----------
 
-test('POST /_sys/api/data/write: cross-origin is 403 and writes nothing', async () => {
+test('POST /_sys/data/<entity>.json: cross-origin is 403 and writes nothing', async () => {
     await withServer(async ({ base }) => {
         const res = await writeReq(base, 'csrf_victim', 'HACKED', { Origin: EVIL });
         assert.strictEqual(res.status, 403);
-        const stored = await db.get('csrf_victim');
-        assert.ok(!stored || stored.v === undefined, `data was written cross-origin: ${JSON.stringify(stored)}`);
+        const rec = await stored('csrf_victim');
+        assert.ok(!rec, `data was written cross-origin: ${JSON.stringify(rec)}`);
     });
 });
 
@@ -124,7 +125,7 @@ test('Cross-origin simple (form content-type) request is rejected', async () => 
 
 test('CORS: preflight from evil origin is not granted (no ACAO * / echo)', async (t) => {
     await withServer(async ({ base }) => {
-        for (const p of ['/_sys/api/data/write', '/_sys/api/close-project', '/_sys/api/open-project', '/_sys/server/start']) {
+        for (const p of ['/_sys/data/csrf_victim.json', '/_sys/api/close-project', '/_sys/api/open-project', '/_sys/server/start']) {
             await t.test(p, async () => {
                 const res = await fetch(`${base}${p}`, {
                     method: 'OPTIONS',
@@ -147,7 +148,7 @@ test('CORS: actual cross-origin responses carry no ACAO * / echo', async () => {
         const responses = [
             await writeReq(base, 'cors_probe', 1, { Origin: EVIL }),
             await closeReq(base, { Origin: EVIL }),
-            await fetch(`${base}/_sys/api/data/list`, { headers: { Origin: EVIL } }),
+            await fetch(`${base}/_sys/data/csrf_victim.json`, { headers: { Origin: EVIL } }),
             await fetch(`${base}/index.html`, { headers: { Origin: EVIL } }),
         ];
         for (const res of responses) {
@@ -165,9 +166,8 @@ test('Guard: same-origin requests still work', async () => {
         const sameOrigin = { Origin: base };
 
         let res = await writeReq(base, 'csrf_same', 'OK', sameOrigin);
-        assert.strictEqual(res.status, 200);
-        assert.deepStrictEqual(await res.json(), { ok: true });
-        assert.strictEqual((await db.get('csrf_same')).v, 'OK');
+        assert.ok(res.status < 400, `status ${res.status}`);
+        assert.strictEqual((await stored('csrf_same')).v, 'OK');
 
         res = await openReq(base, sameOrigin);
         assert.strictEqual(res.status, 200);
@@ -182,8 +182,8 @@ test('Guard: same-origin requests still work', async () => {
 test('Guard: requests without Origin (CLI/curl/tests) still work', async () => {
     await withServer(async ({ base, opened, server }) => {
         let res = await writeReq(base, 'csrf_noorigin', 'OK');
-        assert.strictEqual(res.status, 200);
-        assert.strictEqual((await db.get('csrf_noorigin')).v, 'OK');
+        assert.ok(res.status < 400, `status ${res.status}`);
+        assert.strictEqual((await stored('csrf_noorigin')).v, 'OK');
 
         res = await openReq(base);
         assert.strictEqual(res.status, 200);
@@ -225,5 +225,22 @@ test('Guard: Data API cross-origin writes are still 403', async () => {
             method: 'POST', headers: { ...FORM_H, Origin: EVIL }, body: 'id=1'
         });
         assert.strictEqual(del.status, 403);
+    });
+});
+
+test('Removed legacy route (#69): same-origin POST /_sys/api/data/write no longer writes', async () => {
+    await withServer(async ({ base }) => {
+        for (const headers of [{}, { Origin: base }]) {
+            const res = await fetch(`${base}/_sys/api/data/write`, {
+                method: 'POST', headers: { ...JSON_H, ...headers }, body: JSON.stringify({ name: 'legacy_gone', data: { v: 1 } })
+            });
+            assert.ok(res.status >= 400 && res.status < 500, `status ${res.status}`);
+            const text = await res.text();
+            assert.ok(!/"ok"\s*:\s*true/.test(text), text.slice(0, 200));
+        }
+        assert.ok(!(await db.get('legacy_gone')), 'legacy write route still stores data');
+        for (const p of ['/_sys/api/data/list', '/_sys/api/data/read?name=legacy_gone']) {
+            assert.strictEqual((await fetch(`${base}${p}`)).status, 403);
+        }
     });
 });

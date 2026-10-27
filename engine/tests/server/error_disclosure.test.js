@@ -97,9 +97,9 @@ test('malformed JSON -> 400 with no disclosure', async () => {
     });
 });
 
-test('malformed JSON on legacy API -> 400 with no disclosure', async () => {
+test('malformed JSON on system API -> 400 with no disclosure', async () => {
     await withServer(async ({ base, dir }) => {
-        const res = await req(base, '/_sys/api/data/write', { method: 'POST', headers: JSON_H, body: '{nope' });
+        const res = await req(base, '/_sys/api/close-project', { method: 'POST', headers: JSON_H, body: '{nope' });
         const text = await res.text();
         assert.strictEqual(res.status, 400, text.slice(0, 300));
         assertNoLeak(text, { dir });
@@ -150,9 +150,9 @@ test('DELETE method with no body removes by query id (no 500)', async () => {
     });
 });
 
-test('legacy write with no body does not 500 / leak', async () => {
+test('system API POST with no body does not 500 / leak', async () => {
     await withServer(async ({ base, dir }) => {
-        const res = await req(base, '/_sys/api/data/write', { method: 'POST' });
+        const res = await req(base, '/_sys/api/close-project', { method: 'POST' });
         const text = await res.text();
         assert.ok(res.status < 500, `status ${res.status}: ${text.slice(0, 300)}`);
         assertNoLeak(text, { dir });
@@ -243,21 +243,25 @@ test('Data API db error (form DELETE via _method): redirect back with ?error=', 
     });
 });
 
-test('Legacy Data API read/write/list db error: generic JSON, no raw message', async () => {
+test('Removed legacy Data API routes (#69): no handler, no disclosure', async () => {
     await withServer(async ({ base, dir }) => {
-        await withPatched(db, 'put', async () => { throw new Error(SECRET); }, async () => {
-            const res = await req(base, '/_sys/api/data/write', { method: 'POST', headers: JSON_H, body: JSON.stringify({ name: 'n', data: {} }) });
-            const text = await res.text();
-            assert.strictEqual(res.status, 500);
-            assertNoLeak(text, { dir });
-        });
-        // GET /_sys/api/data/read|list are blocked by the underscore guard (403, never reach the handler)
+        // GET /_sys/api/data/read|list are blocked by the underscore guard (403)
         for (const p of ['/_sys/api/data/read?name=n', '/_sys/api/data/list']) {
             const res = await fetch(`${base}${p}`);
             const text = await res.text();
             assert.strictEqual(res.status, 403);
             assertNoLeak(text, { dir });
         }
+        // POST /_sys/api/data/write no longer reaches a handler: it must not write or report ok
+        let wrote = false;
+        await withPatched(db, 'put', async () => { wrote = true; }, async () => {
+            const res = await req(base, '/_sys/api/data/write', { method: 'POST', headers: JSON_H, body: JSON.stringify({ name: 'n', data: {} }) });
+            const text = await res.text();
+            assert.ok(res.status >= 400 && res.status < 500, `status ${res.status}`);
+            assert.ok(!/"ok"\s*:\s*true/.test(text), text.slice(0, 200));
+            assertNoLeak(text, { dir });
+        });
+        assert.strictEqual(wrote, false, 'db.put was called by the removed route');
     });
 });
 
