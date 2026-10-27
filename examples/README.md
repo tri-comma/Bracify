@@ -16,9 +16,11 @@ node engine/start.cjs examples/bracify-books 3000
 # open http://localhost:3000/
 ```
 
-On start the server creates `examples/bracify-books/_sys/data.db` and imports every `_sys/data/*.json` file into it
-(records that already exist are kept). Form posts are stored in the database, not written back to the JSON files.
-Delete `_sys/data.db` to start from the seed data again. (It is git-ignored.)
+On start the server creates `examples/bracify-books/_sys/data.db` and imports each `_sys/data/*.json` file into it
+once per entity (on the first start, or the first start after a new seed file is added). Later edits to the seed files
+and records deleted through the API are not overridden on restart. Form posts are stored in the database, not written
+back to the JSON files. Delete `_sys/data.db` to start from the seed data again. (It is git-ignored.)
+Local mode (`file://`, CSR) reads the seed JSON directly and has no persistent DB, so this once-per-entity behavior applies to server mode only.
 
 ### Local mode (`file://`, no server)
 
@@ -100,4 +102,4 @@ These came up while building the app; the app avoids them or works around them w
   uses `data-t-scope="_sys.query"`.
 * **`data-t-redirect` must be a hidden form field** (`<input type="hidden" name="data-t-redirect" value="/books.html">`);
   the value is resolved relative to the Data API URL, so use a root-relative path.
-* **Seed JSON files are re-imported on every server start**, so deleted seed records return after a restart.
+* **Seed JSON files are imported once per entity**, so later edits to a seed file do not affect an existing `_sys/data.db`; delete `_sys/data.db` to re-seed.
