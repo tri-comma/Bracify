@@ -188,10 +188,18 @@ class EngineServer {
                         await db.save(entity, updateId, unflattenedBody);
                         res.redirect(redirect);
                         break;
-                    case 'DELETE':
-                        await db.remove(entity, filters);
+                    case 'DELETE': {
+                        // Refuse an unfiltered delete (it would wipe the whole entity); pagination/sort params are not filters.
+                        const reserved = ['_limit', '_offset', '_sort', '_order'];
+                        const deleteFilters = Object.fromEntries(Object.entries(filters).filter(([k]) => !reserved.includes(k)));
+                        if (Object.keys(deleteFilters).length === 0) {
+                            if (wantsHtml()) return this.redirectBack(req, res, 'Filter required for delete');
+                            return res.status(400).send('Filter required for delete');
+                        }
+                        await db.remove(entity, deleteFilters);
                         res.redirect(redirect);
                         break;
+                    }
                     default:
                         res.status(405).end();
                 }

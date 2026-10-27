@@ -151,7 +151,7 @@ test('SQLiteAdapter: Comprehensive CRUD and Features', async (t) => {
         await adapter.init();
 
         // Cleanup 'items' to ensure clean state
-        await adapter.remove('items');
+        await adapter.remove('items', { 'id:ne': '' }); // an unfiltered remove is refused by design
 
         // 1. Malicious entity name (though usually validated by manager)
         const maliciousEntity = "items' OR '1'='1";

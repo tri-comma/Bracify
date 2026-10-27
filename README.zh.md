@@ -656,6 +656,8 @@ POST /_sys/data/{entity}.json
 
 标准 `<form>` 只能发送 `GET` / `POST`，因此在查询字符串中带有 `_method=PUT` 或 `_method=DELETE` 的 `POST` 会按该方法处理（例如 `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
 
+`DELETE` 至少需要一个数据过滤条件（如 `id`）。没有过滤条件的 `DELETE`（包括只带 `_limit` 等参数的情况）会以 400 拒绝，以避免清空整个实体。
+
 ### 端点规范 (File API)
 
 管理服务器上静态文件的 API。

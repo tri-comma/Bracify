@@ -662,6 +662,8 @@ POST /_sys/data/{entity}.json
 
 標準の `<form>` は `GET` / `POST` しか送信できないため、`POST` で送信しつつクエリに `_method=PUT` または `_method=DELETE` を付けると、そのメソッドとして処理されます（例: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
 
+`DELETE` はデータの絞り込み条件（`id` など）が必須です。条件なしの `DELETE`（`_limit` などのみの場合を含む）は全件削除を防ぐため 400 で拒否されます。
+
 ### エンドポイント仕様 (File API)
 
 サーバー上の静的ファイル（画像など）を管理するためのAPIです。

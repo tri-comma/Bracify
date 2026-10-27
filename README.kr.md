@@ -656,6 +656,8 @@ POST /_sys/data/{entity}.json
 
 표준 `<form>`은 `GET` / `POST`만 전송할 수 있으므로, `POST`에 쿼리로 `_method=PUT` 또는 `_method=DELETE`를 붙이면 해당 메서드로 처리됩니다(예: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
 
+`DELETE`에는 `id` 등 데이터 필터가 하나 이상 필요합니다. 필터가 없는 `DELETE`(`_limit` 등만 있는 경우 포함)는 엔터티 전체가 삭제되지 않도록 400으로 거부됩니다.
+
 ### 엔드포인트 사양 (File API)
 
 서버 상의 정적 파일(이미지 등)을 관리하기 위한 API입니다.
