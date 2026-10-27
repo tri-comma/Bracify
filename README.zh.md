@@ -443,7 +443,7 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
     ```
 
 - **选择框自动选中**：
-    与绑定值一致的 `value` 所在的 `<option>` 元素将自动获得 `selected` 属性。
+    与绑定值一致的 `value` 所在的 `<option>` 元素将自动获得 `selected` 属性。`data-t-list` 生成的 `<option>` 同样适用。
 
 #### `data-t-if`
 

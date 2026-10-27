@@ -448,7 +448,7 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
   ```
 
 - **セレクトボックスの自動選択**:
-  `<select>` タグにバインドされた値と一致する `value` を持つ `<option>` 要素には、自動的に `selected` 属性が付与されます。
+  `<select>` タグにバインドされた値と一致する `value` を持つ `<option>` 要素には、自動的に `selected` 属性が付与されます。`data-t-list` で生成された `<option>` も対象です。
 
 #### `data-t-if`
 

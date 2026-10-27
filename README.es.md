@@ -443,7 +443,7 @@ Si se especifica un atributo `name` para los elementos `input`, `select` o `text
     ```
 
 - **Selección automática para cuadros de selección (Select Boxes)**:
-    El atributo `selected` se añade automáticamente a los elementos `<option>` cuyo `value` coincide con el valor vinculado a la etiqueta `<select>`.
+    El atributo `selected` se añade automáticamente a los elementos `<option>` cuyo `value` coincide con el valor vinculado a la etiqueta `<select>`. También se aplica a las opciones generadas con `data-t-list`.
 
 #### `data-t-if`
 
