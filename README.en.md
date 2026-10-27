@@ -415,7 +415,7 @@ If a `name` attribute is specified for `input`, `select`, or `textarea` elements
 
 - **Priority for Automatic Binding**:
     1. **Current data context**: Sets the value from the properties of data specified by `data-t-scope`, etc.
-    2. **URL Parameters (`_sys.query`)**: If there is an item with the same name as `name` in the page URL's query parameters, that value is set.
+    2. **URL Parameters (`_sys.query`)**: If there is an item with the same name as `name` in the page URL's query parameters, that value is set. If a parameter is repeated (`?tag=a&tag=b`), the last value is used (in both SSR and CSR).
 
 - **Specifying Data with `data-t-scope`**:
     By writing `data-t-scope="article"` on a container element (`div`, `form`, etc.), you can specify the "default data source" within that element. As a result, the internal `name="title"` will automatically refer to `article.title`.

@@ -8,6 +8,13 @@ const StudioData = require('./studio-data.cjs');
 const Bracify = require('../lib/engine.cjs');
 const UserError = require('./user-error.cjs');
 
+// _sys.query for SSR, built from the raw URL exactly like the client (Object.fromEntries(url.searchParams)):
+// a repeated param resolves to its LAST value, and `a[b]=1` stays a flat key instead of Express/qs nesting (Issue #47).
+function buildSysQuery(req) {
+    try { return Object.fromEntries(new URL(req.originalUrl || req.url, "http://bracify-internal.local").searchParams); }
+    catch (e) { return {}; }
+}
+
 class EngineServer {
     constructor(port, logger, options = {}) {
         this.port = (port !== undefined && port !== null) ? port : 8080;
@@ -326,7 +333,7 @@ class EngineServer {
 
                     // Prepare Data
                     const _sysData = {
-                        query: req.query,
+                        query: buildSysQuery(req),
                         params: req.params
                     };
 
@@ -390,6 +397,7 @@ class EngineServer {
                     const safeData = JSON.stringify(data).replace(/</g, '\\u003c');
                     const stateScript = `<script>
                         window._sys = ${safeSys};
+                        window.__BRACIFY_SSR__ = true;
                         window.__BRACIFY_DATA__ = ${safeData};
                     </script>`;
 
