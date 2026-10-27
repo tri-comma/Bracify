@@ -55,28 +55,40 @@ class EngineServer {
         return this.renderer;
     }
 
+    // Locates a project-relative path on disk, confined to the project both lexically and after
+    // following symlinks/junctions (Issues #36, #68).
+    // Returns { file, segments } (canonical path and its segments relative to the real project root),
+    // false when the path escapes the project, null when it does not exist.
+    locateProjectFile(relPath) {
+        const root = path.resolve(this.currentProjectPath);
+        const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;
+        const within = (p, base) => norm(p).startsWith(norm(base + path.sep));
+        const file = path.resolve(root, relPath.replace(/^[\/\\]+/, ''));
+        if (!within(file, root)) return false;
+        if (!fs.existsSync(file)) return null;
+        try {
+            const real = fs.realpathSync(file);
+            const realRoot = fs.realpathSync(root);
+            if (!within(real, realRoot)) return false;
+            // Canonical path (8.3 names, trailing dots/spaces, ADS resolved) for segment checks
+            return { file: real, segments: path.relative(realRoot, real).split(path.sep) };
+        } catch (e) { return null; }
+    }
+
     // Reads an include file confined to the project (no traversal, no _sys, no symlink escape).
     // Returns '' (empty include) for rejected paths, null when the file does not exist.
     resolveInclude(includePath) {
-        const root = path.resolve(this.currentProjectPath);
         const reject = () => {
             console.warn(`[Bracify] Blocked unsafe include path: ${includePath}`);
             return '';
         };
         if (!Bracify.isSafeIncludePath(includePath)) return reject();
-        const norm = (p) => process.platform === 'win32' ? p.toLowerCase() : p;
-        const within = (p) => norm(p).startsWith(norm(root + path.sep));
-        const incFile = path.resolve(root, includePath.replace(/^\/+/, ''));
-        if (!within(incFile)) return reject();
-        if (!fs.existsSync(incFile)) return null;
+        const loc = this.locateProjectFile(includePath);
+        if (loc === false) return reject();
+        if (!loc) return null;
+        if (loc.segments.some(seg => seg.toLowerCase() === '_sys')) return reject();
         try {
-            // Symlink escape guard
-            const real = fs.realpathSync(incFile);
-            const realRoot = fs.realpathSync(root);
-            if (!norm(real).startsWith(norm(realRoot + path.sep))) return reject();
-            // Canonical path (8.3 names, trailing dots/spaces, ADS resolved): _sys must still be refused
-            if (path.relative(realRoot, real).split(path.sep).some(seg => seg.toLowerCase() === '_sys')) return reject();
-            return fs.readFileSync(incFile, 'utf-8');
+            return fs.readFileSync(loc.file, 'utf-8');
         } catch (e) { return null; }
     }
 
@@ -277,14 +289,16 @@ class EngineServer {
 
             // Handle root
             const reqPath = req.path === '/' ? '/index.html' : req.path;
-            const filePath = path.join(this.currentProjectPath, reqPath);
 
-            // A raw "/../" request target is not normalized by Express: keep the file inside the project
-            const projectRoot = path.resolve(this.currentProjectPath);
-            const rel = path.relative(projectRoot, path.resolve(filePath));
-            if (rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) return next();
-
-            if (!fs.existsSync(filePath)) return next();
+            // A raw "/../" request target is not normalized by Express, and links inside the project
+            // may point outside it or into _ directories: serve only the canonical in-project file
+            const loc = this.locateProjectFile(reqPath);
+            if (!loc) return next();
+            if (loc.segments.some(seg => seg.startsWith('_'))) {
+                this.logger(`[Security] Blocked link to system resource: ${req.url}`);
+                return next();
+            }
+            const filePath = loc.file;
 
             // If HTML, Perform SSR
             if (filePath.endsWith('.html')) {
