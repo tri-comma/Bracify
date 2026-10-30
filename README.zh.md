@@ -471,7 +471,8 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
 
     ```html
     <!-- article 数据的 title, content 将自动填充至对应字段 -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article.json">
+    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
+      <input type="hidden" name="id">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -559,10 +560,11 @@ Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为�
 
 可以使用标准的 `<form>` 标签进行数据的创建和更新。Bracify 采用浏览器标准的 **Postback（伴随页面跳转的提交）**，而非 JavaScript 异步提交。
 
-- **自动处理**：在 `action` 属性设置目标（如 `/_sys/data/xxxxx.json`），并使用 `method="POST"` 或 `PUT` 发送。
+- **自动处理**：在 `action` 属性设置目标（如 `/_sys/data/xxxxx.json`），并使用 `method="POST"` 发送（更新时使用 `action="/_sys/data/xxxxx.json?_method=PUT"` 加 `<input type="hidden" name="id">`；浏览器的 `<form>` 无法发送 `PUT`）。
 - **重定向 (PRG 模式)**：服务端保存后，自动跳转至 `data-t-redirect` 指定的 URL 或原页面。防止表单重复提交。
 - **数据绑定（初值）**：在 `<form>` 上指定 `data-t-scope`，可将现有数据设置为输入初值。
 - **输入项**：`<input>` 或 `<textarea>` 的 `name` 属性即为数据的项目名。
+- **服务端校验**：表单中写的约束（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select` 与 `radio` 的选项）在服务端同样会被强制执行（见表单处理中的“服务端校验”）。失败时不会保存，并带着 `?error=消息` 跳转回 `data-t-redirect`（或来源页面）；可用 `{_sys.query.error}` 显示。
 - **仅限服务器模式**：数据仅在服务端（SSR）保存。本地开发模式（`file://`）没有写入机制，`POST` / `PUT` / `DELETE` 表单不会被保存（[#56](https://github.com/tri-comma/Bracify/issues/56) 中讨论支持方案）。
 
 ### 处理过滤器 (Pipes)
@@ -694,7 +696,7 @@ POST /_sys/data/{entity}.json
 
 | 方法 | 行为 | 说明 |
 | :--- | :--- | :--- |
-| `POST` | 创建 | 创建新数据。 |
+| `POST` | 创建 | 创建新数据。若指定的 `id` 已存在则拒绝而不会覆盖（覆盖只能使用 `PUT`）。 |
 | `PUT` | 更新 | 用提交的数据**整体替换**由 `id` 指定的记录（若该 `id` 不存在则创建记录）。 |
 | `DELETE`| 删除 | 删除指定数据。 |
 
@@ -703,6 +705,26 @@ POST /_sys/data/{entity}.json
 `PUT` 必须指定目标 `id`（查询中的 `?id=` 或表单中的 `id` 项），且不是部分更新。表单中未包含的项目会从保存后的记录中**消失**。想保留现有值的项目，请作为通过 `data-t-scope` 设置了初值的输入框（必要时使用 `type="hidden"`）包含在表单中。
 
 `DELETE` 至少需要一个数据过滤条件（如 `id`）。没有过滤条件的 `DELETE`（包括只带 `_limit` 等参数的情况）会以 400 拒绝，以避免清空整个实体。
+
+#### 服务端校验
+
+`POST` / `PUT` 在保存前，会按照由项目 HTML 表单推导出的约束校验请求体（包括 `a.b` 形式的嵌套字段）。绕过浏览器校验的请求（如 `curl`）也受同样约束。
+
+- **校验的约束**：`required`、`maxlength`、`minlength`、`type="number"` / `type="range"` 的 `min` / `max`、`pattern`（整体匹配；含嵌套量词的危险模式会被跳过，超过 1000 个字符的值会被拒绝）、`type="email"`、`type="date"`（`YYYY-MM-DD`），以及 `<select>` 与 `radio` 的选项。
+- **哪些表单会被计入**：`action` 为该实体的 `_sys/data/<entity>.json` 且 `method` 为 `POST`（或 `PUT`）的表单。通过 `data-t-include` 引入的部件中的字段也包含在内。`GET` 表单（如搜索）和 `_method=DELETE` 的表单会被忽略。 项目中的所有 HTML 文件都会被计入（`_sys`、以点开头的文件夹和 `node_modules` 除外），因此遗留的旧副本可能使校验变宽松。 `data-t-include` 只会在 `<form>` 元素内部展开，因此由包裹页面插槽的表单所在布局提供的字段不会被校验。没有此类表单的实体，以及没有任何表单声明的字段，都不会被校验。若 `<option>` / `radio` 的值由 `{ }` 动态生成，则不校验选项。
+- **多个表单写入同一实体**：以最宽松的声明为准，避免表单互相拒绝对方的合法提交。只有当所有写入表单都包含某字段且都将其设为必填时，该字段才是 `required`；其他约束只有在声明该字段的所有表单中都被违反时才会拒绝（任一表单无约束即视为无约束）。
+- **不校验的内容**：`disabled` 控件、`type="hidden"` 的约束、位于 `data-t-if` 内部或由 `data-t-list` 重复生成的控件的 `required`（它们可能不会被渲染；由 `data-t-list` 生成的 `radio` 组仍会校验 `required`），以及同名复选框组的 `required`（单个复选框的 `required` 会被校验）。每个字段只接受一个值：除 `<select multiple>` 和同名复选框组外，数组和对象会被拒绝。`type="email" multiple` 会按逗号分隔的每个地址分别校验。
+- **失败时**：不会保存任何内容。表单提交（请求 HTML 的请求）会以 303 跳转回 `data-t-redirect`（没有则为 `Referer`）并附带 `?error=`；JSON 客户端会收到 `400` 和 `{ "error": "..." }`。页面中可用 `{_sys.query.error}` 显示该消息。
+- **重复 `id`**：`POST` 指定了已存在的 `id`（请求体中的 `id` 或 `?id=`）时同样被拒绝（JSON 返回 `409`）。`id` 既不是字符串也不是数字时，`POST` 和 `PUT` 都会以 400 拒绝。更新已有记录请使用 `PUT`（表单中为 `action="...?_method=PUT"` 加 `<input type="hidden" name="id">`）。
+- `DELETE` 不做校验。HTML 的修改无需重启即可生效。
+
+```html
+<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
+  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
+  <input name="title" required maxlength="80">
+  <button type="submit">创建</button>
+</form>
+```
 
 > **关于 File API**：旧版本中记载的文件管理端点（`/_sys/file/{filename}.{ext}` 的 GET/POST/PUT/DELETE）**尚未实现**。图片等静态文件请放在项目内，并通过普通 URL（如 `/images/logo.png`）引用。
 

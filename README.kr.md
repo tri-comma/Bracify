@@ -471,7 +471,8 @@ Bracify의 플레이스홀더 `{ }`는 HTML 속성이나 텍스트 노드에서 
 
     ```html
     <!-- article 데이터의 title, content가 자동으로 각 필드에 세팅됩니다 -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article.json">
+    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
+      <input type="hidden" name="id">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -559,10 +560,11 @@ Bracify의 플레이스홀더 `{ }`는 HTML 속성이나 텍스트 노드에서 
 
 표준 `<form>` 태그를 사용하여 데이터를 생성 및 업데이트할 수 있습니다. Bracify는 브라우저 표준의 **포스트백(페이지 이동을 수반하는 전송)** 방식으로 작동하며, JavaScript 비동기 통신(fetch)을 사용하지 않습니다.
 
-- **자동 처리**: `action` 속성에 저장 경로(예: `/_sys/data/xxxxx.json`)를 지정하고 `method="POST"` 또는 `PUT`으로 전송합니다.
+- **자동 처리**: `action` 속성에 저장 경로(예: `/_sys/data/xxxxx.json`)를 지정하고 `method="POST"`로 전송합니다(수정은 `action="/_sys/data/xxxxx.json?_method=PUT"`과 `<input type="hidden" name="id">`의 조합. 브라우저의 `<form>`은 `PUT`을 보낼 수 없습니다).
 - **리다이렉트 (PRG 패턴)**: 서버 저장 완료 후 `data-t-redirect`로 지정한 URL 또는 원본 페이지로 자동 리다이렉트합니다. 이를 통해 '폼 중복 전송'을 방지하고 안전한 페이지 이동이 가능합니다.
 - **데이터 바인딩(기초값)**: `<form>` 태그에 `data-t-scope`를 지정하여 기존 데이터를 입력란의 기초값으로 세팅할 수 있습니다.
 - **입력 항목**: `<input>` 이나 `<textarea>` 의 `name` 속성이 데이터의 항목명(프로퍼티)이 됩니다.
+- **서버 측 검증**: 폼에 작성한 제약(`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select`·`radio` 선택지)은 서버에서도 검증됩니다(폼 처리의 "서버 측 검증" 참조). 실패하면 저장되지 않고 `?error=메시지`와 함께 `data-t-redirect`(없으면 원래 페이지)로 돌아가며, `{_sys.query.error}`로 표시할 수 있습니다.
 - **서버 모드 전용**: 데이터 저장은 서버(SSR)에서만 이루어집니다. 로컬 개발 모드(`file://`)에는 쓰기 구조가 없어 `POST` / `PUT` / `DELETE` 폼은 저장되지 않습니다([#56](https://github.com/tri-comma/Bracify/issues/56)에서 대응을 검토 중).
 
 ### 가공 필터 (파이프)
@@ -694,7 +696,7 @@ POST /_sys/data/{entity}.json
 
 | 메서드 | 동작 | 설명 |
 | :--- | :--- | :--- |
-| `POST` | 생성 | 새로운 데이터를 생성합니다. |
+| `POST` | 생성 | 새로운 데이터를 생성합니다. 이미 존재하는 `id`를 지정하면 덮어쓰지 않고 거부됩니다(덮어쓰기는 `PUT`만 가능). |
 | `PUT` | 업데이트 | `id`로 지정한 레코드를 전송된 데이터로 **통째로 교체**합니다(`id`가 존재하지 않으면 레코드가 생성됩니다). |
 | `DELETE`| 삭제 | 지정된 데이터를 삭제합니다. |
 
@@ -703,6 +705,26 @@ POST /_sys/data/{entity}.json
 `PUT`에는 대상 `id`(쿼리의 `?id=` 또는 폼의 `id` 항목)가 필수이며, 부분 업데이트가 아닙니다. 폼에 포함되지 않은 항목은 저장 후 레코드에서 **사라집니다**. 기존 값을 남기고 싶은 항목은 `data-t-scope`로 기초값을 넣은 입력란(필요하면 `type="hidden"`)으로 폼에 포함하세요.
 
 `DELETE`에는 `id` 등 데이터 필터가 하나 이상 필요합니다. 필터가 없는 `DELETE`(`_limit` 등만 있는 경우 포함)는 엔터티 전체가 삭제되지 않도록 400으로 거부됩니다.
+
+#### 서버 측 검증
+
+`POST` / `PUT`은 저장하기 전에 본문(`a.b` 형태의 중첩 필드 포함)을 프로젝트 HTML의 폼에서 도출한 제약 조건으로 검증합니다. 브라우저 검증을 우회한 요청(예: `curl`)에도 같은 제약이 적용됩니다.
+
+- **검증하는 제약**: `required`, `maxlength`, `minlength`, `type="number"` / `type="range"`의 `min` / `max`, `pattern`(전체 일치. 중첩 수량자가 있는 위험한 패턴은 건너뛰며 1000자를 넘는 값은 거부), `type="email"`, `type="date"`(`YYYY-MM-DD`), `<select>`와 `radio`의 선택지.
+- **대상 폼**: `action`이 해당 엔터티의 `_sys/data/<entity>.json`이고 `method`가 `POST`(또는 `PUT`)인 폼입니다. `data-t-include`로 불러온 부분의 필드도 포함됩니다. `GET` 폼(검색 등)과 `_method=DELETE` 폼은 무시됩니다. 프로젝트의 모든 HTML 파일(`_sys`, 점으로 시작하는 폴더, `node_modules` 제외)이 대상이므로, 오래된 사본이 남아 있으면 검증이 느슨해질 수 있습니다. `data-t-include`는 `<form>` 요소 안에서만 전개되므로, 페이지 슬롯을 감싸는 폼을 가진 레이아웃이 제공하는 필드는 검증되지 않습니다. 이런 폼이 없는 엔터티와 어떤 폼에도 선언되지 않은 필드는 검증하지 않습니다. `<option>` / `radio` 값을 `{ }`로 동적으로 생성하는 경우 선택지는 검증하지 않습니다.
+- **여러 폼이 같은 엔터티에 저장하는 경우**: 폼이 서로의 정당한 제출을 거부하지 않도록 가장 느슨한 선언이 우선합니다. 필드가 `required`가 되는 것은 모든 쓰기 폼이 그 필드를 갖고 필수로 지정한 경우뿐이며, 그 밖의 제약은 그 필드를 선언한 모든 폼에서 위반된 경우에만 거부합니다(한 폼이라도 제약이 없으면 제약 없음).
+- **검증하지 않는 것**: `disabled` 컨트롤, `type="hidden"`의 제약, `data-t-if` 안쪽 또는 `data-t-list`로 반복되는 컨트롤의 `required`(렌더링되지 않을 수 있음. `data-t-list`로 생성한 `radio` 그룹의 `required`는 검증됨), 같은 이름의 체크박스 그룹의 `required`(단일 체크박스의 `required`는 검증). 필드는 하나의 값만 받습니다. `<select multiple>`과 같은 이름의 체크박스 그룹을 제외하고 배열과 객체는 거부됩니다. `type="email" multiple`은 쉼표로 구분된 각 주소를 검증합니다.
+- **실패 시**: 아무것도 저장되지 않습니다. 폼 전송(HTML을 요청하는 요청)은 303으로 `data-t-redirect`(없으면 `Referer`)에 `?error=`를 붙여 되돌아가고, JSON 클라이언트에는 `400`과 `{ "error": "..." }`가 반환됩니다. 페이지에서는 `{_sys.query.error}`로 메시지를 표시할 수 있습니다.
+- **중복 `id`**: `POST`로 이미 존재하는 `id`(본문의 `id` 또는 `?id=`)를 지정하면 마찬가지로 거부됩니다(JSON은 `409`). `id`가 문자열도 숫자도 아니면 `POST`와 `PUT` 모두 400으로 거부됩니다. 기존 레코드를 수정하려면 `PUT`(폼에서는 `action="...?_method=PUT"`과 `<input type="hidden" name="id">`)을 사용하세요.
+- `DELETE`는 검증하지 않습니다. HTML 수정은 재시작 없이 반영됩니다.
+
+```html
+<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
+  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
+  <input name="title" required maxlength="80">
+  <button type="submit">생성</button>
+</form>
+```
 
 > **File API에 대하여**: 이전 버전에서 기재했던 파일 관리용 엔드포인트(`/_sys/file/{filename}.{ext}`의 GET/POST/PUT/DELETE)는 **구현되어 있지 않습니다**. 이미지 등 정적 파일은 프로젝트 내에 두고 일반 URL(`/images/logo.png` 등)로 참조하세요.
 

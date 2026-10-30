@@ -471,7 +471,8 @@ Si se especifica un atributo `name` para los elementos `input`, `select` o `text
 
     ```html
     <!-- title y content de los datos de article se establecen automáticamente en cada campo -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article">
+    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
+      <input type="hidden" name="id">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -560,10 +561,11 @@ Especifica la URL de destino de la transición después de que un proceso (como 
 
 Puedes enviar datos (crear/actualizar) usando etiquetas `<form>` estándar. Bracify funciona con **postbacks estándar del navegador (envíos que implican transiciones de página)** sin usar JavaScript asíncrono (fetch).
 
-- **Manejo automático**: Especifica el destino en el atributo `action` (ej., `/_sys/data/xxxxx.json`) y envía usando `method="POST"` o `PUT`.
+- **Manejo automático**: Especifica el destino en el atributo `action` (ej., `/_sys/data/xxxxx.json`) y envía usando `method="POST"` (para actualizar, usa `action="/_sys/data/xxxxx.json?_method=PUT"` más `<input type="hidden" name="id">`; los `<form>` del navegador no pueden enviar `PUT`).
 - **Redirección (Patrón PRG)**: Una vez guardado en el servidor, redirecciona automáticamente a la URL especificada por `data-t-redirect` o a la página original. Esto evita el "reenvío de formularios" y permite una navegación segura.
 - **Vinculación de datos (Valores iniciales)**: Al especificar `data-t-scope` en la etiqueta `<form>`, puedes establecer datos existentes como valores predeterminados para los campos de entrada.
 - **Ítems de entrada**: El atributo `name` de `<input>` y `<textarea>` se convierte en el nombre del ítem de datos (propiedad).
+- **Validación en el servidor**: las restricciones escritas en el formulario (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / opciones de `select` y `radio`) también se aplican en el servidor (véase "Validación en el servidor" en el gestor de formularios). Si falla, no se guarda nada y se redirige a `data-t-redirect` (o a la página de origen) con `?error=mensaje`; muéstrelo con `{_sys.query.error}`.
 - **Solo en modo servidor**: Los datos solo se guardan en el servidor (SSR). El Modo de Desarrollo Local (`file://`) no tiene mecanismo de escritura, por lo que los formularios `POST` / `PUT` / `DELETE` no se guardan (se está estudiando en [#56](https://github.com/tri-comma/Bracify/issues/56)).
 
 ### Filtros de procesamiento (Pipes)
@@ -695,7 +697,7 @@ Las operaciones de datos se realizan a través de peticiones HTTP, pero la respu
 
 | Método | Acción | Descripción |
 | :--- | :--- | :--- |
-| `POST` | Crear | Crea nuevos datos. |
+| `POST` | Crear | Crea nuevos datos. Un `id` que ya existe se rechaza y no se sobrescribe (sobrescribir es solo con `PUT`). |
 | `PUT` | Actualizar | **Reemplaza por completo** el registro indicado por `id` con los datos enviados (si el `id` no existe, se crea el registro). |
 | `DELETE`| Eliminar | Elimina los datos especificados. |
 
@@ -704,6 +706,26 @@ Los `<form>` estándar solo envían `GET` / `POST`, por lo que un `POST` con `_m
 `PUT` requiere el `id` de destino (`?id=` en la query o un campo `id` en el formulario) y no es una actualización parcial. Los campos que no se incluyan en el formulario se **eliminan** del registro guardado. Los valores que quiera conservar inclúyalos en el formulario como campos de entrada con valor inicial mediante `data-t-scope` (con `type="hidden"` si es necesario).
 
 `DELETE` requiere al menos un filtro de datos (como `id`). Un `DELETE` sin filtro (incluso con solo `_limit` u otros parámetros similares) se rechaza con 400 para que nunca pueda borrar toda la entidad.
+
+#### Validación en el servidor
+
+En `POST` / `PUT`, antes de guardar se comprueba el cuerpo (incluidos los nombres anidados `a.b`) con las restricciones derivadas de los formularios del proyecto. Las peticiones que eluden el navegador (p. ej. `curl`) quedan sujetas a las mismas restricciones.
+
+- **Restricciones aplicadas**: `required`, `maxlength`, `minlength`, `min` / `max` de `type="number"` / `type="range"`, `pattern` (coincidencia completa; los patrones peligrosos con cuantificadores anidados se omiten y los valores de más de 1000 caracteres se rechazan), `type="email"`, `type="date"` (`YYYY-MM-DD`) y las opciones de `<select>` y `radio`.
+- **Qué formularios cuentan**: los formularios cuyo `action` es el `_sys/data/<entity>.json` de la entidad y cuyo `method` es `POST` (o `PUT`). Se incluyen los campos de parciales cargados con `data-t-include`. Los formularios `GET` (p. ej. búsqueda) y los de `_method=DELETE` se ignoran. Cuenta todo archivo HTML del proyecto (excepto `_sys`, carpetas que empiezan por punto y `node_modules`), por lo que una copia obsoleta de una página puede relajar la validación. `data-t-include` solo se expande dentro de los elementos `<form>`, por lo que no se validan los campos aportados por un layout cuyo formulario envuelve slots de la página. Una entidad sin tales formularios, y los campos que ningún formulario declara, no se validan. Si los valores de `<option>` / `radio` se generan con `{ }`, las opciones no se comprueban.
+- **Varios formularios que escriben en una misma entidad**: prevalece la declaración más permisiva, de modo que los formularios nunca rechacen envíos legítimos de otros. Un campo es `required` solo si todos los formularios de escritura lo contienen y lo marcan como obligatorio; cualquier otra restricción rechaza un valor solo si se incumple en todos los formularios que declaran el campo (sin restricción en uno, sin restricción).
+- **No se comprueba**: los controles `disabled`, las restricciones de `type="hidden"`, el `required` de controles dentro de un `data-t-if` o repetidos por `data-t-list` (pueden no mostrarse; un grupo de `radio` generado con `data-t-list` conserva su `required`) y el `required` de un grupo de checkboxes con el mismo nombre (el `required` de un checkbox único sí se aplica). Un campo admite un solo valor: se rechazan arrays y objetos, salvo en `<select multiple>` y grupos de checkboxes del mismo nombre. `type="email" multiple` se valida por cada dirección separada por comas.
+- **En caso de fallo**: no se guarda nada. Un envío de formulario (petición que espera HTML) recibe un 303 hacia `data-t-redirect` (o el `Referer`) con `?error=`; los clientes JSON reciben `400` y `{ "error": "..." }`. Muestre el mensaje en la página con `{_sys.query.error}`.
+- **`id` duplicado**: un `POST` con un `id` que ya existe (en el cuerpo o como `?id=`) se rechaza igualmente (`409` en JSON). Un `id` que no sea una cadena ni un número se rechaza con 400 tanto en `POST` como en `PUT`. Para actualizar un registro existente use `PUT` (en un formulario: `action="...?_method=PUT"` más `<input type="hidden" name="id">`).
+- `DELETE` no se valida. Los cambios en el HTML se aplican sin reiniciar.
+
+```html
+<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
+  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
+  <input name="title" required maxlength="80">
+  <button type="submit">Crear</button>
+</form>
+```
 
 > **Sobre la API de archivos**: Los puntos finales de gestión de archivos descritos en versiones anteriores (GET/POST/PUT/DELETE en `/_sys/file/{nombre_archivo}.{ext}`) **no están implementados**. Coloque los archivos estáticos, como imágenes, dentro del proyecto y haga referencia a ellos con URL normales (p. ej. `/images/logo.png`).
 
