@@ -248,6 +248,16 @@ class SQLiteAdapter extends BaseAdapter {
         });
     }
 
+    async exists(entity, id) {
+        return new Promise((resolve, reject) => {
+            if (!this.db) return reject(new Error('No DB connected'));
+            this.db.get("SELECT 1 AS x FROM data_records WHERE entity = ? AND id = ? LIMIT 1", [entity, String(id)], (err, row) => {
+                if (err) reject(err);
+                else resolve(!!row);
+            });
+        });
+    }
+
     async remove(entity, filters = {}) {
         return new Promise((resolve, reject) => {
             if (!this.db) return reject(new Error('No DB connected'));

@@ -164,6 +164,11 @@ class DbManager {
         return adapter.save(entity, id, data);
     }
 
+    async exists(entity, id) {
+        const adapter = await this.getAdapterForEntity(entity);
+        return adapter.exists(entity, id);
+    }
+
     async remove(entity, filters) {
         const adapter = await this.getAdapterForEntity(entity);
         return adapter.remove(entity, filters);
@@ -198,8 +203,9 @@ const close = () => current.close();
 const list = () => current.list();
 const find = (entity, filters) => current.find(entity, filters);
 const save = (entity, id, data) => current.save(entity, id, data);
+const exists = (entity, id) => current.exists(entity, id);
 const remove = (entity, filters) => current.remove(entity, filters);
 const get = (name) => current.get(name);
 const put = (name, data) => current.put(name, data);
 
-module.exports = { setDriver, init, close, list, get, put, find, save, remove, openProject };
+module.exports = { setDriver, init, close, list, get, put, find, save, exists, remove, openProject };

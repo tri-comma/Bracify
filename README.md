@@ -476,7 +476,8 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
 
   ```html
   <!-- article データの title, content が自動で各フィールドにセットされます -->
-  <form data-t-scope="article" method="PUT" action="/_sys/data/article">
+  <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
+    <input type="hidden" name="id">
     <input type="text" name="title">
     <textarea name="content"></textarea>
   </form>
@@ -565,10 +566,11 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
 
 標準の `<form>` タグを使用して、データの作成・更新が可能です。Bracify は JavaScript による非同期送信（fetch）を使用せず、ブラウザ標準の**ポストバック（ページ遷移を伴う送信）**で動作します。
 
-- **自動処理**: `action` 属性に保存先（`/_sys/data/xxxxx.json` 等）を指定し、`method="POST"` または `PUT` で送信します。
+- **自動処理**: `action` 属性に保存先（`/_sys/data/xxxxx.json` 等）を指定し、`method="POST"` で送信します（更新は `action="/_sys/data/xxxxx.json?_method=PUT"` と `<input type="hidden" name="id">` の組み合わせ。ブラウザの `<form>` は `PUT` を送れません）。
 - **リダイレクト (PRGパターン)**: サーバー側で保存が完了すると、自動的に `data-t-redirect` で指定したURL、または元のページへリダイレクトされます。これにより「フォームの再送」が防止され、安全な画面遷移が可能です。
 - **データバインド（初期値）**: `<form>` タグに `data-t-scope` を指定することで、既存データを入力欄の初期値としてセットできます（更新画面などで有用）。
 - **入力項目**: `<input>` や `<textarea>` の `name` 属性が、データの項目名（プロパティ）になります。
+- **サーバー側バリデーション**: フォームに書いた制約（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select`・`radio` の選択肢）はサーバーでも検証されます（詳細は「データ保存処理」の「サーバー側バリデーション」）。失敗時は保存されず、`data-t-redirect`（なければ送信元）へ `?error=メッセージ` を付けて戻ります。ページ側は `{_sys.query.error}` で表示できます。
 - **サーバーモード専用**: データの保存はサーバー（SSR）でのみ行われます。ローカル開発モード（`file://`）には書き込みの仕組みがなく、`POST` / `PUT` / `DELETE` のフォームは保存されません（[#56](https://github.com/tri-comma/Bracify/issues/56) で対応を検討中）。
 
 ### 加工フィルタ（パイプ）
@@ -700,7 +702,7 @@ POST /_sys/data/{entity}.json
 
 | メソッド | 動作 | 説明 |
 | :--- | :--- | :--- |
-| `POST` | 作成 | 新たにデータを作成します。 |
+| `POST` | 作成 | 新たにデータを作成します。既に存在する `id` を指定した場合は上書きせず拒否されます（上書きは `PUT` のみ）。 |
 | `PUT` | 更新 | `id` で指定したレコードを、送信されたデータで**丸ごと置き換え**ます（存在しない `id` の場合は新規作成されます）。 |
 | `DELETE`| 削除 | 指定されたデータを削除します。 |
 
@@ -709,6 +711,26 @@ POST /_sys/data/{entity}.json
 `PUT` は対象の `id`（クエリの `?id=` またはフォームの `id` 項目）が必須で、部分更新ではありません。フォームに含まれない項目は保存後のレコードから**消えます**。既存の値を残したい項目は、`data-t-scope` で初期値を入れた入力欄（必要なら `type="hidden"`）としてフォームに含めてください。
 
 `DELETE` はデータの絞り込み条件（`id` など）が必須です。条件なしの `DELETE`（`_limit` などのみの場合を含む）は全件削除を防ぐため 400 で拒否されます。
+
+#### サーバー側バリデーション
+
+`POST` / `PUT` では、保存前に本文（`a.b` 形式のネストも含む）を、プロジェクトの HTML のフォームから導出した制約で検証します。ブラウザの検証を迂回した `curl` などの送信にも同じ制約が適用されます。
+
+- **対象の制約**: `required`、`maxlength`、`minlength`、`type="number"` / `type="range"` の `min` / `max`、`pattern`（全体一致。入れ子の量指定子を含む危険なパターンはスキップされ、1000 文字を超える値は拒否されます）、`type="email"`、`type="date"`（`YYYY-MM-DD`）、`<select>` と `radio` の選択肢。
+- **対象のフォーム**: `action` がそのエンティティの `_sys/data/<entity>.json` で、`method` が `POST`（または `PUT`）のフォームです。`data-t-include` で読み込んだ部品内の項目も含まれます。`GET` フォーム（検索など）と `_method=DELETE` の削除フォームは無視されます。 対象はプロジェクト内のすべての HTML ファイル（`_sys`・`.` で始まるフォルダ・`node_modules` を除く）で、使われなくなった古いコピーがあると検証が緩くなることがあります。 `data-t-include` は `<form>` の内側でのみ展開されるため、フォームがページのスロットを包むレイアウトが供給する項目は検証されません。該当するフォームのないエンティティや、どのフォームにもない項目は検証されません。`<option>` / `radio` の値が `{ }` で動的に生成される場合、選択肢の検証は行われません。
+- **複数のフォームが同じエンティティに保存する場合**: 互いの正当な送信を拒否しないよう、最も緩い宣言が優先されます。項目が `required` になるのは、すべての書き込みフォームがその項目を持ち、かつ必須にしている場合だけです。それ以外の制約は、その項目を持つすべてのフォームに違反した場合にだけ拒否されます（どれか 1 つのフォームで制約がなければ制約なし）。
+- **検証されないもの**: `disabled` の項目、`type="hidden"` の制約、`data-t-if` の内側にある項目、および `data-t-list` で繰り返される項目（`radio` を除く）の `required`（表示されない場合があるため。`data-t-list` で生成した `radio` グループの `required` は検証されます）、複数の `checkbox`（同名）の `required`。単一の `checkbox` の `required` は検証されます。値は 1 項目につき 1 つの値のみ受け付けます（配列やオブジェクトは、`<select multiple>`・同名の複数 `checkbox` を除き拒否されます）。`type="email" multiple` はカンマ区切りで各アドレスを検証します。
+- **失敗時**: 何も保存されません。フォーム送信（HTML を要求するリクエスト）は 303 で `data-t-redirect`（なければ `Referer`）へ `?error=` 付きで戻り、JSON クライアントには `400` と `{ "error": "..." }` が返ります。
+- **重複 `id`**: `POST` で既に存在する `id`（本文の `id` または `?id=`）を指定すると、同様に拒否されます（JSON では `409`）。`id` が文字列でも数値でもない場合は、`POST` / `PUT` とも 400 で拒否されます。既存レコードの更新には `PUT`（フォームでは `action="...?_method=PUT"` と `<input type="hidden" name="id">`）を使用してください。
+- `DELETE` は検証されません。HTML の編集は再起動なしで反映されます。
+
+```html
+<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
+  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
+  <input name="title" required maxlength="80">
+  <button type="submit">登録</button>
+</form>
+```
 
 > **File API について**: 以前の版で記載していたファイル管理用エンドポイント（`/_sys/file/{filename}.{ext}` の GET/POST/PUT/DELETE）は**実装されていません**。画像などの静的ファイルは、プロジェクト内に置いて通常の URL（`/images/logo.png` など）で参照してください。
 

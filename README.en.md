@@ -471,7 +471,8 @@ If a `name` attribute is specified for `input`, `select`, or `textarea` elements
 
     ```html
     <!-- title and content from article data are automatically set in each field -->
-    <form data-t-scope="article" method="PUT" action="/_sys/data/article.json">
+    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
+      <input type="hidden" name="id">
       <input type="text" name="title">
       <textarea name="content"></textarea>
     </form>
@@ -560,10 +561,11 @@ Specifies the transition destination URL after a process (such as form submissio
 
 You can create and update data using standard `<form>` tags. Bracify works with browser-standard **postbacks (submissions involving page transitions)** without using asynchronous JavaScript (fetch).
 
-- **Automatic Handling**: Specify the destination in the `action` attribute (e.g., `/_sys/data/xxxxx.json`) and send using `method="POST"` or `PUT`.
+- **Automatic Handling**: Specify the destination in the `action` attribute (e.g., `/_sys/data/xxxxx.json`) and send using `method="POST"` (to update, use `action="/_sys/data/xxxxx.json?_method=PUT"` plus `<input type="hidden" name="id">`; browser `<form>` elements cannot send `PUT`).
 - **Redirect (PRG Pattern)**: Once saved on the server, it automatically redirects to the URL specified by `data-t-redirect` or the original page. This prevents "form resubmission" and allows for safe navigation.
 - **Data Binding (Initial values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as default values for input fields.
 - **Input Items**: The `name` attribute of `<input>` and `<textarea>` becomes the data item name (property).
+- **Server-side validation**: the constraints written in the form (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select` and `radio` options) are also enforced on the server (see "Server-side validation" under the form handler). On failure nothing is saved and the user is sent back to `data-t-redirect` (or the originating page) with `?error=message`; show it with `{_sys.query.error}`.
 - **Server mode only**: Data is saved only on the server (SSR). Local Development Mode (`file://`) has no write mechanism, so `POST` / `PUT` / `DELETE` forms are not saved (support is under consideration in [#56](https://github.com/tri-comma/Bracify/issues/56)).
 
 ### Processing Filters (Pipes)
@@ -695,7 +697,7 @@ Data operations are performed via HTTP requests, but the response is always a "r
 
 | Method | Action | Description |
 | :--- | :--- | :--- |
-| `POST` | Create | Creates new data. |
+| `POST` | Create | Creates new data. An `id` that already exists is refused, not overwritten (overwriting is `PUT` only). |
 | `PUT` | Update | **Replaces the whole** record identified by `id` with the submitted data (a record is created if the `id` does not exist). |
 | `DELETE`| Delete | Deletes specified data. |
 
@@ -704,6 +706,26 @@ Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_meth
 `PUT` requires the target `id` (`?id=` in the query or an `id` field in the form) and is not a partial update. Fields not included in the form are **removed** from the saved record. For values you want to keep, include them in the form as input fields pre-filled with `data-t-scope` (using `type="hidden"` if needed).
 
 A `DELETE` requires at least one data filter (such as `id`). A `DELETE` without a filter (including one with only `_limit` and similar parameters) is rejected with 400 so that it can never wipe the whole entity.
+
+#### Server-side validation
+
+On `POST` / `PUT` the body (including nested `a.b` names) is checked before saving against the constraints derived from the project's forms. Requests that bypass the browser (e.g. `curl`) are held to the same constraints.
+
+- **Constraints enforced**: `required`, `maxlength`, `minlength`, `min` / `max` for `type="number"` / `type="range"`, `pattern` (full match; dangerous patterns with nested quantifiers are skipped and values over 1000 characters are rejected), `type="email"`, `type="date"` (`YYYY-MM-DD`), and the options of `<select>` and `radio`.
+- **Which forms count**: forms whose `action` is the entity's `_sys/data/<entity>.json` and whose `method` is `POST` (or `PUT`). Fields inside `data-t-include` partials are included. `GET` forms (e.g. search) and `_method=DELETE` forms are ignored. Every HTML file of the project counts (except `_sys`, dot-folders and `node_modules`), so a stale copy of a page can loosen validation. `data-t-include` is expanded only inside `<form>` elements, so fields supplied by a layout whose form wraps page slots are not validated. An entity with no such form, and fields no form declares, are not validated. If the `<option>` / `radio` values are generated with `{ }`, the options are not checked.
+- **Several forms writing to one entity**: the loosest declaration wins so forms never reject each other's legitimate submissions. A field is `required` only if every write form contains it and marks it required; any other constraint rejects a value only if it is violated in every form that declares the field (no constraint in one form means no constraint).
+- **Not enforced**: `disabled` controls, constraints on `type="hidden"`, `required` on controls inside a `data-t-if` or repeated by `data-t-list` (they may not be rendered; a `radio` group generated by `data-t-list` keeps its `required`), and `required` on a group of same-name checkboxes (a single checkbox's `required` is enforced). A field takes one value: arrays and objects are rejected except for `<select multiple>` and same-name checkbox groups. `type="email" multiple` is validated per comma-separated address.
+- **On failure**: nothing is saved. A form submission (a request that wants HTML) is answered with a 303 to `data-t-redirect` (or the `Referer`) with `?error=`; JSON clients get `400` and `{ "error": "..." }`. Show the message on the page with `{_sys.query.error}`.
+- **Duplicate `id`**: a `POST` carrying an `id` that already exists (in the body or as `?id=`) is refused the same way (`409` for JSON). An `id` that is not a string or a number is rejected with 400 on both `POST` and `PUT`. To update an existing record use `PUT` (in a form: `action="...?_method=PUT"` plus `<input type="hidden" name="id">`).
+- `DELETE` is not validated. Edits to the HTML take effect without a restart.
+
+```html
+<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
+  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
+  <input name="title" required maxlength="80">
+  <button type="submit">Create</button>
+</form>
+```
 
 > **About the File API**: The file management endpoints described in earlier versions (GET/POST/PUT/DELETE on `/_sys/file/{filename}.{ext}`) are **not implemented**. Place static files such as images inside the project and reference them by normal URLs (e.g. `/images/logo.png`).
 

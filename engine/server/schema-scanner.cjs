@@ -193,40 +193,175 @@ const scan = (projectPath, opts = {}) => {
 
 const NUMERIC = new Set(['number', 'range']);
 
+// Own properties only: a field named "constructor" must not read the inherited function
+const getPath = (obj, name) => name.split('.').reduce((o, k) => (o !== null && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k)) ? o[k] : undefined, obj);
+const isBlank = (x) => x === undefined || x === null || x === '';
+// The non-blank values submitted for a field (an array of blanks is "empty")
+const submittedItems = (v) => Array.isArray(v) ? v.filter(x => !isBlank(x)) : (isBlank(v) ? [] : [v]);
+
+// Per-value checks (one element for multi-value fields)
+const checkValue = (f, s, errors) => {
+    if (f.maxlength !== null && f.maxlength !== undefined && s.length > f.maxlength) errors.push(`${f.name} must be at most ${f.maxlength} characters`);
+    if (f.minlength !== null && f.minlength !== undefined && s.length < f.minlength) errors.push(`${f.name} must be at least ${f.minlength} characters`);
+    if (NUMERIC.has(f.type) || f.type === 'number') {
+        const n = Number(s);
+        if (s.trim() === '' || !Number.isFinite(n)) { errors.push(`${f.name} must be a number`); }
+        else {
+            if (f.min !== null && f.min !== undefined && n < f.min) errors.push(`${f.name} must be at least ${f.min}`);
+            if (f.max !== null && f.max !== undefined && n > f.max) errors.push(`${f.name} must be at most ${f.max}`);
+        }
+    } else if (f.type === 'email') {
+        // `multiple` email inputs take a comma-separated list
+        const parts = f.multiple ? s.split(',').map(x => x.trim()) : [s];
+        if (!parts.every(x => /^[^\s@]+@[^\s@]+$/.test(x))) errors.push(`${f.name} must be a valid email address`);
+    } else if (f.type === 'date') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(Date.parse(s))) errors.push(`${f.name} must be a valid date (YYYY-MM-DD)`);
+    } else if (f.type === 'enum' && Array.isArray(f.options) && f.options.length) {
+        if (!f.options.includes(s)) errors.push(`${f.name} must be one of: ${f.options.join(', ')}`);
+    }
+    if (f.pattern && !(f.patternSkipped || NESTED_QUANTIFIER_RE.test(f.pattern))) {
+        if (s.length > MAX_PATTERN_INPUT) { errors.push(`${f.name} is too long to validate (max ${MAX_PATTERN_INPUT} characters)`); return; }
+        let re = null;
+        try { re = new RegExp('^(?:' + f.pattern + ')$'); } catch (e) { /* invalid pattern: ignore */ }
+        if (re && !re.test(s)) errors.push(`${f.name} does not match the required pattern`);
+    }
+};
+
 const validateRecord = (schema, data) => {
     const errors = [];
-    const get = (obj, name) => name.split('.').reduce((o, k) => (o && typeof o === 'object') ? o[k] : undefined, obj);
     for (const f of (schema && schema.fields) || []) {
         if (f.name === 'id') continue;
-        const v = get(data, f.name);
-        const empty = v === undefined || v === null || v === '';
-        if (empty) {
-            if (f.required && f.type !== 'checkbox') errors.push(`${f.name} is required`);
+        const v = getPath(data, f.name);
+        const items = submittedItems(v);
+        if (!items.length) {
+            // Required checkboxes are only enforced when the schema opts in (strictRequired: a single checkbox of a write form)
+            if (f.required && (f.type !== 'checkbox' || f.strictRequired)) errors.push(`${f.name} is required`);
             continue;
         }
-        const s = String(v);
-        if (f.maxlength !== null && f.maxlength !== undefined && s.length > f.maxlength) errors.push(`${f.name} must be at most ${f.maxlength} characters`);
-        if (f.minlength !== null && f.minlength !== undefined && s.length < f.minlength) errors.push(`${f.name} must be at least ${f.minlength} characters`);
-        if (NUMERIC.has(f.type) || f.type === 'number') {
-            const n = Number(s);
-            if (s.trim() === '' || !Number.isFinite(n)) { errors.push(`${f.name} must be a number`); }
-            else {
-                if (f.min !== null && f.min !== undefined && n < f.min) errors.push(`${f.name} must be at least ${f.min}`);
-                if (f.max !== null && f.max !== undefined && n > f.max) errors.push(`${f.name} must be at most ${f.max}`);
+        if (f.type !== 'object') {
+            // A scalar field takes one scalar; arrays only for multi-value controls (select[multiple], checkbox groups)
+            if (items.some(x => typeof x === 'object') || (Array.isArray(v) && !(f.multiple || f.group))) {
+                errors.push(`${f.name} must be a single value`);
+                continue;
             }
-        } else if (f.type === 'email') {
-            if (!/^[^\s@]+@[^\s@]+$/.test(s)) errors.push(`${f.name} must be a valid email address`);
-        } else if (f.type === 'date') {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || isNaN(Date.parse(s))) errors.push(`${f.name} must be a valid date (YYYY-MM-DD)`);
-        } else if (f.type === 'enum' && Array.isArray(f.options) && f.options.length) {
-            if (!f.options.includes(s)) errors.push(`${f.name} must be one of: ${f.options.join(', ')}`);
         }
-        if (f.pattern && !(f.patternSkipped || NESTED_QUANTIFIER_RE.test(f.pattern))) {
-            if (s.length > MAX_PATTERN_INPUT) { errors.push(`${f.name} is too long to validate (max ${MAX_PATTERN_INPUT} characters)`); continue; }
-            let re = null;
-            try { re = new RegExp('^(?:' + f.pattern + ')$'); } catch (e) { /* invalid pattern: ignore */ }
-            if (re && !re.test(s)) errors.push(`${f.name} does not match the required pattern`);
+        const before = errors.length;
+        for (const item of items) {
+            // Newlines count as one character (like the browser's maxlength on a textarea)
+            checkValue(f, String(item).replace(/\r\n/g, '\n'), errors);
+            if (errors.length > before) break;
         }
+    }
+    return errors;
+};
+
+// ---- Write-form schema for the public Data API (Issue #53) ----
+// The Data API trusts the project's own forms as the contract: every WRITE form (method POST/PUT whose action is
+// the entity's data href, excluding `_method=DELETE` forms) contributes one field list. Studio keeps using scan().
+
+const isWriteForm = (form) => {
+    const method = (form.getAttribute('method') || '').toLowerCase();
+    if (method !== 'post' && method !== 'put') return false;
+    return !/[?&]_method=delete(?:[&#]|$)/i.test(form.getAttribute('action') || '');
+};
+
+// Options that are templated (e.g. value="{authors.id}") are only known at render time: no enum check then
+const staticOptions = (values) => values.some(v => v.indexOf('{') !== -1) ? null : values;
+
+// Replace every `data-t-include` element inside `root` with its partial's markup (nested includes too)
+const expandIncludes = (root, resolve, depth = 0) => {
+    if (depth >= 10) return;
+    root.querySelectorAll('[data-t-include]').forEach(el => {
+        const includePath = el.getAttribute('data-t-include');
+        if (!includePath || includePath.indexOf('{') !== -1) return; // dynamic path: unknown until render time
+        const partial = resolve(includePath);
+        if (!partial) return;
+        el.innerHTML = partial;
+        el.removeAttribute('data-t-include');
+        expandIncludes(el, resolve, depth + 1);
+    });
+};
+
+/**
+ * Per-form field lists of an HTML document.
+ * @param {string} html
+ * @param {(includePath: string) => (string|null)} [resolveInclude] expands data-t-include inside the forms
+ * @returns {Array<{entity: string, fields: Map<string, object>}>} one entry per write form
+ */
+const scanWriteForms = (html, resolveInclude) => {
+    let document;
+    try { document = new JSDOM(html).window.document; } catch (e) { return []; }
+    const out = [];
+    document.querySelectorAll('form').forEach(form => {
+        const entity = entityFromHref(form.getAttribute('action'));
+        if (!entity || !isWriteForm(form)) return;
+        if (resolveInclude) expandIncludes(form, resolveInclude);
+        const fields = new Map();
+        const radios = new Map(); // name -> { field, values }
+        form.querySelectorAll('input, select, textarea').forEach(el => {
+            const name = el.getAttribute('name');
+            if (!name || name === 'data-t-redirect' || !FIELD_NAME_RE.test(name)) return;
+            const type = (el.getAttribute('type') || '').toLowerCase();
+            if (['submit', 'button', 'reset', 'image'].includes(type)) return;
+            // Disabled controls are never submitted
+            if (el.hasAttribute('disabled') || el.closest('fieldset[disabled]')) return;
+            const field = fieldFromControl(el);
+            if (type === 'hidden') Object.assign(field, { required: false, maxlength: null, minlength: null, min: null, max: null, pattern: null, patternSkipped: false, options: null });
+            if (el.tagName.toLowerCase() === 'select' || type === 'email') field.multiple = el.hasAttribute('multiple');
+            // Controls under a data-t-if inside the form may not be rendered: never require them. The same holds for
+            // controls repeated by data-t-list, except radios (a data-t-list radio group is still one required choice).
+            const cond = el.closest(type === 'radio' ? '[data-t-if]' : '[data-t-if],[data-t-list]');
+            if (cond && cond !== form && form.contains(cond)) field.required = false;
+            if (field.type === 'enum' && field.options) field.options = staticOptions(field.options);
+            if (type === 'checkbox') {
+                const prev = fields.get(name);
+                if (prev && prev.type === 'checkbox') { prev.group = true; prev.required = false; prev.strictRequired = false; return; }
+                field.strictRequired = field.required;
+            }
+            if (type === 'radio') {
+                // A radio group is one enum field: required if any radio of the group is, options are the radio values
+                const group = radios.get(name) || { field: { ...field, type: 'enum', required: false }, values: [] };
+                group.field.required = group.field.required || field.required;
+                group.values.push(el.hasAttribute('value') ? el.getAttribute('value') : 'on');
+                radios.set(name, group);
+                fields.set(name, group.field);
+                group.field.options = staticOptions(group.values);
+                return;
+            }
+            const existing = fields.get(name);
+            if (existing) mergeField(existing, field); else fields.set(name, field);
+        });
+        out.push({ entity, fields });
+    });
+    return out;
+};
+
+/**
+ * Validate a record against ALL write forms of one entity so that forms sharing an entity never reject each
+ * other's legitimate submissions (the loosest declaration wins):
+ *  - a field is required only if every form contains it and marks it required;
+ *  - any other constraint rejects a value only if it is violated in every form that declares the field;
+ *  - fields declared by no form are not validated.
+ * @param {Array<{fields: Map<string, object>}>} forms write forms of one entity (from scanWriteForms)
+ * @param {object} data unflattened record
+ * @returns {string[]} error messages (empty = valid); [] when there are no write forms
+ */
+const validateWriteForms = (forms, data) => {
+    if (!forms || !forms.length) return [];
+    const names = new Set();
+    for (const f of forms) for (const n of f.fields.keys()) names.add(n);
+    const errors = [];
+    for (const name of names) {
+        const declaring = forms.filter(f => f.fields.has(name));
+        // Fast path: when the first declaring form accepts the value, the loosest-wins result is "accepted"
+        // whatever the other forms say, so skip validating against all of them.
+        const probe = validateRecord({ fields: [declaring[0].fields.get(name)] }, data);
+        if (!probe.length) continue;
+        const perForm = declaring.map(f => validateRecord({ fields: [f.fields.get(name)] }, data));
+        const empty = submittedItems(getPath(data, name)).length === 0;
+        // An empty value is only an error when every form requires it (a form without the field never does)
+        if (empty && declaring.length < forms.length) continue;
+        if (perForm.every(e => e.length)) errors.push(...perForm[0]);
     }
     return errors;
 };
@@ -304,8 +439,8 @@ const scaffoldFiles = (schema) => {
 </head>
 <body>
     <h1>${esc(e)}</h1>
-    <!-- Edit: bound to the record given by ?id= -->
-    <form data-t-if="_sys.query.id" data-t-scope="${e}" method="POST" action="_sys/data/${e}.json" data-t-redirect="index.html">
+    <!-- Edit: bound to the record given by ?id= (POST never overwrites; PUT replaces the record with the hidden id) -->
+    <form data-t-if="_sys.query.id" data-t-scope="${e}" method="POST" action="_sys/data/${e}.json?_method=PUT" data-t-redirect="index.html">
         <input type="hidden" name="id">
 ${rows}
         <button type="submit">Save</button>
@@ -323,4 +458,4 @@ ${rows}
     return { [`${e}/index.html`]: index, [`${e}/edit.html`]: edit };
 };
 
-module.exports = { scan, validateRecord, scaffoldFiles, isValidEntityName, entityFromHref };
+module.exports = { scan, validateRecord, scanWriteForms, validateWriteForms, walkHtml, scaffoldFiles, isValidEntityName, entityFromHref };

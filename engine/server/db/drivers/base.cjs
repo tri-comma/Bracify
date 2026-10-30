@@ -26,6 +26,13 @@ class BaseAdapter {
         throw new Error('Method not implemented: save');
     }
 
+    // Exact-id lookup (unlike find, no filter syntax / placeholder handling applies to the id).
+    // This generic fallback goes through find(), which ignores filter values containing "{...}" and then returns an
+    // unfiltered page, so such ids may be missed here: drivers should override it with a real by-id query (as SQLite does).
+    async exists(entity, id) {
+        return (await this.find(entity, { id: String(id) })).some(r => String(r.id) === String(id));
+    }
+
     async remove(entity, filters = {}) {
         throw new Error('Method not implemented: remove');
     }

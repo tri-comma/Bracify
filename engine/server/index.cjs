@@ -7,6 +7,7 @@ const ProcessManager = require('./process-manager.cjs');
 const StudioData = require('./studio-data.cjs');
 const Bracify = require('../lib/engine.cjs');
 const UserError = require('./user-error.cjs');
+const schemaScanner = require('./schema-scanner.cjs');
 
 // _sys.query for SSR, built from the raw URL exactly like the client (Object.fromEntries(url.searchParams)):
 // a repeated param resolves to its LAST value, and `a[b]=1` stays a flat key instead of Express/qs nesting (Issue #47).
@@ -49,6 +50,8 @@ class EngineServer {
 
         // On-memory template cache (resolved SSI)
         this.templateCache = new Map();
+        // Write-form schema per entity for Data API validation (Issue #53); dropped together with the template cache
+        this.writeSchemaCache = null;
         this.watcher = null;
 
         this.setup();
@@ -60,6 +63,54 @@ class EngineServer {
             this.renderer = await import('./renderer.cjs');
         }
         return this.renderer;
+    }
+
+    // Write forms of the project grouped by entity: Map(entity -> [{ fields }]), cached until an HTML file changes.
+    // Partials included inside a form (data-t-include) are expanded so their fields are seen.
+    // A failed scan is logged and NOT cached; callers then skip validation (fail open) rather than block every write.
+    async getWriteSchema() {
+        if (!this.currentProjectPath) return new Map();
+        if (!this.writeSchemaCache) {
+            const root = this.currentProjectPath;
+            const build = (async () => {
+                const byEntity = new Map();
+                // Includes are resolved only inside the forms (each partial is read once per scan); files without a
+                // <form> are never parsed. This is far cheaper than a full include/layout render per page.
+                const partials = new Map();
+                const resolve = (includePath) => {
+                    if (!partials.has(includePath)) partials.set(includePath, this.resolveInclude(includePath));
+                    return partials.get(includePath);
+                };
+                for (const file of schemaScanner.walkHtml(path.resolve(root))) {
+                    let html;
+                    try { html = fs.readFileSync(file, 'utf-8'); } catch (e) { continue; }
+                    if (!/<form[\s>]/i.test(html)) continue;
+                    for (const form of schemaScanner.scanWriteForms(html, resolve)) {
+                        if (!byEntity.has(form.entity)) byEntity.set(form.entity, []);
+                        byEntity.get(form.entity).push(form);
+                    }
+                    // Yield between files so a large project does not stall request handling
+                    await new Promise(r => setImmediate(r));
+                }
+                return byEntity;
+            })();
+            this.writeSchemaCache = build;
+            build.catch(() => { if (this.writeSchemaCache === build) this.writeSchemaCache = null; });
+        }
+        return this.writeSchemaCache;
+    }
+
+    // Drop the cached write schema and rebuild it in the background (debounced), so writes rarely wait for a scan
+    invalidateWriteSchema() {
+        this.writeSchemaCache = null;
+        clearTimeout(this.writeSchemaTimer);
+        this.writeSchemaTimer = setTimeout(() => this.warmWriteSchema(), 300);
+        if (this.writeSchemaTimer.unref) this.writeSchemaTimer.unref();
+    }
+
+    warmWriteSchema() {
+        if (!this.currentProjectPath) return;
+        this.getWriteSchema().catch(() => { /* surfaced (once) on the first write that needs it */ });
     }
 
     // Locates a project-relative path on disk, confined to the project both lexically and after
@@ -179,26 +230,61 @@ class EngineServer {
                 const ct = String(req.header('Content-Type') || '');
                 return /^application\/x-www-form-urlencoded/i.test(ct) || req.accepts(['json', 'html']) === 'html';
             };
+            // Own properties only: never pick up an inherited `id`
+            const ownId = (o) => (o && Object.prototype.hasOwnProperty.call(o, 'id')) ? o.id : undefined;
+            // Refuse a write: form submissions go back with ?error=, API clients get JSON (Issue #53)
+            const refuseJson = (status, message) => res.status(status).json({ error: message });
+            const refuse = (status, message) => {
+                // Form submissions go back with ?error=; without a data-t-redirect / Referer to go back to, answer as JSON
+                if (wantsHtml()) return this.redirectBack(req, res, message, () => refuseJson(status, message));
+                return refuseJson(status, message);
+            };
+            // An id is a string or a finite number (a boolean/array/object would be coerced by the DB and could hit another record)
+            const badId = (...ids) => ids.some(x => x !== undefined && !(typeof x === 'string' || (typeof x === 'number' && Number.isFinite(x))));
+            // The form attributes of the entity's write forms are the trust boundary (required, maxlength, min/max, pattern ...)
+            const validateWrite = async (body) => {
+                let forms;
+                try { forms = (await this.getWriteSchema()).get(entity); this.schemaWarned = false; }
+                catch (e) {
+                    // Fail open: a broken scan must not block every write. Warn once until a scan succeeds again.
+                    if (!this.schemaWarned) { this.schemaWarned = true; this.logger(`[Engine] WARNING: form schema scan failed, Data API writes are NOT validated: ${e.message}`); }
+                    return null;
+                }
+                const errors = forms ? schemaScanner.validateWriteForms(forms, body) : [];
+                return errors.length ? errors.join('; ') : null;
+            };
             try {
                 const redirect = this.safeRedirectTarget(req, req.body['data-t-redirect']) || '/';
                 const unflattenedBody = this.unflatten(req.body);
 
                 switch (method) {
-                    case 'POST':
+                    case 'POST': {
+                        const bodyId = ownId(unflattenedBody), queryId = ownId(filters);
+                        if (badId(bodyId, queryId)) return refuse(400, 'id must be a string or a number');
+                        const invalid = await validateWrite(unflattenedBody);
+                        if (invalid) return refuse(400, invalid);
+                        // POST only creates: refuse an id that exists (the body id is what db.save writes; ?id= is checked too)
+                        for (const candidate of [bodyId, queryId]) {
+                            if (candidate === undefined || candidate === '') continue;
+                            if (await db.exists(entity, candidate)) return refuse(409, 'A record with this id already exists (use PUT to overwrite)');
+                        }
                         await db.save(entity, null, unflattenedBody);
                         res.redirect(redirect);
                         break;
-                    case 'PUT':
-                        // Own properties only: never pick up an inherited `id`
-                        const ownId = (o) => (o && Object.prototype.hasOwnProperty.call(o, 'id')) ? o.id : undefined;
+                    }
+                    case 'PUT': {
+                        if (badId(ownId(filters), ownId(req.body))) return refuse(400, 'id must be a string or a number');
                         const updateId = ownId(filters) || ownId(req.body);
                         if (!updateId) {
                             if (wantsHtml()) return this.redirectBack(req, res, 'ID required for update');
                             return res.status(400).send('ID required for update');
                         }
+                        const invalid = await validateWrite(unflattenedBody);
+                        if (invalid) return refuse(400, invalid);
                         await db.save(entity, updateId, unflattenedBody);
                         res.redirect(redirect);
                         break;
+                    }
                     case 'DELETE': {
                         // Refuse an unfiltered delete (it would wipe the whole entity); pagination/sort params are not filters.
                         const reserved = ['_limit', '_offset', '_sort', '_order'];
@@ -484,10 +570,12 @@ class EngineServer {
     }
 
     // 303 back to data-t-redirect / Referer (with ?error=... on failure)
-    redirectBack(req, res, error) {
+    // onNoTarget (optional): called instead of the bare 400 when there is nowhere to redirect to
+    redirectBack(req, res, error, onNoTarget) {
         const body = req.body || {};
         const base = this.safeRedirectTarget(req, body['data-t-redirect']) || (body['data-t-redirect'] ? '/' : null);
         if (!base) {
+            if (error && onNoTarget) return onNoTarget();
             return error ? res.status(400).send('Bad Request') : res.redirect(303, '/');
         }
         if (!error) return res.redirect(303, base);
@@ -541,6 +629,8 @@ class EngineServer {
 
         // Clear cache
         this.templateCache.clear();
+        clearTimeout(this.writeSchemaTimer);
+        this.writeSchemaCache = null;
 
         // Re-init DB
         if (projectPath) {
@@ -550,14 +640,16 @@ class EngineServer {
             // Start watcher for hot-reload of cache (Windows-friendly recursive watch)
             try {
                 this.watcher = fs.watch(projectPath, { recursive: true }, (eventType, filename) => {
-                    if (filename && (filename.endsWith('.html') || filename.includes('_parts'))) {
+                    if (filename && (/\.html$/i.test(filename) || filename.includes('_parts'))) {
                         // this.logger(`[Bracify] File changed: ${filename}. Clearing cache.`);
                         this.templateCache.clear();
+                        this.invalidateWriteSchema();
                     }
                 });
             } catch (e) {
                 this.logger(`[Bracify] Watch error: ${e.message}`);
             }
+            this.warmWriteSchema();
         } else {
             await db.close();
         }
@@ -579,6 +671,7 @@ class EngineServer {
     }
 
     async stop() {
+        clearTimeout(this.writeSchemaTimer);
         await this.processManager.stopAll();
         return new Promise((resolve, reject) => {
             if (this.watcher) {
