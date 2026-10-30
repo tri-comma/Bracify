@@ -6,6 +6,77 @@ while the version is `0.x`, minor releases may contain breaking changes.
 Bracify の主な変更をここに記録します。バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 `0.x` の間は、マイナーリリースにも互換性のない変更が含まれる場合があります。
 
+## [0.2.0] - 2026-10-30
+
+Server-side validation, typed form values and a single engine URL. / サーバー側の入力検証、フォーム値の型付け、エンジン読み込みの一本化。
+
+### English
+
+#### Breaking changes
+
+- A `POST` to `/_sys/data/<entity>.json` with an `id` that already exists is refused (409, or `?error=` for forms)
+  instead of overwriting the record. Use `PUT` (`POST …?_method=PUT`) to overwrite (#53).
+- Data API writes are validated against the project's form constraints; submissions that the browser would block
+  are now refused on the server as well (#53).
+- Form values are stored with types: `number`/`range` as numbers, a single checkbox as `true`/`false`,
+  checkbox groups and `select multiple` as arrays. JSON clients must send strings for text fields (radio/select/hidden also accept numbers) (#52).
+  Existing string data is not migrated.
+
+#### Features
+
+- Server-side validation of `required`, `maxlength`/`minlength`, `min`/`max`, `pattern`, `type=email`/`date` and
+  select/radio options, derived from the project's write forms (several forms: the loosest declaration wins),
+  with errors returned via `?error=` (`{_sys.query.error}`) or JSON 400/409 (#53).
+- Typed form values, so `_sort`, `data-t-if` and arithmetic behave the same for seeded and form-saved records (#52).
+- Single engine URL: the server serves the client engine at `/bracify.js` (`text/javascript`), and pages load it with
+  one `<script src="bracify.js">` in both server and local mode. Studio's scaffold and the CLI build write the
+  `bracify.js` copy that local mode needs; `npm run sync:examples` refreshes the examples' copy (#55).
+
+#### Fixes
+
+- `/engine/engine.cjs` is served as `text/javascript` instead of `application/node` (#55).
+- Studio pages and scaffolded pages loaded the engine from a path that returned 404 (#55).
+- `meta=str&meta.isbn=x` no longer makes the Data API fail with an internal error (#52).
+- The README's `<form method="PUT">` example, which browsers send as GET, is corrected (#53).
+
+#### Known limitations
+
+- Fields supplied by a layout whose `<form>` wraps page slots are neither validated nor typed (#101).
+- Local mode (`file://`) is still read-only (#56). Planned: `_total` / projection (#54), reverse relations (#57).
+
+### 日本語
+
+#### 互換性のない変更
+
+- 既存の `id` を指定した `/_sys/data/<entity>.json` への `POST` は、レコードを上書きせず拒否します（409、フォームでは
+  `?error=`）。上書きは `PUT`（`POST …?_method=PUT`）で行ってください（#53）。
+- Data API への書き込みを、プロジェクト内フォームの制約で検証します。ブラウザが送信を止める内容は、サーバーでも拒否されます（#53）。
+- フォームの値を型付きで保存します: `number`/`range` は数値、単独のチェックボックスは `true`/`false`、
+  チェックボックスのグループと `select multiple` は配列。JSON で送る場合、テキスト項目には文字列が必要です（radio/select/hidden は数値も可）（#52）。
+  既存の文字列データは移行しません。
+
+#### 機能
+
+- `required`、`maxlength`/`minlength`、`min`/`max`、`pattern`、`type=email`/`date`、select/radio の選択肢を、
+  プロジェクト内の書き込みフォームから読み取ってサーバー側で検証（複数フォームは最も緩い指定を採用）。
+  エラーは `?error=`（`{_sys.query.error}`）または JSON の 400/409 で返します（#53）。
+- フォーム値の型付けにより、シードとフォーム保存のレコードで `_sort`・`data-t-if`・四則演算の結果が一致（#52）。
+- エンジン読み込みの一本化: サーバーが `/bracify.js`（`text/javascript`）でクライアントエンジンを配信し、
+  ページはサーバー・ローカル両モードで `<script src="bracify.js">` 1 本で読み込めます。ローカルモードに必要な
+  `bracify.js` のコピーは Studio の雛形生成と CLI ビルドが作成し、examples のコピーは `npm run sync:examples` で更新します（#55）。
+
+#### 修正
+
+- `/engine/engine.cjs` を `application/node` ではなく `text/javascript` で配信（#55）。
+- Studio の画面と雛形のページが、404 になるパスからエンジンを読み込んでいた問題（#55）。
+- `meta=str&meta.isbn=x` で Data API が内部エラーになっていた問題（#52）。
+- ブラウザが GET として送ってしまう README の `<form method="PUT">` の例を修正（#53）。
+
+#### 既知の制限
+
+- レイアウトの `<form>` がページのスロットを包む構成では、ページ側のフィールドは検証も型付けもされません（#101）。
+- ローカルモード（`file://`）は引き続き読み取り専用（#56）。予定: `_total` と項目の射影（#54）、逆方向のリレーション（#57）。
+
 ## [0.1.0] - 2026-10-27
 
 First tagged release. / 最初のタグ付きリリースです。
@@ -109,4 +180,5 @@ First tagged release. / 最初のタグ付きリリースです。
 - 予定しているエンハンス: フォーム値の型付け（#52）、サーバー側の入力検証（#53）、`_total` と項目の射影（#54）、
   逆方向のリレーション（#57）。
 
+[0.2.0]: https://github.com/tri-comma/Bracify/releases/tag/v0.2.0
 [0.1.0]: https://github.com/tri-comma/Bracify/releases/tag/v0.1.0
