@@ -161,8 +161,12 @@ class StudioData {
 
                     const data = this.server.unflatten(body);
                     delete data.id;
-                    const errors = scanner.validateRecord(schema, data);
+                    // Same typing as the Data API (Issue #52): the schema is the single "form" of the entity
+                    const plan = scanner.buildTypePlan([{ fields: new Map(schema.fields.map(f => [f.name, f])) }]);
+                    const errors = scanner.typeErrors(plan, data);
+                    if (!errors.length) errors.push(...scanner.validateRecord(schema, data));
                     if (errors.length) throw new UserError(errors.join('; '));
+                    scanner.coerceRecord(plan, data);
 
                     if (action === 'create') {
                         await dbm.save(q.entity, null, data);

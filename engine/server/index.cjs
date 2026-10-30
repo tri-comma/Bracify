@@ -241,28 +241,35 @@ class EngineServer {
             };
             // An id is a string or a finite number (a boolean/array/object would be coerced by the DB and could hit another record)
             const badId = (...ids) => ids.some(x => x !== undefined && !(typeof x === 'string' || (typeof x === 'number' && Number.isFinite(x))));
-            // The form attributes of the entity's write forms are the trust boundary (required, maxlength, min/max, pattern ...)
+            // The form attributes of the entity's write forms are the trust boundary (required, maxlength, min/max, pattern ...).
+            // Returns { error } or { body }: the record typed by the same forms (number, checkbox ...; Issue #52).
             const validateWrite = async (body) => {
                 let forms;
                 try { forms = (await this.getWriteSchema()).get(entity); this.schemaWarned = false; }
                 catch (e) {
                     // Fail open: a broken scan must not block every write. Warn once until a scan succeeds again.
                     if (!this.schemaWarned) { this.schemaWarned = true; this.logger(`[Engine] WARNING: form schema scan failed, Data API writes are NOT validated: ${e.message}`); }
-                    return null;
+                    return { body };
                 }
-                const errors = forms ? schemaScanner.validateWriteForms(forms, body) : [];
-                return errors.length ? errors.join('; ') : null;
+                if (!forms) return { body };
+                const plan = schemaScanner.buildTypePlan(forms);
+                const typing = { json: !!req.is('json') };
+                const errors = schemaScanner.typeErrors(plan, body, typing);
+                if (!errors.length) errors.push(...schemaScanner.validateWriteForms(forms, body));
+                if (errors.length) return { error: errors.join('; ') };
+                return { body: schemaScanner.coerceRecord(plan, body, typing) };
             };
             try {
                 const redirect = this.safeRedirectTarget(req, req.body['data-t-redirect']) || '/';
-                const unflattenedBody = this.unflatten(req.body);
+                let unflattenedBody = this.unflatten(req.body);
 
                 switch (method) {
                     case 'POST': {
                         const bodyId = ownId(unflattenedBody), queryId = ownId(filters);
                         if (badId(bodyId, queryId)) return refuse(400, 'id must be a string or a number');
-                        const invalid = await validateWrite(unflattenedBody);
-                        if (invalid) return refuse(400, invalid);
+                        const checked = await validateWrite(unflattenedBody);
+                        if (checked.error) return refuse(400, checked.error);
+                        unflattenedBody = checked.body;
                         // POST only creates: refuse an id that exists (the body id is what db.save writes; ?id= is checked too)
                         for (const candidate of [bodyId, queryId]) {
                             if (candidate === undefined || candidate === '') continue;
@@ -279,8 +286,9 @@ class EngineServer {
                             if (wantsHtml()) return this.redirectBack(req, res, 'ID required for update');
                             return res.status(400).send('ID required for update');
                         }
-                        const invalid = await validateWrite(unflattenedBody);
-                        if (invalid) return refuse(400, invalid);
+                        const checked = await validateWrite(unflattenedBody);
+                        if (checked.error) return refuse(400, checked.error);
+                        unflattenedBody = checked.body;
                         await db.save(entity, updateId, unflattenedBody);
                         res.redirect(redirect);
                         break;
@@ -326,6 +334,9 @@ class EngineServer {
                             const nextPart = parts[i + 1];
                             current[part] = !isNaN(nextPart) ? [] : {};
                         }
+                        // A scalar parent (meta=str&meta.isbn=x) stays and the child is dropped: the schema check then
+                        // reports the non-object parent instead of this throwing a TypeError
+                        if (typeof current[part] !== 'object') break;
                         current = current[part];
                     }
                 }

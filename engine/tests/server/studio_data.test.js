@@ -246,8 +246,8 @@ test('CRUD via SSR forms hits the target project DB only', async (t) => {
         assert.strictEqual(loc(r), ENT);
         const rows = await userRecords('posts', { title: 'Hello' });
         assert.strictEqual(rows.length, 1);
-        assert.strictEqual(rows[0].views, '7');
-        assert.strictEqual(rows[0].published, 'on');
+        assert.strictEqual(rows[0].views, 7, 'number input is stored as a number (Issue #52)');
+        assert.strictEqual(rows[0].published, true, 'checked checkbox is stored as true (Issue #52)');
         assert.deepStrictEqual(rows[0].meta, { note: 'n1' });
         assert.ok(!('data-t-redirect' in rows[0]));
         // Studio's own DB is untouched
@@ -268,8 +268,8 @@ test('CRUD via SSR forms hits the target project DB only', async (t) => {
         assert.strictEqual(r.status, 303);
         const [after] = await userRecords('posts', { id: rec.id });
         assert.strictEqual(after.title, 'Hello2');
-        assert.strictEqual(after.views, '8');
-        assert.ok(!('published' in after), 'unchecked checkbox removed');
+        assert.strictEqual(after.views, 8);
+        assert.strictEqual(after.published, false, 'unchecked checkbox is stored as false (Issue #52)');
         assert.ok(!('meta' in after));
         assert.strictEqual((await userRecords('posts')).length, 2);
     });

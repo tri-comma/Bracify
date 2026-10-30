@@ -131,11 +131,17 @@ const scan = (projectPath, opts = {}) => {
             if (!entity) return;
             const ent = ensure(entity);
             ent.files.add(rel);
+            const checkboxes = new Set();
             form.querySelectorAll('input, select, textarea').forEach(el => {
                 const name = el.getAttribute('name');
                 if (!name || name === 'data-t-redirect') return;
                 const type = (el.getAttribute('type') || '').toLowerCase();
                 if (['submit', 'button', 'reset', 'image'].includes(type)) return;
+                // Several checkboxes with one name in a form are a group (submitted as an array)
+                if (type === 'checkbox') {
+                    if (checkboxes.has(name) && ent.fields.has(name)) ent.fields.get(name).group = true;
+                    checkboxes.add(name);
+                }
                 addField(ent, fieldFromControl(el));
             });
         });
@@ -232,7 +238,8 @@ const validateRecord = (schema, data) => {
     for (const f of (schema && schema.fields) || []) {
         if (f.name === 'id') continue;
         const v = getPath(data, f.name);
-        const items = submittedItems(v);
+        // A whitespace-only number counts as empty (it is omitted when stored)
+        const items = submittedItems(v).filter(x => !(NUMERIC.has(f.type) && typeof x === 'string' && x.trim() === ''));
         if (!items.length) {
             // Required checkboxes are only enforced when the schema opts in (strictRequired: a single checkbox of a write form)
             if (f.required && (f.type !== 'checkbox' || f.strictRequired)) errors.push(`${f.name} is required`);
@@ -306,6 +313,7 @@ const scanWriteForms = (html, resolveInclude) => {
             // Disabled controls are never submitted
             if (el.hasAttribute('disabled') || el.closest('fieldset[disabled]')) return;
             const field = fieldFromControl(el);
+            if (type === 'checkbox') field.checkValue = el.hasAttribute('value') ? el.getAttribute('value') : 'on';
             if (type === 'hidden') Object.assign(field, { required: false, maxlength: null, minlength: null, min: null, max: null, pattern: null, patternSkipped: false, options: null });
             if (el.tagName.toLowerCase() === 'select' || type === 'email') field.multiple = el.hasAttribute('multiple');
             // Controls under a data-t-if inside the form may not be rendered: never require them. The same holds for
@@ -364,6 +372,147 @@ const validateWriteForms = (forms, data) => {
         if (perForm.every(e => e.length)) errors.push(...perForm[0]);
     }
     return errors;
+};
+
+// ---- Value typing (Issue #52) ----
+// Form values arrive as strings. Typing them by the declaring controls keeps `_sort`, comparisons and `data-t-if`
+// consistent with JSON seeds: number/range -> number, a single checkbox -> boolean, checkbox group / select[multiple]
+// -> array of strings. A field is typed only when every form declaring it agrees on the kind.
+
+const PROTO_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const NUMBER_RE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// Integers beyond this lose precision as a JS number: refuse them instead of silently rounding
+const tooLarge = (n) => Number.isInteger(n) && Math.abs(n) > Number.MAX_SAFE_INTEGER;
+
+const kindOf = (f) => {
+    if (NUMERIC.has(f.type)) return 'number';
+    if (f.type === 'checkbox' || f.type === 'boolean') return f.group ? 'multi' : 'checkbox';
+    if (f.type === 'enum' && f.multiple) return 'multi';
+    if (f.type === 'unknown' || f.type === 'object') return null;
+    return 'text';
+};
+
+/**
+ * @param {Array<{fields: Map<string, object>}>} forms the write forms of one entity
+ * @returns {Map<string, {kind: ('number'|'checkbox'|'multi'|'text'|null), absentFalse: boolean, required: boolean,
+ *   values: string[], allowNumber: boolean}>} one entry per declared field (`id` excepted); kind is null when the forms
+ *   disagree. absentFalse: a checkbox that every form contains. required: a checkbox every form requires. values: the
+ *   declared `value` attributes of a checkbox. allowNumber: radio/select/hidden fields may carry JSON numbers (ids).
+ */
+const buildTypePlan = (forms) => {
+    const plan = new Map();
+    if (!forms || !forms.length) return plan;
+    const names = new Set();
+    for (const f of forms) for (const n of f.fields.keys()) names.add(n);
+    for (const name of names) {
+        // Never plan (so never read or write) a path through a prototype-polluting segment
+        if (name === 'id' || name.split('.').some(p => PROTO_KEYS.has(p))) continue;
+        const declaring = forms.filter(f => f.fields.has(name));
+        const kinds = new Set(declaring.map(f => kindOf(f.fields.get(name))));
+        const kind = kinds.size === 1 ? Array.from(kinds)[0] : null;
+        const all = declaring.length === forms.length;
+        const defs = declaring.map(f => f.fields.get(name));
+        plan.set(name, {
+            kind,
+            absentFalse: kind === 'checkbox' && all,
+            required: kind === 'checkbox' && all && defs.every(d => d.strictRequired),
+            values: kind === 'checkbox' ? defs.map(d => d.checkValue).filter(v => v !== undefined) : [],
+            allowNumber: kind === 'text' && defs.every(d => d.type === 'enum' || d.type === 'hidden')
+        });
+    }
+    return plan;
+};
+
+/**
+ * Type violations of an unflattened record: a declared dotted child whose parent is not an object, and values that
+ * cannot become the field's type. Run BEFORE the constraint validation (Number('0x10') would pass it).
+ * @param {boolean} [opts.json] the body was JSON (booleans/numbers can occur; a form only submits strings)
+ * @returns {string[]}
+ */
+const typeErrors = (plan, data, opts = {}) => {
+    const errors = new Set();
+    for (const [name, { kind, required, values, allowNumber }] of plan) {
+        if (name.indexOf('.') !== -1) {
+            const segs = name.split('.');
+            let cur = data;
+            for (let i = 0; i < segs.length - 1; i++) {
+                if (!hasOwn(cur, segs[i])) break;
+                const v = cur[segs[i]];
+                if (v === null || typeof v !== 'object' || (Array.isArray(v) && isNaN(segs[i + 1]))) {
+                    errors.add(`${segs.slice(0, i + 1).join('.')} must be an object`);
+                    break;
+                }
+                cur = v;
+            }
+        }
+        const v = getPath(data, name);
+        if (v === undefined || v === null || !kind) continue;
+        if (kind === 'number') {
+            const ok = typeof v === 'number' ? Number.isFinite(v)
+                : typeof v === 'string' && (v.trim() === '' || (NUMBER_RE.test(v.trim()) && Number.isFinite(Number(v))));
+            if (!ok) errors.add(`${name} must be a number`);
+            else if (tooLarge(typeof v === 'number' ? v : Number(v.trim()))) errors.add(`${name} is too large`);
+        } else if (kind === 'checkbox') {
+            if (opts.json) {
+                const t = typeof v === 'string' ? v.toLowerCase() : v;
+                const known = typeof v === 'boolean' || t === '' || t === 'true' || t === 'false' || t === 'on' || (typeof v === 'string' && values.includes(v));
+                if (!known) errors.add(`${name} must be true or false`);
+                // false means "not checked": it does not satisfy a required checkbox
+                else if (required && (t === false || t === 'false')) errors.add(`${name} is required`);
+            }
+        } else if (kind === 'multi') {
+            if (!(typeof v === 'string' || (Array.isArray(v) && v.every(x => typeof x === 'string')))) errors.add(`${name} must be a list of strings`);
+        } else if (typeof v === 'boolean' || (typeof v === 'number' && !(allowNumber && Number.isFinite(v)))) {
+            errors.add(`${name} must be a string`);
+        }
+    }
+    return Array.from(errors);
+};
+
+const setPath = (obj, name, value) => {
+    const segs = name.split('.');
+    let cur = obj;
+    for (let i = 0; i < segs.length - 1; i++) {
+        if (!hasOwn(cur, segs[i])) cur[segs[i]] = isNaN(segs[i + 1]) ? {} : [];
+        cur = cur[segs[i]];
+        if (cur === null || typeof cur !== 'object') return;
+    }
+    cur[segs[segs.length - 1]] = value;
+};
+const deletePath = (obj, name) => {
+    const segs = name.split('.');
+    let cur = obj;
+    for (let i = 0; i < segs.length - 1; i++) {
+        if (!hasOwn(cur, segs[i]) || cur[segs[i]] === null || typeof cur[segs[i]] !== 'object') return;
+        cur = cur[segs[i]];
+    }
+    delete cur[segs[segs.length - 1]];
+};
+
+/**
+ * Convert the values of a record (one that passed typeErrors and the validation) to the planned types, in place.
+ * Number: numeric string -> number, empty -> omitted. Checkbox: a submitted form value is true (JSON: booleans kept,
+ * "false" -> false, "true"/"on"/the declared value -> true, "" counts as absent), absent -> false where absentFalse. Multi: a single value becomes [value].
+ */
+const coerceRecord = (plan, data, opts = {}) => {
+    for (const [name, { kind, absentFalse }] of plan) {
+        if (!kind || kind === 'text') continue;
+        const v = getPath(data, name);
+        if (kind === 'number') {
+            if (v === undefined) continue;
+            if (v === null || (typeof v === 'string' && v.trim() === '')) deletePath(data, name);
+            else if (typeof v === 'string') { const n = Number(v.trim()); setPath(data, name, n === 0 ? 0 : n); }
+        } else if (kind === 'checkbox') {
+            if (v === undefined || v === null) { if (absentFalse) setPath(data, name, false); }
+            else if (!opts.json) setPath(data, name, true);
+            else if (v === '') { if (absentFalse) setPath(data, name, false); else deletePath(data, name); }
+            else if (typeof v === 'string') setPath(data, name, v.toLowerCase() !== 'false');
+        } else if (kind === 'multi') {
+            if (typeof v === 'string') { if (v === '') deletePath(data, name); else setPath(data, name, [v]); }
+        }
+    }
+    return data;
 };
 
 // ---- Scaffold ----
@@ -458,4 +607,4 @@ ${rows}
     return { [`${e}/index.html`]: index, [`${e}/edit.html`]: edit };
 };
 
-module.exports = { scan, validateRecord, scanWriteForms, validateWriteForms, walkHtml, scaffoldFiles, isValidEntityName, entityFromHref };
+module.exports = { scan, validateRecord, scanWriteForms, validateWriteForms, buildTypePlan, typeErrors, coerceRecord, walkHtml, scaffoldFiles, isValidEntityName, entityFromHref };
