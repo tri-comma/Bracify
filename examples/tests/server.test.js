@@ -89,17 +89,19 @@ describe('Bracify Books: server mode (SSR + SQLite over HTTP)', () => {
             assert.strictEqual(text(doc.querySelector('a.brand')), 'Bracify Books');
             assert.match(text(doc.querySelector('footer')), /© 2026 Bracify Examples/);
             assert.strictEqual(doc.querySelectorAll('[data-t-include]').length, 0, 'data-t-include attributes are consumed');
-            assert.ok(doc.querySelector('script[src="/engine/engine.cjs"]'));
+            assert.ok(doc.querySelector('script[src="bracify.js"]'));
+            assert.strictEqual(doc.querySelectorAll('script[src]').length, 1, 'exactly one engine script tag');
             assert.match(r.text, /window\.__BRACIFY_DATA__/);
             assert.match(r.text, /window\._sys/);
         });
 
         test('static assets and the engine are served; _parts/_sys are not', async () => {
             assert.strictEqual((await get('style.css')).status, 200);
-            const eng = await get('engine/engine.cjs');
+            // The page's single engine tag (bracify.js) is answered by the server's virtual path; /engine/engine.cjs stays for compatibility
+            const eng = await get('bracify.js');
             assert.strictEqual(eng.status, 200);
             assert.match(eng.text, /Bracify Engine/);
-            // The second (local mode) script path must NOT resolve in server mode, otherwise the engine would load twice.
+            assert.strictEqual((await get('engine/engine.cjs')).status, 200);
             assert.strictEqual((await get('engine/lib/engine.cjs')).status, 404);
             for (const p of ['_parts/layout.html', '_parts/header.html', '_sys/data/books.json', '_sys/data.db', '_sys/data/site.json']) {
                 assert.strictEqual((await get(p)).status, 403, p);

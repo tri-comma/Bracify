@@ -48,12 +48,15 @@ Crie um arquivo chamado `index.html` e escreva o seguinte:
 <head>
   <!-- Especificar fonte de dados -->
   <link data-t-source="info" href="/_sys/data/info.json">
+  <script src="bracify.js"></script>
 </head>
 <body>
   <h1>{info.msg}</h1>
 </body>
 </html>
 ```
+
+`<script src="bracify.js"></script>` carrega o motor do lado do cliente (necessário para transições SPA e para o Modo de Desenvolvimento Local; veja a seção sobre o carregamento do motor).
 
 ### 3. Criar os Dados
 
@@ -171,16 +174,17 @@ Bracify trata **todas as transições de página como SPA por padrão**, tanto n
 
 Páginas exibidas apenas com SSR não precisam de `<script>`, mas para usar transições SPA, o Modo de Desenvolvimento Local (`file://`) ou CSR, cada página precisa carregar o motor do lado do cliente no seu `<head>`.
 
-- **Modo servidor**: O servidor serve o motor em `/engine/engine.cjs`.
+Em todos os modos o motor é carregado com este único `<script>`:
 
-  ```html
-  <script src="/engine/engine.cjs"></script>
-  ```
+```html
+<script src="bracify.js"></script>
+```
 
-- **Modo de Desenvolvimento Local**: Como não há servidor, coloque o próprio motor (`engine/lib/engine.cjs` do repositório) dentro do projeto e carregue-o por um caminho relativo àquela página.
-- **Usando o mesmo arquivo nos dois modos**: Coloque as duas tags `<script>` lado a lado, como em [`examples/`](./examples/). A que não existe em cada modo falha ao carregar e é ignorada.
+Em páginas dentro de uma subpasta use um caminho relativo (p. ex. `<script src="../bracify.js"></script>`).
 
-Uma forma de carregar o motor com um único `<script>` nos dois modos está em estudo em [#55](https://github.com/tri-comma/Bracify/issues/55).
+- **Modo servidor**: O servidor serve o motor no caminho virtual `/bracify.js` (somente na raiz) como `text/javascript`. Mesmo que o projeto tenha um arquivo com o mesmo nome, o motor do próprio servidor sempre prevalece, de modo que SSR e navegador executem a mesma versão. Requisições condicionais com ETag são suportadas.
+- **Modo de Desenvolvimento Local (`file://`)**: Como não há servidor, `bracify.js` precisa estar dentro do projeto, acessível a partir da página por um caminho relativo. O scaffold do Studio e o build da CLI o criam automaticamente. Caso contrário, copie `engine/lib/engine.cjs` do repositório como `bracify.js` ([`examples/`](./examples/) atualiza sua cópia com `npm run sync:examples`).
+- **Compatibilidade**: O antigo `/engine/engine.cjs` continua sendo servido (como `text/javascript`). Nas transições SPA o script do motor é reconhecido por qualquer um dos nomes `bracify.js`, `engine.js` e `engine.cjs` e não é carregado novamente.
 
 ---
 

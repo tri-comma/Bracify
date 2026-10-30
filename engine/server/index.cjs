@@ -1,11 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const crypto = require('crypto');
 const fs = require('fs');
 const db = require('./db/index.cjs');
 const ProcessManager = require('./process-manager.cjs');
 const StudioData = require('./studio-data.cjs');
 const Bracify = require('../lib/engine.cjs');
+const ENGINE_FILE = path.join(__dirname, '../lib/engine.cjs');
 const UserError = require('./user-error.cjs');
 const schemaScanner = require('./schema-scanner.cjs');
 
@@ -52,6 +54,8 @@ class EngineServer {
         this.templateCache = new Map();
         // Write-form schema per entity for Data API validation (Issue #53); dropped together with the template cache
         this.writeSchemaCache = null;
+        // Client engine bytes + ETag served at /bracify.js, reloaded when the file's mtime changes (Issue #55)
+        this.engineCache = null;
         this.watcher = null;
 
         this.setup();
@@ -137,6 +141,27 @@ class EngineServer {
         } catch (e) { return null; }
     }
 
+    // Sends the client engine (the /bracify.js response). Bytes and ETag are cached by mtime.
+    serveEngine(req, res, next) {
+        let entry;
+        try {
+            const mtime = fs.statSync(ENGINE_FILE).mtimeMs;
+            if (!this.engineCache || this.engineCache.mtime !== mtime) {
+                const src = fs.readFileSync(ENGINE_FILE);
+                this.engineCache = { mtime, src, etag: '"' + crypto.createHash('sha1').update(src).digest('base64') + '"' };
+            }
+            entry = this.engineCache;
+        } catch (e) { return next(); }
+        res.type('text/javascript; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('ETag', entry.etag);
+        // Conditional GET is answered here: Express's req.fresh also honours a request Cache-Control: no-cache,
+        // which fetch() adds to every conditional request, so it would never reply 304.
+        const inm = String(req.headers['if-none-match'] || '');
+        if (inm.split(',').some(t => t.trim().replace(/^W\//, '') === entry.etag) || inm.trim() === '*') return res.status(304).end();
+        res.send(entry.src);
+    }
+
     // Reads an include file confined to the project (no traversal, no _sys, no symlink escape).
     // Returns '' (empty include) for rejected paths, null when the file does not exist.
     resolveInclude(includePath) {
@@ -181,8 +206,14 @@ class EngineServer {
             next();
         });
 
-        // Serve Engine Libs
-        this.app.use('/engine', express.static(path.join(__dirname, '../lib')));
+        // The client engine at one URL for every mode (Issue #55). Always the server's own copy (a same-named project file
+        // never replaces it), so SSR and the browser run the same version. Root only; Express adds ETag / HEAD / 304.
+        this.app.get('/bracify.js', (req, res, next) => this.serveEngine(req, res, next));
+
+        // Serve Engine Libs (legacy /engine/engine.cjs; .cjs must be sent as JavaScript, not application/node)
+        this.app.use('/engine', express.static(path.join(__dirname, '../lib'), {
+            setHeaders: (res, file) => { if (/\.c?js$/i.test(file)) res.setHeader('Content-Type', 'text/javascript; charset=utf-8'); }
+        }));
 
         // --- Underscore Guard (Security Issue #7) ---
         this.app.use((req, res, next) => {
@@ -407,6 +438,8 @@ class EngineServer {
                 this.logger(`[Security] Blocked link to system resource: ${req.url}`);
                 return next();
             }
+            // Every alias of the root bracify.js (/./, //, %62..., case) is the engine, never a project file (Issue #55)
+            if (loc.segments.length === 1 && loc.segments[0].toLowerCase() === 'bracify.js') return this.serveEngine(req, res, next);
             const filePath = loc.file;
 
             // If HTML, Perform SSR

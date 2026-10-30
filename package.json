@@ -10,6 +10,7 @@
     "setup": "npm install",
     "start": "npm start --workspace=gui",
     "test": "npm test --workspace=@bracify/engine && npm run test:examples",
-    "test:examples": "node --test \"examples/tests/*.test.js\""
+    "test:examples": "node --test \"examples/tests/*.test.js\"",
+    "sync:examples": "node -e \"require('fs').copyFileSync('engine/lib/engine.cjs', 'examples/bracify-books/bracify.js')\""
   }
 }

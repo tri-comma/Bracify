@@ -146,6 +146,9 @@ class StudioData {
                         for (const t of targets) {
                             if (fs.existsSync(t)) throw new UserError(`File already exists: ${path.relative(projectPath, t).split(path.sep).join('/')}`);
                         }
+                        // The pages load ../bracify.js: local (file://) mode needs the engine next to the project. Copied first, never overwritten.
+                        try { fs.copyFileSync(path.join(__dirname, '../lib/engine.cjs'), path.join(projectPath, 'bracify.js'), fs.constants.COPYFILE_EXCL); }
+                        catch (e) { if (e.code !== 'EEXIST') throw e; }
                         fs.mkdirSync(path.join(projectPath, q.entity), { recursive: true });
                         for (const [rel, content] of Object.entries(files)) {
                             fs.writeFileSync(path.join(projectPath, rel), content, { encoding: 'utf-8', flag: 'wx' });

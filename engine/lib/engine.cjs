@@ -1522,6 +1522,13 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         await hydrateScripts(document.body);
     }
 
+    // The engine's own <script>: bracify.js (the single engine URL, Issue #55) or the legacy engine.js / engine.cjs.
+    // Matched on the last path segment, so mybracify.js.map or not-engine.js are page scripts.
+    function isEngineScriptUrl(src) {
+        const last = String(src || '').split(/[?#]/)[0].split('/').pop();
+        return last === 'bracify.js' || last === 'engine.js' || last === 'engine.cjs';
+    }
+
     function syncHead(newDoc) {
         // 1. Title
         if (newDoc.title) document.title = newDoc.title;
@@ -1556,7 +1563,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         currentItems.forEach(el => {
             const key = getKey(el);
             // Always remove old page-specific scripts and styles
-            if (el.tagName === 'SCRIPT' && el.src && (el.src.includes('engine.js') || el.src.includes('engine.cjs'))) return; // Keep engine
+            if (el.tagName === 'SCRIPT' && el.src && isEngineScriptUrl(el.src)) return; // Keep engine
             if (el.tagName === 'STYLE' || el.tagName === 'SCRIPT') {
                 el.remove();
                 return;
@@ -1568,7 +1575,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
         // Add/Update new items
         newItems.forEach(el => {
-            if (el.tagName === 'SCRIPT' && el.src && (el.src.includes('engine.js') || el.src.includes('engine.cjs'))) return; // Skip engine
+            if (el.tagName === 'SCRIPT' && el.src && isEngineScriptUrl(el.src)) return; // Skip engine
 
             const key = getKey(el);
             if (key) {
@@ -1600,7 +1607,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const scripts = Array.isArray(target) ? target : Array.from(target.querySelectorAll('script'));
         for (const oldScript of scripts) {
             // Skip engine script
-            if (oldScript.src && (oldScript.src.includes('engine.js') || oldScript.src.includes('engine.cjs'))) continue;
+            if (oldScript.src && isEngineScriptUrl(oldScript.src)) continue;
 
             // Only executable scripts are re-created; data blocks (application/json, text/template, ...) stay untouched
             const type = (oldScript.getAttribute('type') || '').split(';')[0].trim().toLowerCase();

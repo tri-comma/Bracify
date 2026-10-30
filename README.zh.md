@@ -48,12 +48,15 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 <head>
   <!-- 指定数据源 -->
   <link data-t-source="info" href="/_sys/data/info.json">
+  <script src="bracify.js"></script>
 </head>
 <body>
   <h1>{info.msg}</h1>
 </body>
 </html>
 ```
+
+`<script src="bracify.js"></script>` 用于加载客户端引擎（SPA 跳转和本地开发模式需要；详见“加载客户端引擎”一节）。
 
 ### 3. 创建数据
 
@@ -171,16 +174,17 @@ Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处�
 
 仅通过 SSR 显示的页面不需要 `<script>`，但如果要使用 SPA 跳转、本地开发模式（`file://`）或 CSR，则需要在每个页面的 `<head>` 中加载客户端引擎。
 
-- **服务器模式**：服务器通过 `/engine/engine.cjs` 提供引擎。
+在任何模式下，只需下面这一个 `<script>` 即可加载引擎：
 
-  ```html
-  <script src="/engine/engine.cjs"></script>
-  ```
+```html
+<script src="bracify.js"></script>
+```
 
-- **本地开发模式**：由于没有服务器，请将引擎本体（仓库中的 `engine/lib/engine.cjs`）放在项目内，并以相对于该页面的路径加载。
-- **两种模式使用同一文件时**：像 [`examples/`](./examples/) 那样并排写上两个 `<script>`。在各模式下不存在的那个会加载失败并被忽略。
+位于子文件夹中的页面请使用相对路径（例如 `<script src="../bracify.js"></script>`）。
 
-能在两种模式下仅用一个 `<script>` 加载的方法正在 [#55](https://github.com/tri-comma/Bracify/issues/55) 中讨论。
+- **服务器模式**：服务器通过虚拟路径 `/bracify.js`（仅限根路径）以 `text/javascript` 提供引擎。即使项目中存在同名文件，也始终优先使用服务器自带的引擎，以保证 SSR 与浏览器运行相同版本。支持基于 ETag 的条件请求。
+- **本地开发模式（`file://`）**：由于没有服务器，必须把 `bracify.js` 放在项目内，且能从页面通过相对路径访问。Studio 的脚手架生成和 CLI 构建会自动创建它；其他情况下请把仓库中的 `engine/lib/engine.cjs` 复制为 `bracify.js`（[`examples/`](./examples/) 通过 `npm run sync:examples` 更新副本）。
+- **兼容性**：原有的 `/engine/engine.cjs` 仍会提供（`text/javascript`）。SPA 跳转时，`bracify.js`、`engine.js`、`engine.cjs` 中任一文件名都会被识别为引擎脚本，不会被重复加载。
 
 ---
 

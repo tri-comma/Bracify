@@ -36,9 +36,10 @@ A browser without the File System Access API gets the read-only mock mode (layou
 
 The pages are all in the app root and use relative links (`book.html?id=1`) so they behave the same in both modes.
 Always start local mode from `index.html`: SPA navigation keeps the folder permission.
-Every page loads the engine with two `<script>` tags: `/engine/engine.cjs` is served by the server, and
-`../../engine/lib/engine.cjs` is where the engine lives relative to this folder in the repository. In each mode one of
-the two does not exist and is simply ignored. In your own project use only the one that fits.
+Every page loads the engine with one `<script src="bracify.js"></script>` tag. In server mode the server answers that URL
+with its own engine; on `file://` the page loads `bracify.js` from this folder, a committed copy of `engine/lib/engine.cjs`.
+After changing the engine run `npm run sync:examples` to refresh the copy (a test fails when they differ). In your own project
+use the same tag; local mode needs the copy next to your pages (`bracify.js`), the server does not.
 
 ## Tests
 
@@ -50,7 +51,7 @@ npm test                # engine tests, then the examples tests
 | File | Environment | What it does |
 | --- | --- | --- |
 | `tests/server.test.js` | server | Starts `node engine/start.cjs` on a free port against a temp copy of the app and drives it over real HTTP: renders every page, checks filters / sort / pagination, relations, pipes, conditions, then submits the rendered forms (POST create, PUT edit, DELETE, review) and follows the redirects. Also checks the `_parts/` / `_sys/` 403 guard and cross-origin rejection. |
-| `tests/local.test.js` | local | Runs the real `engine/lib/engine.cjs` in jsdom on a `file://` URL with a File System Access API directory handle backed by the real folder (temp copy). Covers folder connect / disconnect / reset, rendering, SPA navigation (links, pager, GET search form, history), mock mode, and compares the rendered output of 30 page/query combinations with the real server's output. |
+| `tests/local.test.js` | local | Runs the engine the pages load (`bracify.js`, a copy pinned to `engine/lib/engine.cjs` by the identity test) in jsdom on a `file://` URL with a File System Access API directory handle backed by the real folder (temp copy). Covers folder connect / disconnect / reset, rendering, SPA navigation (links, pager, GET search form, history), mock mode, and compares the rendered output of 30 page/query combinations with the real server's output. |
 | `tests/helpers.cjs`, `tests/local-helpers.cjs` | both | Temp-copy, server start, and jsdom + directory-handle helpers. |
 
 The deployment CLI (`cli/`) is not part of the tests: the README documents deployment as uploading the project folder

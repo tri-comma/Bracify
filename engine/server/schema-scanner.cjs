@@ -550,7 +550,7 @@ const scaffoldFiles = (schema) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${esc(title)}</title>
     <link data-t-source="${e}" href="_sys/data/${e}.json">
-    <script src="/engine/lib/engine.cjs"></script>
+    <script src="../bracify.js"></script>
 </head>`;
     const index = `${head(e + ' list')}
 <body>
@@ -584,7 +584,7 @@ const scaffoldFiles = (schema) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${esc(e)} edit</title>
     <link data-t-source="${e}" href="_sys/data/${e}.json?id={?id}&_limit=1">
-    <script src="/engine/lib/engine.cjs"></script>
+    <script src="../bracify.js"></script>
 </head>
 <body>
     <h1>${esc(e)}</h1>
