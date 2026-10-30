@@ -597,10 +597,13 @@ test('non-scalar values cannot bypass the constraints of a scalar field', async 
         // a field named like an inherited property is really required (own-property lookup)
         assert.deepStrictEqual(scanner.validateRecord({ fields: [{ name: 'constructor', type: 'text', required: true }] }, {}), ['constructor is required']);
         assert.deepStrictEqual(await ids('s'), []);
-        // scalars of other JSON types are validated through their string form
-        assertAccepted(await sendJson('s', { id: 'h', title: false, year: 1, ...base }));
-        assertAccepted(await sendJson('s', { id: 'i', title: 0, ...base }));
+        // a text field takes a string only (Issue #52): a JSON false/0 no longer satisfies required
+        await assertJsonRejected(await sendJson('s', { id: 'g', title: false, ...base }), 400);
+        await assertJsonRejected(await sendJson('s', { id: 'k', title: 0, ...base }), 400);
         await assertJsonRejected(await sendJson('s', { id: 'j', title: 123456, ...base }), 400);
+        // a number field takes a JSON number (stored as a number)
+        assertAccepted(await sendJson('s', { id: 'h', title: 'ok', year: 1, ...base }));
+        assertAccepted(await sendJson('s', { id: 'i', title: '0', ...base }));
         assert.deepStrictEqual(await ids('s'), ['h', 'i']);
     });
 });

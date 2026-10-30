@@ -711,7 +711,7 @@ POST /_sys/data/{entity}.json
 `POST` / `PUT` 在保存前，会按照由项目 HTML 表单推导出的约束校验请求体（包括 `a.b` 形式的嵌套字段）。绕过浏览器校验的请求（如 `curl`）也受同样约束。
 
 - **校验的约束**：`required`、`maxlength`、`minlength`、`type="number"` / `type="range"` 的 `min` / `max`、`pattern`（整体匹配；含嵌套量词的危险模式会被跳过，超过 1000 个字符的值会被拒绝）、`type="email"`、`type="date"`（`YYYY-MM-DD`），以及 `<select>` 与 `radio` 的选项。
-- **哪些表单会被计入**：`action` 为该实体的 `_sys/data/<entity>.json` 且 `method` 为 `POST`（或 `PUT`）的表单。通过 `data-t-include` 引入的部件中的字段也包含在内。`GET` 表单（如搜索）和 `_method=DELETE` 的表单会被忽略。 项目中的所有 HTML 文件都会被计入（`_sys`、以点开头的文件夹和 `node_modules` 除外），因此遗留的旧副本可能使校验变宽松。 `data-t-include` 只会在 `<form>` 元素内部展开，因此由包裹页面插槽的表单所在布局提供的字段不会被校验。没有此类表单的实体，以及没有任何表单声明的字段，都不会被校验。若 `<option>` / `radio` 的值由 `{ }` 动态生成，则不校验选项。
+- **哪些表单会被计入**：`action` 为该实体的 `_sys/data/<entity>.json` 且 `method` 为 `POST`（或 `PUT`）的表单。通过 `data-t-include` 引入的部件中的字段也包含在内。`GET` 表单（如搜索）和 `_method=DELETE` 的表单会被忽略。 项目中的所有 HTML 文件都会被计入（`_sys`、以点开头的文件夹和 `node_modules` 除外），因此遗留的旧副本可能使校验变宽松。 `data-t-include` 只会在 `<form>` 元素内部展开，因此由包裹页面插槽的表单所在布局提供的字段既不校验也不转换类型。没有此类表单的实体，以及没有任何表单声明的字段，都不会被校验。若 `<option>` / `radio` 的值由 `{ }` 动态生成，则不校验选项。
 - **多个表单写入同一实体**：以最宽松的声明为准，避免表单互相拒绝对方的合法提交。只有当所有写入表单都包含某字段且都将其设为必填时，该字段才是 `required`；其他约束只有在声明该字段的所有表单中都被违反时才会拒绝（任一表单无约束即视为无约束）。
 - **不校验的内容**：`disabled` 控件、`type="hidden"` 的约束、位于 `data-t-if` 内部或由 `data-t-list` 重复生成的控件的 `required`（它们可能不会被渲染；由 `data-t-list` 生成的 `radio` 组仍会校验 `required`），以及同名复选框组的 `required`（单个复选框的 `required` 会被校验）。每个字段只接受一个值：除 `<select multiple>` 和同名复选框组外，数组和对象会被拒绝。`type="email" multiple` 会按逗号分隔的每个地址分别校验。
 - **失败时**：不会保存任何内容。表单提交（请求 HTML 的请求）会以 303 跳转回 `data-t-redirect`（没有则为 `Referer`）并附带 `?error=`；JSON 客户端会收到 `400` 和 `{ "error": "..." }`。页面中可用 `{_sys.query.error}` 显示该消息。
@@ -725,6 +725,23 @@ POST /_sys/data/{entity}.json
   <button type="submit">创建</button>
 </form>
 ```
+
+#### 保存的值类型
+
+通过校验的 `POST` / `PUT` 的值，会先按表单输入类型转换后再保存（Studio 的记录创建/更新遵循相同规则）。表单的值本质上都是字符串，若原样保存，`_sort` 会按文本顺序排序，`"false"` 在 `data-t-if` 中也会被当作真。
+
+| 输入 | 表单提交 | JSON |
+| :--- | :--- | :--- |
+| `type="number"` / `"range"` | 数字字符串转换为数字（`" 9 "` -> `9`）。空字符串或仅含空白则不保存该字段。`0x10`、`1e999`、`NaN`、`1,5`、`9px` 等会被拒绝；超出 ±2^53（`Number.MAX_SAFE_INTEGER`）的整数也会因过大而被拒绝 | 有限数字原样保留；数字字符串会转换；布尔值和数组会被拒绝。`min` / `max` 对转换后的数字生效 |
+| 单个 `checkbox` | 只要提交（无论 `value` 是什么）即为 `true`，未提交为 `false` | 布尔值原样保留。字符串仅限 `"true"`、`"on"`、该 `checkbox` 自身的 `value`（均为 `true`）和 `"false"`（`false`），不区分大小写（与声明的 `value` 比较时区分大小写）；其他字符串（`"no"`、`"0"` 等）和数字会被拒绝。必填的 `checkbox` 不接受 `false`。空字符串视为未提交 |
+| `checkbox` 组（同名多个）和 `<select multiple>` | 始终是字符串数组（只有一个值也是 `["x"]`）；什么都没选则不保存该字段 | 字符串数组（单个字符串会被包成数组） |
+| `text`、`textarea`、`email`、`select`、`radio`、`date` 等 | 保持字符串 | 仅限字符串；数字和布尔值会被拒绝（`false` / `0` 不能再满足 `required`）。但 `radio`、`select`、`hidden` 也接受有限数字并原样保存（用于 `author_id: 1` 这类关联 ID）；布尔值会被拒绝 |
+
+- **未勾选变为 `false` 的条件**：仅当该实体的**所有**写入表单都包含该 `checkbox` 时。只要有一个表单没有它，未提交的字段就不保存（以免覆盖该表单的数据）。`PUT` 同样如此：未勾选会被替换为 `false`。
+- **不转换的情况**：各表单间类型不一致的字段（例如一个表单是 `type="number"`，另一个是 `type="text"`）、没有任何表单声明的字段、`id`（始终为字符串）以及没有写入表单的实体，均按提交的原样保存。由包裹页面插槽的表单所在布局提供的字段（`data-t-include` 只会在 `<form>` 元素内部展开）既不校验也不转换类型。
+- **点号写法**：若声明了 `meta.isbn` 这样的字段，将其父级（`meta`）以非对象（字符串、数字、布尔值、数组或 `null`）提交会被拒绝，以免绕过子字段的约束（`meta=str&meta.isbn=x` 同样如此）。
+- `NaN` / `Infinity` 永远不会被保存。校验或类型检查失败时，不会保存任何内容。
+- **不迁移已有数据**：已作为字符串保存的值（`"9"`、`"on"`）保持原样，在重新保存之前仍按文本排序和比较。
 
 > **关于 File API**：旧版本中记载的文件管理端点（`/_sys/file/{filename}.{ext}` 的 GET/POST/PUT/DELETE）**尚未实现**。图片等静态文件请放在项目内，并通过普通 URL（如 `/images/logo.png`）引用。
 
