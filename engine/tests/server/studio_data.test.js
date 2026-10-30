@@ -379,6 +379,8 @@ test('scaffold (dev only)', async (t) => {
         assert.ok(/pattern="\[A-Z\]\{3\}"/.test(edit));
         assert.ok(/type="number"/.test(edit) && /type="email"/.test(edit) && /type="date"/.test(edit) && /type="checkbox"/.test(edit));
         assert.ok(/<select[^>]*name="category"/.test(edit));
+        // The scaffolded pages load ../bracify.js: the engine copy is written next to the project (Issue #55)
+        assert.strictEqual(fs.readFileSync(path.join(userDir, 'bracify.js'), 'utf-8'), fs.readFileSync(path.resolve(__dirname, '../../lib/engine.cjs'), 'utf-8'));
 
         // second run: error, files untouched
         fs.writeFileSync(path.join(userDir, 'posts', 'index.html'), index + '<!-- keep -->');

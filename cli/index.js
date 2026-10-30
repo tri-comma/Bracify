@@ -96,7 +96,13 @@ async function build() {
     });
 }
 
-build().catch((e) => {
+// The engine always ships as <output>/bracify.js (the CLI's own version, replacing any stale project copy) so the built pages work on file:///
+async function emitEngine() {
+    fs.mkdirSync(outputDir, { recursive: true });
+    fs.copyFileSync(require.resolve('@bracify/engine/lib/engine.cjs'), path.join(outputDir, 'bracify.js'));
+}
+
+build().then(emitEngine).catch((e) => {
     console.error('Build failed:', e.message);
     process.exitCode = 1;
 });

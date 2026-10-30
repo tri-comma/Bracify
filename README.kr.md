@@ -48,12 +48,15 @@ Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구�
 <head>
   <!-- 데이터 소스 지정 -->
   <link data-t-source="info" href="/_sys/data/info.json">
+  <script src="bracify.js"></script>
 </head>
 <body>
   <h1>{info.msg}</h1>
 </body>
 </html>
 ```
+
+`<script src="bracify.js"></script>`는 클라이언트 측 엔진을 로드합니다(SPA 이동과 로컬 개발 모드에 필요하며, 자세한 내용은 "클라이언트 측 엔진 로드"를 참고하세요).
 
 ### 3. 데이터 작성
 
@@ -171,16 +174,17 @@ Bracify는 SSR 및 CSR 모드 모두에서 **모든 페이지 이동을 기본�
 
 SSR만으로 표시하는 페이지에는 `<script>`가 필요 없지만, SPA 이동·로컬 개발 모드(`file://`)·CSR을 사용하려면 각 페이지의 `<head>`에서 클라이언트 측 엔진을 로드해야 합니다.
 
-- **서버 모드**: 서버가 엔진을 `/engine/engine.cjs`로 제공합니다.
+어떤 모드에서도 다음 `<script>` 하나로 엔진을 로드합니다.
 
-  ```html
-  <script src="/engine/engine.cjs"></script>
-  ```
+```html
+<script src="bracify.js"></script>
+```
 
-- **로컬 개발 모드**: 서버가 없으므로 엔진 본체(저장소의 `engine/lib/engine.cjs`)를 프로젝트 내에 두고, 해당 페이지에서의 상대 경로로 로드합니다.
-- **두 모드에서 같은 파일을 사용하는 경우**: [`examples/`](./examples/)처럼 두 `<script>`를 나란히 작성합니다. 각 모드에서 존재하지 않는 쪽은 로드에 실패하며 무시됩니다.
+하위 폴더에 있는 페이지에서는 상대 경로를 사용합니다(예: `<script src="../bracify.js"></script>`).
 
-두 모드에서 `<script>` 하나로 로드하는 방법은 [#55](https://github.com/tri-comma/Bracify/issues/55)에서 검토 중입니다.
+- **서버 모드**: 서버가 가상 경로 `/bracify.js`(루트에서만)로 엔진을 `text/javascript`로 제공합니다. 프로젝트에 같은 이름의 파일이 있어도 SSR과 브라우저의 엔진 버전을 맞추기 위해 항상 서버의 엔진이 우선합니다. ETag를 이용한 조건부 요청도 지원합니다.
+- **로컬 개발 모드(`file://`)**: 서버가 없으므로 `bracify.js`를 프로젝트 내에, 페이지에서 상대 경로로 닿는 위치에 두어야 합니다. Studio의 스캐폴드 생성과 CLI 빌드가 자동으로 만들어 줍니다. 그 외에는 저장소의 `engine/lib/engine.cjs`를 `bracify.js`로 복사하세요([`examples/`](./examples/)는 `npm run sync:examples`로 사본을 갱신합니다).
+- **호환성**: 기존 `/engine/engine.cjs`도 계속 제공됩니다(`text/javascript`). SPA 이동 시 `bracify.js`, `engine.js`, `engine.cjs` 중 어느 파일 이름이든 엔진 스크립트로 인식되어 다시 로드되지 않습니다.
 
 ---
 

@@ -124,8 +124,13 @@ function bootLocal(o) {
         saved[k] = Object.getOwnPropertyDescriptor(globalThis, k);
         Object.defineProperty(globalThis, k, { value: map[k], configurable: true, writable: true, enumerable: true });
     }
-    delete require.cache[ENGINE_LIB];
-    const Bracify = require(ENGINE_LIB); // registers the DOMContentLoaded bootstrap + SPA link/form interception
+    // Like a browser on file://: the engine is whatever the page's own <script src> points to (resolved relative to the page)
+    const m = html.match(/<script[^>]*\bsrc="([^"]*(?:bracify|engine)\.c?js)"/);
+    // Pages without an engine tag (synthetic fixtures in other test suites) and root-absolute srcs (the server's URL
+    // space, e.g. /bracify.js, /engine/engine.cjs) get the repository engine
+    const enginePath = (m && !m[1].startsWith('/')) ? path.resolve(path.dirname(file), m[1]) : ENGINE_LIB;
+    delete require.cache[enginePath];
+    const Bracify = require(enginePath); // registers the DOMContentLoaded bootstrap + SPA link/form interception
     const doc = win.document;
     const api = {
         dom, win, doc, Bracify, idb, rootHandle,
@@ -151,7 +156,7 @@ function bootLocal(o) {
             for (const k of GLOBAL_KEYS) {
                 if (saved[k]) Object.defineProperty(globalThis, k, saved[k]); else delete globalThis[k];
             }
-            delete require.cache[ENGINE_LIB];
+            delete require.cache[enginePath];
             win.close();
         }
     };

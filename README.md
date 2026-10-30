@@ -48,12 +48,15 @@ Bracifyは「マークアップだけでアプリが作れる」というシン�
 <head>
   <!-- データソースの指定 -->
   <link data-t-source="info" href="/_sys/data/info.json">
+  <script src="bracify.js"></script>
 </head>
 <body>
   <h1>{info.msg}</h1>
 </body>
 </html>
 ```
+
+`<script src="bracify.js"></script>` はクライアント側エンジンの読み込みです（SPA 遷移・ローカル開発モード用。詳細は「クライアント側エンジンの読み込み」を参照）。
 
 ### 3. データの作成
 
@@ -176,16 +179,17 @@ Bracify は、SSR および CSR のいずれのモードにおいても、**す�
 
 SSR だけで表示するページには `<script>` は不要ですが、SPA 遷移・ローカル開発モード（`file://`）・CSR を使う場合は、各ページの `<head>` でクライアント側エンジンを読み込む必要があります。
 
-- **サーバーモード**: サーバーがエンジンを `/engine/engine.cjs` で配信します。
+エンジンの読み込みは、どのモードでも次の 1 本の `<script>` で済みます。
 
-  ```html
-  <script src="/engine/engine.cjs"></script>
-  ```
+```html
+<script src="bracify.js"></script>
+```
 
-- **ローカル開発モード**: サーバーがないため、エンジン本体（リポジトリの `engine/lib/engine.cjs`）をプロジェクト内に置き、そのページからの相対パスで読み込みます。
-- **両モードで同じファイルを使う場合**: [`examples/`](./examples/) のように両方の `<script>` を並べます。各モードで存在しない方は読み込みに失敗し、無視されます。
+サブフォルダのページでは相対パスにします（例: `<script src="../bracify.js"></script>`）。
 
-両モードで 1 本の `<script>` で済む読み込み方法は [#55](https://github.com/tri-comma/Bracify/issues/55) で検討中です。
+- **サーバーモード**: サーバーが仮想パス `/bracify.js`（ルートのみ）でエンジンを `text/javascript` として配信します。プロジェクトに同名のファイルがあっても、SSR とブラウザのエンジンのバージョンを揃えるため、常にサーバー側のエンジンが優先されます。ETag による条件付きリクエストにも対応します。
+- **ローカル開発モード（`file://`）**: サーバーがないため、`bracify.js` をプロジェクト内（ページから相対パスで届く場所）に置く必要があります。Studio の雛形生成と CLI ビルドは自動で作成します。それ以外の場合は、リポジトリの `engine/lib/engine.cjs` を `bracify.js` としてコピーしてください（[`examples/`](./examples/) は `npm run sync:examples` でコピーを更新します）。
+- **互換性**: 従来の `/engine/engine.cjs` も引き続き配信されます（`text/javascript`）。SPA 遷移時は `bracify.js`・`engine.js`・`engine.cjs` のいずれのファイル名でもエンジン本体と判定され、再読み込みされません。
 
 ---
 

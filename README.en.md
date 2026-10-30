@@ -48,12 +48,15 @@ Create a file named `index.html` and write the following:
 <head>
   <!-- Specify data source -->
   <link data-t-source="info" href="/_sys/data/info.json">
+  <script src="bracify.js"></script>
 </head>
 <body>
   <h1>{info.msg}</h1>
 </body>
 </html>
 ```
+
+`<script src="bracify.js"></script>` loads the client-side engine (needed for SPA transitions and Local Development Mode; see "Loading the client-side engine").
 
 ### 3. Create Data
 
@@ -171,16 +174,17 @@ Bracify treats **all page transitions as SPA by default** in both SSR and CSR mo
 
 Pages displayed by SSR alone don't need a `<script>`, but to use SPA transitions, Local Development Mode (`file://`), or CSR, each page must load the client-side engine in its `<head>`.
 
-- **Server mode**: The server serves the engine at `/engine/engine.cjs`.
+In every mode the engine is loaded with this single `<script>`:
 
-  ```html
-  <script src="/engine/engine.cjs"></script>
-  ```
+```html
+<script src="bracify.js"></script>
+```
 
-- **Local Development Mode**: Since there is no server, place the engine itself (`engine/lib/engine.cjs` in the repository) inside your project and load it by a path relative to that page.
-- **Using the same file in both modes**: Line up both `<script>` tags, as in [`examples/`](./examples/). The one that doesn't exist in each mode fails to load and is ignored.
+In pages inside a subfolder use a relative path (e.g. `<script src="../bracify.js"></script>`).
 
-A way to load the engine with a single `<script>` in both modes is under consideration in [#55](https://github.com/tri-comma/Bracify/issues/55).
+- **Server mode**: The server serves the engine at the virtual path `/bracify.js` (root only) as `text/javascript`. Even if the project has a file with the same name, the server's own engine always wins, so SSR and the browser run the same engine version. Conditional requests with ETag are supported.
+- **Local Development Mode (`file://`)**: Since there is no server, `bracify.js` must be placed inside your project, reachable from the page by a relative path. Studio's scaffold and the CLI build create it automatically. Otherwise copy the repository's `engine/lib/engine.cjs` as `bracify.js` ([`examples/`](./examples/) refreshes its copy with `npm run sync:examples`).
+- **Compatibility**: The previous `/engine/engine.cjs` is still served (as `text/javascript`). During SPA transitions the engine script is recognized by any of the file names `bracify.js`, `engine.js` and `engine.cjs` and is never loaded again.
 
 ---
 
