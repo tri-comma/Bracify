@@ -1,0 +1,56 @@
+name: 機能の提案 / Feature request
+description: 新しい機能や機能の変更を提案する / Propose a new feature or a change
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bracify の機能は [コンセプトと設計原則](https://github.com/tri-comma/Bracify/blob/main/docs/ja/concept.md) に従います。判断の基準は「IT に詳しくないエンドユーザーが、HTML と Studio の画面だけで使えるか」です。
+        Every feature follows the [concept and design principles](https://github.com/tri-comma/Bracify/blob/main/docs/en/concept.md): can an end user without IT expertise use it with HTML and the Studio screens only?
+  - type: textarea
+    id: problem
+    attributes:
+      label: 背景・課題 / Problem
+      description: 誰が、何に困っているか / Who is stuck, and on what
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案 / Proposal
+      description: HTML の書き方や Studio の画面の例を含めてください / Include an HTML or Studio screen example
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 利用者の操作手順 / The user's steps
+      description: エンドユーザーがこの機能を使うときの手順を 1 つずつ書いてください。すべての手順が HTML の編集か Studio の画面操作である必要があります。/ Write each step an end user takes. Every step must be HTML editing or a Studio screen action.
+      placeholder: |
+        1. Studio で …… を開く
+        2. HTML に …… を書く
+        3. ……
+    validations:
+      required: true
+  - type: checkboxes
+    id: concept
+    attributes:
+      label: コンセプトの確認項目 / Concept checklist
+      description: 当てはまるものにチェックしてください。チェックできない項目は、下の欄で理由と対応を説明してください。/ Check what applies; explain any unchecked item below.
+      options:
+        - label: エンドユーザーが HTML と Studio の画面だけで使える（ターミナル・環境変数・設定ファイルの手書き・JavaScript が不要）/ Usable with HTML and Studio only
+        - label: 新しい設定は設定一覧（docs/ja/settings.md）に追加し、Studio の画面で設定できる。新しい設定が無い場合もチェック / New settings are added to the settings list and to Studio (or there are none)
+        - label: 利用者が外部サービス（メールサーバー・API キー・特定のクラウドなど）を用意しなくても動く / Works without the user preparing an external service
+        - label: 宣言や設定を忘れたとき、安全な側に倒れる / Forgetting a declaration or setting is safe
+        - label: 特定のホスティング業者・コンテナ・OS を前提にしない / No assumption of a specific host, container or OS
+        - label: SSR と CSR（ローカルモード）で同じ結果になる / Same result in SSR and CSR (local mode)
+  - type: textarea
+    id: exceptions
+    attributes:
+      label: チェックできない項目の理由と対応 / Unchecked items
+      description: 設計の見直し案、または「エンジニア向け機能の扱い」（任意・上級者向けと明示・主要な機能の代わりにしない）を満たす説明 / A redesign, or how it meets the conditions for engineer-only features
+  - type: textarea
+    id: notes
+    attributes:
+      label: 考慮点 / Considerations
