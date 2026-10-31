@@ -166,6 +166,11 @@ const factory = function () {
                     continue;
                 }
             }
+            // _total: matches before _limit/_offset (meta property set by the data fetchers); falls back to the length
+            if (key === '_total' && Array.isArray(value) && typeof value._total !== 'number') {
+                value = value.length;
+                continue;
+            }
 
             if (value === undefined || value === null) break;
             if (!noRelation && typeof value === 'object' && !Array.isArray(value) && !(key in value)) {
@@ -605,7 +610,16 @@ const factory = function () {
             (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1);
     }
 
-    function filterLocalData(data, href) {
+    // Meta property (not a record field, not JSON-serialisable): matches before _limit/_offset
+    function withTotal(result, total) {
+        Object.defineProperty(result, '_total', { value: total, writable: true, configurable: true });
+        return result;
+    }
+
+    // hydrated: `data` is the current page's server-rendered embed (true while the current page came with a server-rendered embed): rows that are already
+    // filtered, sliced and projected and carry their _total are returned as is, otherwise an `_offset` would be applied twice.
+    function filterLocalData(data, href, hydrated) {
+        if (hydrated && data && typeof data === 'object' && typeof data._total === 'number') return data;
         if (!Array.isArray(data) || !href || !href.includes('?')) return data;
         try {
             const url = new URL(href, 'http://localhost');
@@ -615,6 +629,7 @@ const factory = function () {
             let offset = 0;
             let sort = null;
             let order = 'asc';
+            let fields = null;
 
             // Filter
             for (const [key, val] of Object.entries(params)) {
@@ -628,6 +643,7 @@ const factory = function () {
                 else if (key === '_offset') offset = parseInt(val, 10);
                 else if (key === '_sort') sort = val;
                 else if (key === '_order') order = val.toLowerCase();
+                else if (key === '_fields') fields = val.split(',').map(f => f.trim()).filter(Boolean);
                 else if (!key.startsWith('_')) {
                     // Exact match only for data fields
                     result = result.filter(item => String(item[key]) === String(val));
@@ -648,18 +664,53 @@ const factory = function () {
                 });
             }
 
+            const total = result.length;
+
             // Offset & Limit
             if (offset > 0) result = result.slice(offset);
             if (limit !== null && !isNaN(limit)) result = result.slice(0, limit);
 
-            // If limit=1 and we have exactly 1 result, return the object instead of array
-            if (limit === 1 && result.length === 1) return result[0];
+            // _fields: keep the listed fields (id always); unknown names are ignored
+            if (fields) {
+                result = result.map(item => {
+                    if (!item || typeof item !== 'object') return item;
+                    const out = {};
+                    if ('id' in item) out.id = item.id;
+                    for (const f of fields) {
+                        if (f !== 'id' && Object.prototype.hasOwnProperty.call(item, f)) Object.defineProperty(out, f, { value: item[f], enumerable: true, writable: true, configurable: true });
+                    }
+                    return out;
+                });
+            }
 
-            return result;
+            // If limit=1 and we have exactly 1 result, return the object instead of array
+            if (limit === 1 && result.length === 1) return withTotal({ ...result[0] }, total);
+
+            return withTotal(result, total);
         } catch (e) { return data; }
     }
 
     const pendingLoads = {};
+
+    // The server's state element of a page: <script type="application/json" id="__bracify_state__"> holding
+    // { sys, data, totals }. Read by JSON.parse only (never evaluated); the non-enumerable _total of each source is
+    // re-attached from `totals`. Returns { sys, data } or null if absent or malformed.
+    function parseSsrState(doc) {
+        const el = doc && doc.getElementById ? doc.getElementById('__bracify_state__') : null;
+        if (!el) return null;
+        try {
+            const state = JSON.parse(el.textContent);
+            const data = state.data;
+            if (!data || typeof data !== 'object') return null;
+            const totals = state.totals || {};
+            for (const k of Object.keys(totals)) {
+                if (data[k] && typeof data[k] === 'object' && typeof totals[k] === 'number') {
+                    Object.defineProperty(data[k], '_total', { value: totals[k], writable: true, configurable: true });
+                }
+            }
+            return { sys: state.sys, data };
+        } catch (e) { return null; }
+    }
 
     async function browserLocalFetcher(href, name) {
         // Security & Format Validation (CSR)
@@ -687,8 +738,9 @@ const factory = function () {
 
         // 2. Try global data (Hydration / Mock / SSR)
         const entityName = cleanPath.split('/').pop().replace(/\.json$/i, '');
-        if (globalData[name]) return filterLocalData(globalData[name], href);
-        if (globalData[entityName]) return filterLocalData(globalData[entityName], href);
+        const hydrated = typeof window !== 'undefined' && (window.__BRACIFY_SSR_DATA__ !== undefined ? window.__BRACIFY_SSR_DATA__ === true : window.__BRACIFY_SSR__ === true);
+        if (globalData[name]) return filterLocalData(globalData[name], href, hydrated);
+        if (globalData[entityName]) return filterLocalData(globalData[entityName], href, hydrated);
 
         // 3. Try fetch (Production / Standard HTTP)
         // Skip fetch on file:// protocol as it triggers CORS errors for local files
@@ -703,8 +755,8 @@ const factory = function () {
         return new Promise((resolve) => {
             const jsHref = href.split('?')[0].replace(/\.json$/i, '.js');
             // Check again if data appeared (script might have been in HTML)
-            if (globalData[name]) return resolve(filterLocalData(globalData[name], href));
-            if (globalData[entityName]) return resolve(filterLocalData(globalData[entityName], href));
+            if (globalData[name]) return resolve(filterLocalData(globalData[name], href, hydrated));
+            if (globalData[entityName]) return resolve(filterLocalData(globalData[entityName], href, hydrated));
 
             // Hook for both names
             const resolveHandler = () => {
@@ -761,6 +813,11 @@ const factory = function () {
 
     async function preloadSources() {
         if (typeof document === 'undefined') return {};
+        // Initial load: the server's state element is the source when its publishing script did not run
+        if (typeof window !== 'undefined' && !window.__BRACIFY_DATA__) {
+            const st = parseSsrState(document);
+            if (st) { window.__BRACIFY_DATA__ = st.data; if (!window._sys && st.sys) window._sys = st.sys; window.__BRACIFY_SSR__ = true; }
+        }
         const globalData = (typeof window !== 'undefined' ? window.__BRACIFY_DATA__ : null) || {};
         const links = document.querySelectorAll('link[data-t-source]');
         const sys = (typeof window !== 'undefined' ? window._sys : null) || { query: {}, params: {} };
@@ -1098,7 +1155,7 @@ const factory = function () {
     }
 
     return {
-        Engine, resolveValue, resolveSourceHref, expandAutoBind, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
+        Engine, resolveValue, resolveSourceHref, expandAutoBind, _hydrated: { text: hydratedText, attrs: hydratedAttrs }, getNestedValue, preloadSources, parseSsrState, mock, isTruthy, isSafeIncludePath, resolvePathHandle, readFileContent, evaluateCondition, evaluateExpression, filterLocalData,
         get rootHandle() { return rootHandle; },
         set rootHandle(val) { rootHandle = val; },
         navigate: (typeof window !== 'undefined' ? (path, push = true) => window.Bracify.navigate(path, push) : () => { })
@@ -1478,6 +1535,16 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         const doc = parser.parseFromString(html, 'text/html');
 
         // Commit point: from here to pushState and `_renderedPath` there is no await, so nothing can interleave
+        // The fetched page's server-rendered data replaces the previous page's (otherwise a source reusing a name would
+        // keep the old rows); without an embed (local mode) the data is left as is and is filtered locally again.
+        const ssrState = BracifyLib.parseSsrState(doc);
+        if (ssrState) {
+            window.__BRACIFY_DATA__ = ssrState.data;
+            window.__BRACIFY_SSR_DATA__ = true;
+        } else {
+            window.__BRACIFY_SSR_DATA__ = false;
+        }
+
         // 3. Sync Head
         syncHead(doc);
 

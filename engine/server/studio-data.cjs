@@ -116,7 +116,13 @@ class StudioData {
                 const { project, entity, ...filters } = q;
                 const records = await dbm.find(q.entity, filters);
                 const rows = records.map(r => ({ ...r, cells: fields.filter(f => f.name !== 'id').map(f => toCell(f, r)) }));
-                if (filters._limit === '1' && rows.length === 1) return rows[0];
+                // _total: matches before _limit/_offset (same meta property as the Data API sources)
+                const paged = ['_limit', '_offset'].some(k => filters[k] !== undefined && filters[k] !== '');
+                const total = paged ? await dbm.count(q.entity, filters) : rows.length;
+                Object.defineProperty(rows, '_total', { value: total, writable: true, configurable: true });
+                if (filters._limit === '1' && rows.length === 1) {
+                    return Object.defineProperty(rows[0], '_total', { value: total, writable: true, configurable: true });
+                }
                 return rows;
             });
         } catch (e) {

@@ -37,6 +37,13 @@ class BaseAdapter {
         throw new Error('Method not implemented: remove');
     }
 
+    // Number of records matching the filters before _limit / _offset (Issue #54).
+    // Generic fallback: drivers should override it with a real count query (as SQLite does).
+    async count(entity, filters = {}) {
+        const { _limit, _offset, ...rest } = filters;
+        return (await this.find(entity, rest)).length;
+    }
+
     // Helper for legacy get/put
     async get(entity) {
         const res = await this.find(entity, { id: '__default__' });

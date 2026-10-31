@@ -174,37 +174,42 @@ class SQLiteAdapter extends BaseAdapter {
         });
     }
 
+    // Splits Data API filters into reserved control parameters and data filters, and builds the shared WHERE clause.
+    // Returns null when the query matches nothing (blank `id` filter).
+    parseQuery(entity, filters) {
+        const q = { limit: null, offset: null, sort: null, order: 'ASC', fields: null, sql: "WHERE entity = ?", params: [entity] };
+        const dataFilters = {};
+        for (const [key, val] of Object.entries(filters)) {
+            // An empty/unresolved `id` filter matches nothing (never "ignored", which would return the first record).
+            if (key === 'id' && isBlankIdFilter(val)) return null;
+            if (val === undefined || val === null || val === '' || val === '{?}') continue;
+            // Ignore unresolved placeholders (e.g. "{_sys.query.q}" when the URL parameter is absent),
+            // consistent with the CSR filterLocalData(); otherwise they would filter out every record.
+            if (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1) continue;
+
+            if (key === '_limit') q.limit = parseInt(val, 10);
+            else if (key === '_offset') q.offset = parseInt(val, 10);
+            else if (key === '_sort') q.sort = val;
+            else if (key === '_order') q.order = (val && val.toLowerCase() === 'desc') ? 'DESC' : 'ASC';
+            else if (key === '_fields') q.fields = String(val).split(',').map(f => f.trim()).filter(Boolean);
+            else dataFilters[key] = val;
+        }
+        for (const [key, val] of Object.entries(dataFilters)) {
+            q.sql += buildFilter(key, val, q.params);
+        }
+        return q;
+    }
+
     async find(entity, filters = {}) {
         return new Promise((resolve, reject) => {
             if (!this.db) return reject(new Error('No DB connected'));
 
-            let sql = "SELECT id, value FROM data_records WHERE entity = ?";
-            let params = [entity];
+            const q = this.parseQuery(entity, filters);
+            if (!q) return resolve([]);
 
-            let limit = null;
-            let offset = null;
-            let sort = null;
-            let order = 'ASC';
-
-            const dataFilters = {};
-            for (const [key, val] of Object.entries(filters)) {
-                // An empty/unresolved `id` filter matches nothing (never "ignored", which would return the first record).
-                if (key === 'id' && isBlankIdFilter(val)) return resolve([]);
-                if (val === undefined || val === null || val === '' || val === '{?}') continue;
-                // Ignore unresolved placeholders (e.g. "{_sys.query.q}" when the URL parameter is absent),
-                // consistent with the CSR filterLocalData(); otherwise they would filter out every record.
-                if (typeof val === 'string' && val.indexOf('{') !== -1 && val.indexOf('}') !== -1) continue;
-
-                if (key === '_limit') limit = parseInt(val, 10);
-                else if (key === '_offset') offset = parseInt(val, 10);
-                else if (key === '_sort') sort = val;
-                else if (key === '_order') order = (val && val.toLowerCase() === 'desc') ? 'DESC' : 'ASC';
-                else dataFilters[key] = val;
-            }
-
-            for (const [key, val] of Object.entries(dataFilters)) {
-                sql += buildFilter(key, val, params);
-            }
+            let sql = "SELECT id, value FROM data_records " + q.sql;
+            const params = q.params;
+            const { limit, offset, sort, order } = q;
 
             if (sort) {
                 if (sort === 'id' || sort === 'entity') {
@@ -229,7 +234,29 @@ class SQLiteAdapter extends BaseAdapter {
 
             this.db.all(sql, params, (err, rows) => {
                 if (err) return reject(err);
-                resolve(rows.map(r => ({ ...JSON.parse(r.value), id: r.id })));
+                resolve(rows.map(r => {
+                    const rec = { ...JSON.parse(r.value), id: r.id };
+                    if (!q.fields) return rec;
+                    // _fields: keep the listed fields (id always); unknown names are ignored
+                    const out = { id: r.id };
+                    for (const f of q.fields) {
+                        if (f !== 'id' && Object.prototype.hasOwnProperty.call(rec, f)) Object.defineProperty(out, f, { value: rec[f], enumerable: true, writable: true, configurable: true });
+                    }
+                    return out;
+                }));
+            });
+        });
+    }
+
+    // Number of records matching the filters, ignoring _limit / _offset / _sort / _fields (Issue #54).
+    async count(entity, filters = {}) {
+        return new Promise((resolve, reject) => {
+            if (!this.db) return reject(new Error('No DB connected'));
+            const q = this.parseQuery(entity, filters);
+            if (!q) return resolve(0);
+            this.db.get("SELECT COUNT(*) AS n FROM data_records " + q.sql, q.params, (err, row) => {
+                if (err) reject(err);
+                else resolve(row ? row.n : 0);
             });
         });
     }
@@ -264,7 +291,7 @@ class SQLiteAdapter extends BaseAdapter {
             let sql = "DELETE FROM data_records WHERE entity = ?";
             let params = [entity];
             // Skip reserved query params (as find does) and refuse to wipe the whole entity without a data filter
-            const dataFilters = Object.entries(filters || {}).filter(([key]) => !['_limit', '_offset', '_sort', '_order'].includes(key));
+            const dataFilters = Object.entries(filters || {}).filter(([key]) => !['_limit', '_offset', '_sort', '_order', '_fields'].includes(key));
             if (dataFilters.length === 0) return reject(new Error('remove requires at least one filter'));
             for (const [key, val] of dataFilters) {
                 sql += buildFilter(key, val, params, false);

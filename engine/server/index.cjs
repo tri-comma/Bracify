@@ -364,7 +364,7 @@ class EngineServer {
                     }
                     case 'DELETE': {
                         // Refuse an unfiltered delete (it would wipe the whole entity); pagination/sort params are not filters.
-                        const reserved = ['_limit', '_offset', '_sort', '_order'];
+                        const reserved = ['_limit', '_offset', '_sort', '_order', '_fields'];
                         const deleteFilters = Object.fromEntries(Object.entries(filters).filter(([k]) => !reserved.includes(k)));
                         if (Object.keys(deleteFilters).length === 0) {
                             if (wantsHtml()) return this.redirectBack(req, res, 'Filter required for delete');
@@ -535,7 +535,24 @@ class EngineServer {
                                 // Handle cases where entity might be projects.json in URL
                                 if (entity.endsWith('.json')) entity = entity.replace('.json', '');
 
+                                // _limit cap, read per request: BRACIFY_MAX_LIMIT (positive integer), 0 = no cap, default 1000.
+                                // Clamped before the _limit=1 check below.
+                                const envMax = parseInt(process.env.BRACIFY_MAX_LIMIT, 10);
+                                const maxLimit = envMax >= 0 ? envMax : 1000;
+                                // A present _limit that is negative or not a number (-1 = unlimited in SQLite, "abc") is clamped too;
+                                // an empty / unresolved-placeholder _limit is ignored by the DB layer and stays uncapped.
+                                if (maxLimit > 0 && filters._limit !== undefined && filters._limit !== '' && !/[{}]/.test(filters._limit)) {
+                                    const asked = parseInt(filters._limit, 10);
+                                    if (!(asked >= 0 && asked <= maxLimit)) filters._limit = String(maxLimit);
+                                }
+
                                 const results = await db.find(entity, filters);
+                                // _total: matches before _limit/_offset (a meta property like _length, not a record field)
+                                if (Array.isArray(results)) {
+                                    const paged = ['_limit', '_offset'].some(k => filters[k] !== undefined && filters[k] !== '');
+                                    const total = paged ? await db.count(entity, filters) : results.length;
+                                    Object.defineProperty(results, '_total', { value: total, writable: true, configurable: true });
+                                }
                                 this.logger(`[Bracify] SSR Fetch: ${href} -> ${results ? (Array.isArray(results) ? results.length : 1) : 0} items`);
                                 if (results && results.length > 0) {
                                     this.logger(`[Bracify] SSR Data Sample: ${JSON.stringify(results[0]).substring(0, 100)}...`);
@@ -543,6 +560,7 @@ class EngineServer {
 
                                 // Unwrap single item if limit=1
                                 if (filters._limit === '1' && results && Array.isArray(results) && results.length === 1) {
+                                    Object.defineProperty(results[0], '_total', { value: results._total, writable: true, configurable: true });
                                     return results[0];
                                 }
 
@@ -558,13 +576,18 @@ class EngineServer {
                     // window._sys provides context (query/params)
                     // window.__BRACIFY_DATA__ provides pre-fetched sources to avoid double-fetching
                     // Security: Escape < to \u003c to prevent XSS (script breakout like </script>)
-                    const safeSys = JSON.stringify(_sysData).replace(/</g, '\\u003c');
-                    const safeData = JSON.stringify(data).replace(/</g, '\\u003c');
-                    const stateScript = `<script>
-                        window._sys = ${safeSys};
-                        window.__BRACIFY_SSR__ = true;
-                        window.__BRACIFY_DATA__ = ${safeData};
-                    </script>`;
+                    // (U+2028 / U+2029 are escaped too: they are legal in JSON but line terminators for some JS tooling)
+                    // _total is a non-enumerable meta property (JSON drops it), so it travels in a side map and is re-attached
+                    const totals = {};
+                    for (const [k, v] of Object.entries(data)) {
+                        if (v && typeof v === 'object' && typeof v._total === 'number') totals[k] = v._total;
+                    }
+                    // The state is one JSON element (read by the engine with JSON.parse, also from a fetched page on SPA navigation);
+                    // the small script below publishes it as window._sys / window.__BRACIFY_DATA__ for page scripts.
+                    const stateJson = JSON.stringify({ sys: _sysData, data, totals })
+                        .replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+                    const stateScript = `<script type="application/json" id="__bracify_state__">${stateJson}</script>` +
+                        `<script>(function () { var s = JSON.parse(document.getElementById('__bracify_state__').textContent); window._sys = s.sys; window.__BRACIFY_SSR__ = true; var d = window.__BRACIFY_DATA__ = s.data, t = s.totals; for (var k in t) if (d[k] && typeof d[k] === 'object') Object.defineProperty(d[k], '_total', { value: t[k], writable: true, configurable: true }); })();</script>`;
 
                     if (processed.includes('</head>')) {
                         processed = processed.replace('</head>', `${stateScript}</head>`);

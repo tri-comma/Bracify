@@ -340,7 +340,7 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
 
   - **比較演算子**: [データアクセスAPIの演算子](data-api.md#演算子)と同じ記法（`=`, `:ne=`, `:gt=` など）が使えます。
   - **論理演算（AND/OR）**: スペースで区切ると **AND**、値にカンマを使うと **OR** になります。
-  - **変数の使用**: `{ }` で囲むことで、データの値を条件に使えます。`{ }` の中では[四則演算](#データの表示ユニバーサルプレースホルダー)も使えます（例: `matched._length:gt={_sys.query._offset + 10}`）。
+  - **変数の使用**: `{ }` で囲むことで、データの値を条件に使えます。`{ }` の中では[四則演算](#データの表示ユニバーサルプレースホルダー)も使えます（例: `articles._total:gt={_sys.query._offset + 10}`）。
   - **単独キー**: 演算子を使わずキーのみを書いた場合は、従来通りその値の有無（真偽）を判定します。
 
   ```html
@@ -360,8 +360,8 @@ Bracify のプレースホルダー `{ }` は、HTML 属性やテキストノー
     <a href="/edit">記事を編集</a>
   </div>
 
-  <!-- 次のページがある場合だけ「次へ」を表示。allArticles は件数を数えるために _limit / _offset を付けずに読み込んだ別のソース (件数 > 現在のオフセット + 10) -->
-  <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">次へ</a>
+  <!-- 次のページがある場合だけ「次へ」を表示。articles は _limit=10 付きのソースで、_total は _limit / _offset を適用する前の件数 (件数 > 現在のオフセット + 10) -->
+  <a data-t-if="articles._total:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">次へ</a>
   ```
 
 ### `data-t-redirect`

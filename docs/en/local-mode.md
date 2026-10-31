@@ -49,6 +49,9 @@ In local development mode (both True Zero Server and Mock Mode), simple data pro
   - `_offset`: Data skip
   - `_sort`: Sort key
   - `_order`: `asc` (ascending) or `desc` (descending)
+  - `_fields`: Field projection (comma-separated, `id` is always kept)
+
+  `{source._total}` has the same value as on the server (the count before `_limit` / `_offset`). `BRACIFY_MAX_LIMIT` is a server (SSR) setting only and does not apply in local mode.
 
 ### JavaScript Behavior in SPA Mode
 
