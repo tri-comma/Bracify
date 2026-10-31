@@ -4,6 +4,8 @@
 
 This is the Bracify reference. The Japanese version is the master copy: [docs/ja/](../ja/README.md).
 
+- [Concept and Design Principles](./concept.md): Target users, design principles and the checklist for proposing a feature (every feature follows it)
+- [Settings](./settings.md): The settings users can change, and how
 - [Bracify Studio](./studio.md): The Launcher and the Admin Dashboard
 - [Project Structure](./project-structure.md): Directory layout, SSR / CSR / SPA routing, loading the client-side engine
 - [Custom Attributes](./attributes.md): `data-t-include` / `data-t-source` / placeholders / `data-t-list` / `data-t-if` / `data-t-redirect` / forms

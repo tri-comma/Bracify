@@ -27,6 +27,7 @@ Please search existing Issues first to avoid duplicates, then open a new one at 
 - **Motivation**: What problem you are trying to solve.
 - **Use case**: A concrete scenario where the feature would be used.
 - **Proposed API**: A sketch of the attribute, syntax, or option you have in mind (with a short example, if possible).
+- **Concept fit**: Go through the checklist in [docs/en/concept.md](./docs/en/concept.md#checklist-for-proposing-a-feature). Bracify features must be usable by end users with HTML and the Studio screens only.
 
 ### Question
 
@@ -41,4 +42,4 @@ Describe what you are trying to do, what you have tried, and where you are stuck
 一方で、**Issue（バグ報告・機能要望・質問）は歓迎します**。Issue には次の情報を記載してください。
 
 - バグ報告: タイトル、実行環境（Bracify / Node.js / OS / ブラウザ、動作モード）、再現手順、期待される動作、実際の動作
-- 機能要望: タイトル、動機、ユースケース、提案する API（属性・構文）
+- 機能要望: タイトル、動機、ユースケース、提案する API（属性・構文）、コンセプトへの適合（[docs/ja/concept.md](./docs/ja/concept.md#機能を提案するときの確認項目) の確認項目）
