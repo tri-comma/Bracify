@@ -11,7 +11,7 @@ The settings a Bracify user can change. Under principle 3 of the [concept](./con
 | Setting | Studio screen | Default | Override environment variable | Status |
 |---|---|---|---|---|
 | Preview server port | Port field on the project screen | First free port from 3000 | None (second argument of `engine/start.cjs`) | Implemented |
-| Cap on `_limit` | Not yet (added with the settings mechanism) | 1000 (fetches without `_limit` are not capped) | `BRACIFY_MAX_LIMIT` (`0` removes the cap) | Planned in #54 |
+| Cap on `_limit` ([system variables](./system-variables.md)) | Not yet (planned in #118) | 1000 (fetches without `_limit` are not capped) | `BRACIFY_MAX_LIMIT` (`0` removes the cap) | Implemented (Studio screen in #118) |
 | Admin password | Not yet (planned in #106) | None (protected writes are refused while unset) | To be decided | Planned in #106 |
 
 ## Runtime settings (users never touch them)
