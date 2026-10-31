@@ -275,17 +275,49 @@ const isWriteForm = (form) => {
 // Options that are templated (e.g. value="{authors.id}") are only known at render time: no enum check then
 const staticOptions = (values) => values.some(v => v.indexOf('{') !== -1) ? null : values;
 
-// Replace every `data-t-include` element inside `root` with its partial's markup (nested includes too)
-const expandIncludes = (root, resolve, depth = 0) => {
+const normalizeIncludePath = (p) => String(p).replace(/\\/g, '/').replace(/^(?:\.?\/)+/, '');
+
+// Fill an include element with its partial like Engine.processElement: the partial's `data-t-content` slots take the
+// include element's `:scope > [data-t-content]` children by name; the unnamed / "default" slot takes its whole content.
+// Returns true when the partial has slots (it was used as a layout).
+const fillInclude = (el, partial) => {
+    if (partial.indexOf('data-t-content') === -1) { el.innerHTML = partial; return false; }
+    const container = el.ownerDocument.createElement('div');
+    container.innerHTML = partial;
+    const slots = container.querySelectorAll('[data-t-content]');
+    if (!slots.length) { el.innerHTML = partial; return false; }
+    const sourceContents = {};
+    el.querySelectorAll(':scope > [data-t-content]').forEach(c => { sourceContents[c.getAttribute('data-t-content') || ''] = c.innerHTML; });
+    const defaultContent = el.innerHTML;
+    slots.forEach(slot => {
+        const name = slot.getAttribute('data-t-content') || '';
+        if (sourceContents[name] !== undefined) slot.innerHTML = sourceContents[name];
+        else if (name === '' || name === 'default') slot.innerHTML = defaultContent;
+    });
+    el.innerHTML = container.innerHTML;
+    return true;
+};
+
+// Replace the `data-t-include` elements inside `root` with their partials (slots filled, nested includes too).
+// An include is expanded when it sits inside a <form> or when `wanted(path)` says its partial leads to a <form>
+// (a layout whose <form> wraps the page's slots); other includes are never read. Cycles and depth are capped.
+// `root` itself may carry the include (<body data-t-include>). `onLayout(path)` is told about every partial used as a layout.
+const expandIncludes = (root, resolve, wanted, onLayout, depth = 0, stack = []) => {
     if (depth >= 10) return;
-    root.querySelectorAll('[data-t-include]').forEach(el => {
+    const els = Array.from(root.querySelectorAll('[data-t-include]'));
+    if (root.hasAttribute('data-t-include')) els.unshift(root);
+    els.forEach(el => {
+        if (!root.contains(el)) return; // replaced together with an enclosing include
         const includePath = el.getAttribute('data-t-include');
         if (!includePath || includePath.indexOf('{') !== -1) return; // dynamic path: unknown until render time
+        const key = normalizeIncludePath(includePath);
+        if (stack.includes(key)) return; // circular include
+        if (!el.closest('form') && !wanted(includePath)) return;
         const partial = resolve(includePath);
         if (!partial) return;
-        el.innerHTML = partial;
+        if (fillInclude(el, partial)) onLayout(includePath);
         el.removeAttribute('data-t-include');
-        expandIncludes(el, resolve, depth + 1);
+        expandIncludes(el, resolve, wanted, onLayout, depth + 1, [...stack, key]);
     });
 };
 
@@ -293,16 +325,19 @@ const expandIncludes = (root, resolve, depth = 0) => {
  * Per-form field lists of an HTML document.
  * @param {string} html
  * @param {(includePath: string) => (string|null)} [resolveInclude] expands data-t-include inside the forms
+ * @param {(includePath: string) => boolean} [leadsToForm] whether a partial (transitively) contains a <form>; includes
+ *   outside forms are expanded (slots filled) only when it says so. Without it only includes inside forms are expanded.
+ * @param {(includePath: string) => void} [onLayout] called for each partial that was filled as a layout (it has slots)
  * @returns {Array<{entity: string, fields: Map<string, object>}>} one entry per write form
  */
-const scanWriteForms = (html, resolveInclude) => {
+const scanWriteForms = (html, resolveInclude, leadsToForm, onLayout) => {
     let document;
     try { document = new JSDOM(html).window.document; } catch (e) { return []; }
+    if (resolveInclude) expandIncludes(document.documentElement, resolveInclude, leadsToForm || (() => false), onLayout || (() => {}));
     const out = [];
     document.querySelectorAll('form').forEach(form => {
         const entity = entityFromHref(form.getAttribute('action'));
         if (!entity || !isWriteForm(form)) return;
-        if (resolveInclude) expandIncludes(form, resolveInclude);
         const fields = new Map();
         const radios = new Map(); // name -> { field, values }
         form.querySelectorAll('input, select, textarea').forEach(el => {
