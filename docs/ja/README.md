@@ -4,6 +4,8 @@
 
 Bracify のリファレンスです。日本語版が原本で、英語版は [docs/en/](../en/README.md) にあります。
 
+- [コンセプトと設計原則](./concept.md): 想定する利用者、設計原則、機能を提案するときの確認項目（すべての機能はこれに従います）
+- [設定一覧](./settings.md): 利用者が変えられる設定と、その設定方法
 - [Bracify Studio（ランチャーと管理ダッシュボード）](./studio.md): Bracify Studio（Launcher と Admin Dashboard）の機能
 - [プロジェクト構成とレンダリング仕様](./project-structure.md): ディレクトリ構成、SSR / CSR / SPA ルーティング、クライアント側エンジンの読み込み
 - [カスタム属性リファレンス](./attributes.md): `data-t-include` / `data-t-source` / プレースホルダー / `data-t-list` / `data-t-if` / `data-t-redirect` / フォーム

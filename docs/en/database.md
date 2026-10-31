@@ -16,7 +16,7 @@ If the `config` table does not exist or there is no configuration for a specific
 
 ## How to Configure
 
-You can configure this via the GUI (Bracify Studio) or by directly inserting values into the `config` table of the database in the following format:
+Studio has no screen for this yet (it is an advanced setting, see the [settings list](./settings.md)). Insert values directly into the `config` table of the database in the following format:
 
 - **Target Table**: `config`
 - **Columns**: `name` = 'db', `value` = (JSON array of connection info below)
