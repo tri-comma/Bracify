@@ -6,17 +6,19 @@
 
 # Bracify 🚀
 
-> **HTML만으로 만드는 웹 프레임워크. CLI 없이, 마크업만으로.**
+> **HTML만으로 만드는 웹 프레임워크. 마크업만 있으면 됩니다.**
+>
+> 앱을 만드는 데 터미널은 필요 없습니다(GUI인 Studio로 충분합니다). CLI는 정적 빌드용 선택 도구입니다.
 
 Bracify는 HTML 마크업만으로 웹 애플리케이션을 구축할 수 있는 프레임워크입니다.
-프로그래밍이나 복잡한 환경 구축의 장벽을 제로로 만드는 것을 목표로 하는 'HTML-first' 개발 경험을 제공합니다.
+프로그래밍이나 복잡한 환경 구축의 장벽을 낮추는 것을 목표로 하는 'HTML-first' 개발 경험을 제공합니다.
 
 ## Bracify란?
 
 Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구합니다.
 
 - **React/Vue에 지친 엔지니어에게**: 복잡한 빌드 설정이나 무거운 프레임워크 학습에서 해방됩니다.
-- **마크업 엔지니어에게**: 프로그래밍 지식 없이도, 여러분의 HTML 기술만으로 데이터 연동부터 배포까지 풀 기능 웹 앱을 만들 수 있습니다.
+- **마크업 엔지니어에게**: 프로그래밍 지식 없이도, 여러분의 HTML 기술만으로 데이터 연동까지 포함한 동작하는 웹 앱을 만들 수 있습니다.
 
 ## Demo
 
@@ -25,9 +27,9 @@ Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구�
 ## Key Concepts (주요 컨셉)
 
 - **HTML Markup Only**: 프로그램을 작성하지 않고, HTML 마크업만으로 앱을 제작합니다.
-- **No CLI Required**: 검은 화면(터미널)은 필요 없습니다. 전용 GUI 런처가 모든 것을 해결합니다.
+- **Terminal-free Authoring**: 페이지 작성, 미리보기, 데이터 관리에 터미널이 필요 없습니다. GUI 도구인 Bracify Studio로 모두 해결됩니다. CLI(정적 빌드용)는 선택 사항입니다.
 - **Hybrid Rendering**: `file://` (CSR) 모드로 개발하고, 운영 환경에서는 그대로 서버 `https://` (SSR)로 공개 가능합니다.
-- **Zero Configuration**: 복잡한 `npm install` 등의 과정이 전혀 필요 없습니다.
+- **Minimal Setup**: 프로젝트에는 설정 파일이나 빌드 단계가 필요 없습니다. Studio를 실행하려면 Node.js와 최초 1회의 `npm install`이 필요합니다(아래 Quick Start 참고).
 - **Portable**: 프로젝트는 평범한 HTML 파일입니다. 어디든 가지고 다니며 즉시 실행할 수 있습니다.
 
 ## Quick Start (빠른 시작)
@@ -36,7 +38,7 @@ Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구�
 
 ### 1. 준비
 
-`Bracify` GUI 앱을 실행하고 새 작업 폴더를 선택합니다.
+Bracify Studio를 실행하고 새 작업 폴더를 선택합니다. 현재 Studio는 소스에서 실행합니다(Node.js 필요). 저장소 루트에서 `npm install`을 한 번 실행한 뒤 `npm start`로 시작합니다. 자세한 내용은 [Studio](./docs/en/studio.md)를 참고하세요.
 
 ### 2. HTML 작성
 
@@ -56,7 +58,7 @@ Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구�
 </html>
 ```
 
-`<script src="bracify.js"></script>`는 클라이언트 측 엔진을 로드합니다(SPA 이동과 로컬 개발 모드에 필요하며, 자세한 내용은 "클라이언트 측 엔진 로드"를 참고하세요).
+`<script src="bracify.js"></script>`는 클라이언트 측 엔진을 로드합니다(SPA 이동과 로컬 개발 모드에 필요하며, 자세한 내용은 [프로젝트 구조](./docs/en/project-structure.md)를 참고하세요).
 
 ### 3. 데이터 작성
 
@@ -70,885 +72,131 @@ Bracify는 '마크업만으로 앱을 만들 수 있다'는 심플함을 추구�
 
 ### 4. 실행
 
-GUI 앱에서 `Start Server` 버튼을 누르고 `localhost:3000`을 열면 `Hello Bracify!`가 표시됩니다.
+Studio에서 `Start Server` 버튼을 누르고 `localhost:3000`을 열면 `Hello Bracify!`가 표시됩니다.
 서버는 시작 시 `index.html`과 `info.json`을 읽고, 메모리에서 SSI(Server Side Includes)를 해결하여 응답을 반환합니다.
 파일을 편집하고 저장하면 OS 수준의 모니터링을 통해 메모리의 템플릿이 즉시 업데이트됩니다.
 
 ---
 
-## Development Tools (Bracify Studio)
+## 만들 수 있는 것
 
-`Bracify`는 개발자 경험을 극대화하기 위해 전용 GUI 도구(코드네임: **Bracify Studio**)를 제공합니다.
-이 도구는 Electron 기반의 '런처'와 `Bracify` 자체로 구축된 '관리 대시보드(웹 앱)'의 하이브리드 구성으로 작동합니다.
+기능별로 최소한의 예제를 보여 줍니다. 자세한 내용은 [문서](#문서)를 참고하세요.
 
-### 1. Bracify Launcher (Desktop)
+### 데이터 표시(`data-t-source`와 플레이스홀더)
 
-관리 대시보드를 실행하기 위한 가벼운 래퍼 애플리케이션입니다.
+JSON 등의 데이터에 이름을 붙이고 `{이름.항목}`으로 텍스트나 속성에 삽입합니다. URL 파라미터는 `{?id}`로 참조할 수 있습니다.
 
-- **System Server**: 앱 실행 시 시스템 관리용 API 서버를 시작합니다.
-- **Launch**: 자동으로 브라우저(또는 Electron 창)에서 관리 대시보드를 엽니다.
-
-### 2. Admin Dashboard (Web)
-
-모든 조작을 집약한 통합 관리 화면입니다.
-
-- **Project Control**:
-  - **Open Project**: 시스템 API를 통해 폴더 선택 창을 열고 프로젝트를 로드합니다.
-  - **Start/Stop Server**: 포트 번호를 지정하여 대상 프로젝트의 프리뷰 서버를 실행합니다.
-  - **여러 프로젝트 동시 실행**: 각 프로젝트는 독립된 자식 프로세스(`node engine/start.cjs <path> <port>`)로 실행되어 여러 개를 동시에 실행할 수 있습니다.
-    - 시작/중지는 JavaScript 없이 표준 `<form method="POST">`(SSR)로 수행합니다.
-      - `POST /_sys/server/start` (필드: `id` = 프로젝트 ID)
-      - `POST /_sys/server/stop` (필드: `id`)
-      - 처리 후 `data-t-redirect`, 없으면 Referer, 없으면 `/`로 리다이렉트(303)합니다. 실패 시 `?error=메시지`를 붙여 돌아가므로 페이지에서 `{?error}`로 표시할 수 있습니다.
-    - `projects` 엔티티의 `port`를 사용합니다. 비어 있으면 3000부터, 지정한 포트가 사용 중이면 그 포트부터 순서대로 빈 포트를 탐색합니다. 실제로 사용된 포트는 레코드의 `port`에 덮어써집니다.
-    - 이 기능은 시스템 서버(Studio)로 실행된 서버에서만 활성화되며, 그 외에는 `/_sys/server/*`가 404를 반환합니다. `Origin` 헤더가 `Host`와 다른 POST는 403으로 거부됩니다. 자식 프로세스가 예기치 않게 종료되면 `status`가 `stopped`로 갱신됩니다.
-    - 결과(`status` = `running`/`stopped`, `pid`, 실제 `port`)는 프로젝트 레코드에 기록되어 대시보드에 표시됩니다.
-    - 시스템 서버를 중지하면 시작한 모든 자식 프로세스도 함께 중지됩니다.
-- **Data Manager**:
-  - 프로젝트의 HTML에서 엔티티와 스키마를 자동 수집하고, 데이터 목록·등록·수정·삭제(CRUD)와 템플릿 생성(Scaffold)을 제공합니다. 화면은 `studio/data/index.html?project=<id>`(엔티티 목록)와 `studio/data/entity.html?project=<id>&entity=<name>`(스키마·레코드·등록 폼)이며, 모두 JavaScript를 쓰지 않는 SSR 폼입니다.
-  - **엔티티 탐지**: 프로젝트의 모든 `*.html`(`node_modules`, `_sys`, `.`로 시작하는 폴더 제외, `_parts` 포함)을 탐색하여 다음에서 엔티티를 수집합니다.
-    - `data-t-source`의 `href`(`_sys/data/<entity>.json`)
-    - `<form action="..._sys/data/<entity>.json">`과 그 안의 `input` / `select` / `textarea`의 `name`(`data-t-redirect` 제외, `a.b` 같은 점 표기는 중첩 필드)
-    - 알려진 소스 이름을 쓰는 `{<source>.<field>}` 플레이스홀더(타입 `unknown`)
-    - 기존 DB 레코드(폼에 정의되지 않은 필드는 값에서 `number` / `boolean` / `string` / `object`를 추정)
-  - **스키마 정보**: 필드별로 타입(`text` / `number` / `email` / `date` / `checkbox` / `enum`(`select`의 선택지) / `unknown` 등), `required`, `maxlength`, `minlength`, `min`, `max`, `pattern`을 수집합니다.
-  - **검증 제한**: 필드 이름은 `[A-Za-z0-9_.-]`만 허용됩니다(그 외는 무시). `checkbox`의 `required`는 검증하지 않습니다(체크하지 않으면 전송되지 않기 때문). `pattern` 검사에서 1000자를 넘는 값은 거부합니다. 중첩된 수량자를 포함한 `pattern`(예: `(a+)+$`)은 안전을 위해 적용하지 않으며 스키마의 `patternSkipped`가 `true`가 됩니다.
-  - **CRUD**: 대상 프로젝트의 데이터(`<project>/_sys/data.db` 및 해당 프로젝트의 라우팅 설정)를 직접 조작합니다. Studio 자체 DB에는 영향이 없습니다.
-    - `POST /_sys/studio/records?project=<id>&entity=<name>`(등록), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`(수정), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`(삭제)
-    - 등록·수정 시 탐지한 스키마에 따라 서버에서 검증(`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 타입)하며, 실패하면 `?error=메시지`를 붙여 303 리다이렉트합니다. 성공 시 `data-t-redirect` 또는 Referer로 이동합니다.
-    - SSR 데이터 소스(Studio 페이지 전용 가상 href): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>`(Data API와 동일한 필터, `_sort`, `_limit`, `_offset` 지원), `_sys/studio/schema.json?project=<id>&entity=<name>`.
-  - **Scaffold(개발 시에만)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>`로 대상 프로젝트에 `<entity>/index.html`(목록·삭제 폼)과 `<entity>/edit.html`(스키마에 맞는 `type` / `required` / `maxlength` / `pattern`이 있는 등록/수정 폼)을 생성합니다. 문서화된 Bracify 속성만 사용하며 기존 파일은 덮어쓰지 않고 오류를 반환합니다.
-  - `/_sys/server/*`와 마찬가지로 시스템 서버(Studio)에서만 활성화되며(그 외에는 404), `Origin`이 `Host`와 다른 POST는 403으로 거부됩니다. `entity`는 영문자·숫자·`_`·`-`만 가능합니다(`_`로 시작 불가).
-- **API Monitor**:
-  - 통신 로그 확인.
-
----
-
-## 프로젝트 구성 (File System Structure)
-
-`Bracify` 프로젝트는 소스 편집 전용의 단일 폴더로 구성됩니다. 실행을 위해 물리적인 빌드 디렉토리가 필요하지 않습니다.
-
-### 권장 디렉토리 구조
-
-```text
-project/
-├── index.html          # 엔트리 포인트
-├── style.css           # 정적 리소스
-├── img/                # 언더스코어로 시작하지 않는 폴더는 공개됨
-│   └── logo.png
-├── _parts/             # [비공개] 인클루드용 부품
-│   ├── header.html
-│   └── footer.html
-└── _sys/               # [비공개] 시스템 데이터 및 설정
-    ├── data.db         # 데이터베이스 파일
-    └── data/           # 엔티티용 JSON 데이터
-        └── articles.json
+```html
+<link data-t-source="article" href="_sys/data/articles.json?id={?id}">
+<h1>{article.title}</h1>
+<p>{article.body}</p>
 ```
 
-### 렌더링 사양
+### 목록 표시(`data-t-list`)
 
-Bracify는 웹 서버로 동작하는 'SSR 모드'와 브라우저에서 직접 동작하는 'CSR 모드'를 자유롭게 전환할 수 있습니다.
+반복할 요소에 지정하면 레코드 수만큼 복제됩니다. 정렬, 건수 제한, 페이지 이동은 URL 파라미터로 지정합니다.
 
-#### 1. SSR 모드 (서버 측 실행)
-서버는 요청에 따라 HTML을 동적으로 구성합니다.
+```html
+<link data-t-source="articles" href="_sys/data/articles.json?_sort=id&_order=desc&_limit=5">
+<ul>
+  <li data-t-list="articles"><a href="article.html?id={articles.id}">{articles.title}</a></li>
+</ul>
+```
 
-- **온메모리 빌드**: 시작 시 및 파일 저장 시 `data-t-include`를 해결하고 결합된 HTML 템플릿을 **메모리**에 캐싱합니다.
-- **파일 감시**: `index.html`이나 `_parts/` 하위 파일이 업데이트되면 서버는 OS 수준 이벤트를 감지하여 메모리 캐시를 자동으로 재구축합니다.
-- **고성능**: 메모리상의 완성된 템플릿에서 응답하므로 디스크 I/O를 최소화하여 빠른 응답이 가능합니다.
+### 조건 표시(`data-t-if`)
 
-#### 2. CSR 모드 (클라이언트 측 실행)
-서버 없이 `file://` 프로토콜을 통해 브라우저에서 직접 폴더를 열어 동작합니다.
+값의 존재 여부, 비교(`=`, `:gt` 등), AND(공백) / OR(쉼표)로 요소의 표시를 전환합니다.
 
-- **런타임 인클루드**: 브라우저가 HTML을 로드할 때 File System Access API를 통해 `data-t-include`로 지정된 파일을 즉석에서 가져와 결합합니다.
-- **일관성**: SSR과 CSR 모두 동일한 바인딩 엔진(`engine.js`)을 사용하므로 환경에 관계없이 동일한 결과물을 얻을 수 있습니다.
+```html
+<span data-t-if="status=published">Published</span>
+<div data-t-if="price:gte=1000 stock:gt=0">In stock</div>
+<div data-t-if="!user.is_login"><a href="login.html">Log in</a></div>
+```
 
-#### 3. 페이지 이동과 SPA 라우팅 (Unified SPA)
-Bracify는 SSR 및 CSR 모드 모두에서 **모든 페이지 이동을 기본적으로 SPA로 처리**합니다.
+### 폼 저장(서버 측 검증이 있는 Data API)
 
-- **심리스한 경험**: 전체 페이지 새로고침을 피하고 Ajax(Fetch)를 사용하여 다음 페이지의 HTML을 가져온 뒤 `<body>` 등의 DOM 요소를 동적으로 교체합니다. 이를 통해 화면 깜빡임(플리커) 현상을 방지하고 빠르고 부드러운 앱 경험을 제공합니다.
-- **권한 유지**: CSR 모드에서 매우 중요합니다. `file://` 환경에서 페이지가 새로고침되면 브라우저 폴더 액세스 권한이 초기화되지만, SPA 방식을 사용하면 세션 동안 권한을 유지할 수 있습니다.
-- **링크 자동 가로채기**: 표준 `<a>` 태그를 통한 내부 링크 이동은 자동으로 감지되어 SPA 이동으로 전환됩니다. 개발자는 별도의 JavaScript 작성 없이도 SPA 앱을 구축할 수 있습니다.
-- **브라우저 히스토리 지원**: `history.pushState` API를 활용하여 SPA 이동 중에도 URL 업데이트 및 뒤로 가기/앞으로 가기 버튼이 정상적으로 작동합니다.
+표준 `<form>`을 Data API로 보내기만 하면 데이터가 저장됩니다. `required`, `maxlength`, `pattern` 등의 제약은 서버에서도 검증되며, 실패하면 `?error=`와 함께 원래 페이지로 돌아옵니다.
 
-#### 4. 클라이언트 측 엔진 로드
+```html
+<form method="POST" action="/_sys/data/articles.json" data-t-redirect="articles.html">
+  <input type="text" name="title" required maxlength="100">
+  <input type="email" name="email" required>
+  <button>Save</button>
+</form>
+<p>{_sys.query.error}</p>
+```
 
-SSR만으로 표시하는 페이지에는 `<script>`가 필요 없지만, SPA 이동·로컬 개발 모드(`file://`)·CSR을 사용하려면 각 페이지의 `<head>`에서 클라이언트 측 엔진을 로드해야 합니다.
+### 부품과 레이아웃(`data-t-include`)
 
-어떤 모드에서도 다음 `<script>` 하나로 엔진을 로드합니다.
+헤더 같은 공통 부품을 삽입하거나, 공통 레이아웃에 페이지 콘텐츠를 채워 넣을 수 있습니다.
+
+```html
+<!-- _parts/layout.html contains <main data-t-content="main-body"></main> -->
+<body data-t-include="_parts/layout.html">
+  <div data-t-content="main-body"><p>Page content</p></div>
+</body>
+```
+
+### 파이프(필터)
+
+`|`로 날짜, 숫자, 통화 형식 지정이나 문자열 자르기, 기본값 지정을 할 수 있습니다. `date`, `number`, `currency`, `uppercase`, `lowercase`, `truncate`, `default`, `ternary`, `json`이 기본 제공됩니다.
+
+```html
+<p>{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
+<span>{ product.price | currency }</span>
+<span>{ article.summary | truncate: 10 | uppercase }</span>
+```
+
+### SPA 내비게이션
+
+내부 링크는 평범한 `<a>`만 쓰면 자동으로 전체 페이지를 새로 고치지 않는 이동이 됩니다. JavaScript는 필요 없습니다.
+
+```html
+<a href="book.html?id=1">Book</a>
+```
+
+### 로컬 모드(`file://`, 서버 불필요)
+
+Chrome / Edge에서 `index.html`을 더블클릭해 열고 프로젝트 폴더를 선택하면 동작합니다(읽기 전용, File System Access API 사용). 각 페이지에 이 한 줄이 필요합니다.
 
 ```html
 <script src="bracify.js"></script>
 ```
 
-하위 폴더에 있는 페이지에서는 상대 경로를 사용합니다(예: `<script src="../bracify.js"></script>`).
-
-- **서버 모드**: 서버가 가상 경로 `/bracify.js`(루트에서만)로 엔진을 `text/javascript`로 제공합니다. 프로젝트에 같은 이름의 파일이 있어도 SSR과 브라우저의 엔진 버전을 맞추기 위해 항상 서버의 엔진이 우선합니다. ETag를 이용한 조건부 요청도 지원합니다.
-- **로컬 개발 모드(`file://`)**: 서버가 없으므로 `bracify.js`를 프로젝트 내에, 페이지에서 상대 경로로 닿는 위치에 두어야 합니다. Studio의 스캐폴드 생성과 CLI 빌드가 자동으로 만들어 줍니다. 그 외에는 저장소의 `engine/lib/engine.cjs`를 `bracify.js`로 복사하세요([`examples/`](./examples/)는 `npm run sync:examples`로 사본을 갱신합니다).
-- **호환성**: 기존 `/engine/engine.cjs`도 계속 제공됩니다(`text/javascript`). SPA 이동 시 `bracify.js`, `engine.js`, `engine.cjs` 중 어느 파일 이름이든 엔진 스크립트로 인식되어 다시 로드되지 않습니다.
-
----
-
-## Reference
-
-### 커스텀 속성
-
-#### `data-t-include`
-
-외부 HTML 파일을 불러와 요소의 내용으로 전개합니다. 이 속성에는 **스니펫 삽입**과 **레이아웃 적용**이라는 두 가지 동작 모드가 있습니다.
-
-두 모드 모두 **`data-t-include`를 작성한 태그 자체는 삭제되지 않으며, 그 자식 요소(innerHTML)가 전개 결과에 의해 치환됩니다.**
-
----
-
-##### 모드 1: 스니펫 삽입 (Snippet Include)
-
-헤더나 푸터 등 공통 부품을 현재 위치에 끼워 넣습니다.
-
-- **동작**: 지정한 파일의 내용을 태그 내부에 그대로 전개합니다.
-- **예시**:
-
-    ```html
-    <header data-t-include="_parts/header.html"></header>
-    ```
-
-    ↓ `_parts/header.html`의 내용이 전개됩니다.
-
----
-
-##### 모드 2: 레이아웃 적용 (Layout & content)
-
-공통된 '틀(레이아웃)'을 불러오고, 그 안의 특정 영역을 자신의 콘텐츠로 채웁니다.
-
-- **동작**:
-    1. `data-t-include`로 지정한 템플릿 파일을 읽어옵니다.
-    2. 템플릿 내부의 `data-t-content` 요소와 자기 자신 내부의 `data-t-content` 요소를 매칭합니다.
-    3. 템플릿 측의 지정된 위치에 페이지 측 콘텐츠를 흘려 넣습니다.
-- **매칭 규칙**: `data-t-content` 속성값(이름)이 일치하는 요소끼리 치환 대상이 됩니다. 이름이 없는 경우 기본 슬롯(Slot)으로 취급됩니다.
-
-- **예시**:
-    **템플릿 (`_parts/layout.html`)**:
-
-    ```html
-    <div class="container">
-        <h1 data-t-content="page-title">기본 제목</h1>
-        <main data-t-content="main-body"></main>
-    </div>
-    ```
-
-    **사용 페이지 (`index.html`)**:
-
-    ```html
-    <body data-t-include="_parts/layout.html">
-        <span data-t-content="page-title">내 프로필</span>
-        <div data-t-content="main-body">
-            <p>프로필 본문 내용이 들어갑니다.</p>
-        </div>
-    </body>
-    ```
-
-    ↓ **실행 결과**:
-
-    ```html
-    <body>
-        <div class="container">
-            <h1 data-t-content="page-title">내 프로필</h1>
-            <main data-t-content="main-body">
-                <div data-t-content="main-body">
-                    <p>프로필 본문 내용이 들어갑니다.</p>
-                </div>
-            </main>
-        </div>
-    </body>
-    ```
-
-- **주의사항**: 개발 서버 또는 브라우저의 File System Access API를 통해 결합됩니다.
-
----
-
-##### 동적 삽입 (플레이스홀더로 경로 지정)
-
-삽입할 경로에는 플레이스홀더 `{ }`를 사용할 수 있어, 예를 들어 URL 파라미터로 로드할 파일을 전환할 수 있습니다.
-
-```html
-<!-- ?p=_parts/help.html 인 경우, _parts/help.html 을 전개 -->
-<div data-t-include="{?p}"></div>
-```
-
-- 값이 비어 있거나(파라미터 미지정 등) 아래 제한으로 로드가 거부된 경우에는 아무것도 전개되지 않고 요소의 원래 내용이 그대로 남습니다(순환 참조·중첩 상한·1회 렌더링당 상한을 넘은 경우도 마찬가지입니다).
-- **경로 제한**: 전개된 경로는 프로젝트 내로 한정됩니다. `..`을 포함하는 경로, `_sys` 디렉토리를 포함하는 경로, `:`를 포함하는 경로(`C:`, `http:` 등), `\`로 시작하는 경로는 로드되지 않습니다(SSR·CSR 공통). 존재하지 않는 파일을 지정한 경우에도 전개되지 않습니다.
-- **보안상 주의**: URL 파라미터를 그대로 경로로 사용하면 방문자가 프로젝트 내의 임의의 HTML(`_parts/` 내 부품 포함)을 삽입할 수 있습니다. 전환 대상이 정해져 있다면 `data-t-if`로 후보마다 고정 경로의 include를 출력 분기하는 방법을 권장합니다.
-
-  ```html
-  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
-  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
-  ```
-
-#### `data-t-source`
-
-HTML에 출력할 데이터를 가져와서 해당 데이터에 이름을 붙입니다.
-
-- **지정 방법**: `href` 속성으로 데이터 취득 URL을 지정하고, 임의의 이름을 붙입니다.
-- **데이터 취득 URL 사양**:
-  - **권장 형식**: `_sys/data/{데이터 정의 명칭}.json` (상대 경로)
-    - 로컬 프리뷰 (`file://`)에서도 작동하도록 맨 앞의 `/`를 생략하는 이 형식을 권장합니다.
-  - **허용 형식**: `/_sys/data/{데이터 정의 명칭}.json` (절대 경로 스타일)
-    - CSR (브라우저) 환경에서는 자동으로 맨 앞의 `/`가 무시되어 상대 경로로 처리됩니다.
-- **데이터 정의 명칭 제약**: **영문자, 숫자, 언더스코어 `_`, 하이픈 `-` 만** 사용할 수 있습니다.
-  - `..` 나 `/` 를 포함하는 경로 지정(디렉토리 트래버설)은 **금지**되어 있으며 로드되지 않습니다.
-- **제약**: `<link>` 태그에만 지정 가능
-- **예시**:
-
-    ```html
-    <!-- OK (권장): 상대 경로 -->
-    <link data-t-source="articles" href="_sys/data/article.json">
-
-    <!-- OK: 맨 앞 슬래시 포함 (내부적으로 상대 경로로 처리됨) -->
-    <link data-t-source="users" href="/_sys/data/user.json?status=active">
-
-    <!-- NG: 디렉토리 트래버설 금지 -->
-    <link data-t-source="invalid" href="_sys/data/../../conf.json">
-    ```
-
-#### 데이터 표시 (유니버설 플레이스홀더)
-
-HTML 텍스트나 속성값에 `{데이터소스명.항목명}`이라고 작성하여 데이터를 표시할 수 있습니다.
-
-- **기본 예시**:
-    데이터 소스와 프로퍼티(항목명)를 지정하여 표시합니다.
-
-    ```html
-    <link data-t-source="article" href="/_sys/data/articles.json?id={?id}">
-    <h1>{article.title}</h1>
-    <p>{article.body}</p>
-    ```
-
-- **중첩된 데이터 표시**:
-  점 표기법 `.` 을 사용하여 객체 내의 중첩된 프로퍼티에 접근할 수 있습니다. 데이터의 계층 구조가 깊어도 동일하게 기술할 수 있습니다.
-
-  ```json
-   {
-    "user": {
-      "name": "홍길동",
-      "address": {
-        "city": "서울"
-      }
-    }
-  }
-  ```
-
-  ```html
-  <p>사용자명: {user.name}</p>
-  <p>도시명: {user.address.city}</p>
-  ```
-
-- **자동 데이터 관계 (룩업)**:
-  `data-t-source`로 여러 데이터를 불러온 경우, 점 표기법 그대로 외래 키를 따라 관련 데이터에 접근할 수 있습니다. `article.category`에서 객체에 `category` 속성이 없고 `category_id`(또는 `categoryId`)가 있으면, Bracify는 `category`의 복수형 이름(`categories`)의 데이터 소스에서 `id`가 일치하는 레코드를 자동으로 찾습니다. 추가 속성이나 문법은 필요 없습니다.
-
-  ```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <link data-t-source="categories" href="/_sys/data/categories.json">
-
-  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
-  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
-  <ul>
-    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
-  </ul>
-  ```
-
-  - 소스 이름은 `X + s`, `X + es`, (`y`로 끝나면) `ies`, 마지막으로 `X` 자체 순으로 찾으며, 처음 존재하는 것을 사용합니다.
-  - `id`는 문자열로 비교합니다. 일치하는 레코드가 없으면 다른 정의되지 않은 값과 동일하게 처리됩니다.
-  - 객체에 실제 `category` 속성이 있으면 항상 그쪽이 우선합니다.
-  - `article.category.parent.name`처럼 연쇄적으로 따라갈 수도 있습니다.
-  - `article.category` 자체도 관련 레코드 전체로 해석되므로 `data-t-scope="article.category"`나 `data-t-if="article.category"`에 사용할 수 있습니다.
-  - 폼 자동 바인딩(`name`으로 입력값 자동 채움)은 관계를 따라가지 않습니다. 외래 키 필드(예: `name="category_id"`)를 사용하세요.
-  - 존재하는 첫 번째 소스 이름이 사용되며, 일치하는 레코드가 없어도 다음 후보는 찾지 않습니다.
-  - `{ }`, `data-t-if`, `data-t-list`, `data-t-scope`, 속성 바인딩(`href="/cat.html?id={article.category.id}"`) 모두에서 사용할 수 있으며 SSR과 CSR에서 동일하게 동작합니다.
-
-- **숫자 계산(사칙 연산)**:
-  플레이스홀더 `{ }` 안에서 사칙 연산(`+`, `-`, `*`, `/`, `%`)과 괄호 `()`를 사용하여 JavaScript를 작성하지 않고도 숫자 계산을 할 수 있습니다. 데이터 값과 숫자 리터럴을 조합해 계산할 수 있으며, 결과를 이후의 파이프(`|`)에도 전달할 수 있습니다.
-
-  ```html
-  <!-- 변수 덧셈(페이지네이션의 다음 오프셋) -->
-  <a href="?_offset={_sys.query._offset + 10}">Next</a>
-
-  <!-- 곱셈과 파이프 병용(세금·합계 표시) -->
-  <span>Total: {item.price * 1.1 | number} 円</span>
-
-  <!-- 괄호로 우선순위 지정 -->
-  <span>합계: {(item.price + item.shipping) * item.qty}</span>
-  ```
-
-  - 수식에 포함된 변수(`item.price` 등)는 자동으로 데이터에서 해결되며, 미정의·`null`·숫자가 아닌 값은 안전하게 `0`으로 취급됩니다(오류로 렌더링이 중단되지 않습니다).
-  - `0`으로 나누기·나머지는 `0`을 반환합니다.
-
-- **리스트 인덱스 표시**:
-  `data-t-list`로 반복하는 각 요소에는 0부터 시작하는 인덱스 `_index`가 자동으로 주입됩니다. 1부터 시작하도록 보정하려면 `+ 1`을 더합니다.
-
-  ```html
-  <ul>
-    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
-  </ul>
-  ```
-
-- **플레이스홀더 이스케이프**:
-  플레이스홀더 표기를 평가하지 않고 그대로 표시하고 싶은 경우, 시작 중괄호 앞에 백슬래시 `\`를 둡니다.
-
-  ```html
-  <code>\{user.name\}</code> <!-- 표시 결과: {user.name} -->
-  <code>C:\\temp</code> <!-- 표시 결과: C:\temp (백슬래시 자체는 \\ 로 표기) -->
-  ```
-
-- **값이 존재하지 않는 경우의 표시**:
-  데이터 자체(`data-t-source`, `data-t-scope`, 현재 `data-t-list` 항목)는 존재하지만 해당 필드나 관련 레코드가 없는 경우(예: 삭제된 저자의 `{book.author.name}`), 플레이스홀더는 텍스트와 속성 모두 **빈 문자열**로 출력됩니다(`class="s-{book.status}"`는 `class="s-"`가 됩니다). 표시 제어에는 `data-t-if`를 사용하세요. `{...}`가 그대로 남는 것은 데이터 자체를 사용할 수 없는 경우(로드되지 않았거나 정의되지 않은 소스/스코프)뿐입니다.
-  - URL 파라미터가 없는 `{?x}` / `{_sys.query.x}`도 빈 문자열이 됩니다(`_sys`는 항상 사용 가능). 관련 레코드가 없는 `data-t-scope`(예: `data-t-scope="book.author"`)는 유효한 빈 스코프로 취급되어 내부 플레이스홀더가 빈 문자열이 됩니다.
-  - **필터 값 제한**: `data-t-source`의 `href`에서 필터 값에 `{`와 `}`가 모두 포함된 경우(예: 제목이 `{foo}`인 책을 `?title={foo}`로 검색)는 "해결되지 않은 플레이스홀더"로 간주되어 해당 필터가 무시됩니다(SSR/CSR 공통).
-
-### 리스트 표시 (`data-t-list`)
-
-표시할 데이터가 여러 건일 경우, 반복하고자 하는 요소에 `data-t-list="데이터 소스명"`을 지정해야 합니다.
-
-```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <ul>
-    <li data-t-list="articles">
-      <h3>{articles.title}</h3>
-    </li>
-  </ul>
-```
-
-#### 속성에 데이터 삽입 (유니버설 플레이스홀더)
-
-모든 표준 속성(`href`, `src`, `class`, `value`, `style` 등)에서 플레이스홀더 `{ }`를 직접 작성하여 데이터를 삽입할 수 있습니다.
-
-- **사용 예시**:
-
-    ```html
-    <img src="{article.thumbnail}" alt="{article.title}">
-    <a href="/post/{article.id}" class="btn {article.category}">자세히 보기</a>
-    <div style="background-color: {user.color}; height: {progress}%;"></div>
-    ```
-
-- **제한**: JavaScript 구문과의 간섭을 피하기 위해 **이벤트 핸들러 속성(`onclick`, `onchange` 등) 내부에서는 플레이스홀더를 사용할 수 없습니다.**
-
-#### 플레이스홀더 간섭 방지 및 제한
-
-Bracify의 플레이스홀더 `{ }`는 HTML 속성이나 텍스트 노드에서 사용할 수 있지만, JavaScript나 CSS 코드와의 충돌을 방지하기 위해 다음 장소에서는 **전개가 비활성화**됩니다.
-
-- **전개되지 않는 장소**:
-  - `<script>` 태그 내부
-  - `<style>` 태그 내부
-  - 이벤트 핸들러 속성 (`onclick`, `onmouseover`, `onsubmit` 등 `on`으로 시작하는 모든 속성)
-
-##### 권장 패턴: 이벤트 핸들러 내부에서 데이터 사용하기
-
-이벤트 핸들러(JavaScript) 내부에서 동적인 데이터를 사용하고 싶은 경우 직접 `{ }`를 작성하지 않고, **`data-` 속성에 데이터를 넣은 후 `this.dataset`을 통해 참조**하는 패턴을 권장합니다.
-
-```html
-<!-- 비권장 (작동하지 않음) -->
-<button onclick="alert('ID: {article.id}')">보기</button>
-
-<!-- 권장 패턴 -->
-<button data-id="{article.id}" onclick="alert('ID: ' + this.dataset.id)">보기</button>
-```
-
-이 방법을 사용하면 Bracify 템플릿 엔진과 브라우저 표준 JavaScript 구문을 안전하게 공존시킬 수 있습니다.
-
-#### 폼 요소 자동 바인딩
-
-`input`, `select`, `textarea` 요소에 `name` 속성이 지정된 경우 `Bracify`는 적절한 데이터 소스에서 값을 자동으로 바인딩(표시)합니다. 사용자가 수동으로 `value`나 플레이스홀더를 지정할 필요가 없습니다.
-
-- **자동 바인딩 우선순위**:
-    1. **현재 데이터 컨텍스트**: `data-t-scope` 등으로 지정된 데이터 프로퍼티에서 값을 설정합니다.
-    2. **URL 파라미터 (`_sys.query`)**: 페이지 URL 쿼리 파라미터에 `name`과 같은 이름의 항목이 있으면 해당 값을 설정합니다. 같은 파라미터가 반복되면(`?tag=a&tag=b`) 마지막 값이 사용됩니다(SSR/CSR 공통).
-
-- **`data-t-scope`를 이용한 데이터 지정**:
-    컨테이너 요소(`div`, `form` 등)에 `data-t-scope="article"`과 같이 작성하면 해당 요소 내의 '기본 데이터 소스'를 지정할 수 있습니다.
-
-- **예시 (검색 폼)**:
-
-    ```html
-    <!-- URL이 ?title=Web인 경우 자동으로 value="Web"이 세팅됩니다 -->
-    <input type="text" name="title" placeholder="기사 검색...">
-    ```
-
-- **예시 (편집 폼)**:
-
-    ```html
-    <!-- article 데이터의 title, content가 자동으로 각 필드에 세팅됩니다 -->
-    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
-      <input type="hidden" name="id">
-      <input type="text" name="title">
-      <textarea name="content"></textarea>
-    </form>
-    ```
-
-- **셀렉트 박스 자동 선택**:
-    `<select>` 태그에 바인딩된 값과 일치하는 `value`를 가진 `<option>` 요소에는 자동으로 `selected` 속성이 부여됩니다. `data-t-list`로 생성된 `<option>`에도 적용됩니다.
-
-#### `data-t-if`
-
-조건에 따라 요소를 표시하거나 숨깁니다. 데이터 값이 존재할 경우(`true`, non-null, 0이 아님, 빈 문자열 아님) 요소를 표시합니다.
-
-- **지정 방법**: 판정할 데이터 항목명 지정
-- **예시**:
-
-    ```html
-    <!-- user.is_login이 true인 경우만 표시 -->
-    <div data-t-if="user.is_login">
-      어서 오세요, <span>{user.name}</span>님!
-    </div>
-    ```
-
-    ↓ **실행 결과 (`user.is_login`이 true인 경우)**
-
-    ```html
-    <div>
-      어서 오세요, <span>홍길동</span>님!
-    </div>
-    ```
-
-    ↓ **실행 결과 (`user.is_login`이 false인 경우)**
-
-    ```html
-    <!-- 요소 자체가 출력되지 않습니다 -->
-    ```
-
-    **참고 (부정 조건 / Else)**:
-    앞에 `!`를 붙여 '값이 존재하지 않을(false)' 조건을 지정할 수 있습니다. `else` 대용으로 사용하십시오.
-
-    ```html
-    <!-- user.is_login이 false인 경우만 표시 -->
-    <div data-t-if="!user.is_login">
-      <a href="/login.html">로그인해 주세요</a>
-    </div>
-    ```
-
-    **비교 연산 및 논리 연산 (Data API 스타일)**:
-    Data API의 쿼리 파라미터와 동일한 구문을 사용하여 더욱 상세한 조건을 지정할 수 있습니다.
-
-    - **비교 연산자**: [데이터 액세스 API의 연산자](#연산자)와 동일한 표기법(`=`, `:ne=`, `:gt=` 등)을 사용할 수 있습니다.
-    - **논리 연산(AND/OR)**: 공백으로 구분하면 **AND**, 값에 쉼표를 사용하면 **OR**가 됩니다.
-    - **변수 사용**: `{ }`로 감싸면 데이터 값을 조건에 사용할 수 있습니다. `{ }` 안에서는 [사칙연산](#데이터-표시-유니버설-플레이스홀더)도 사용할 수 있습니다(예: `matched._length:gt={_sys.query._offset + 10}`).
-
-    ```html
-    <!-- 상태가 공개 중 (status == 'published') -->
-    <span data-t-if="status=published">공개 중</span>
-
-    <!-- 가격이 1000 이상 이고 재고가 있음 -->
-    <div data-t-if="price:gte=1000 stock:gt=0">
-      인기 상품 (재고 있음)
-    </div>
-
-    <!-- 역할이 admin 또는 editor -->
-    <button data-t-if="role=admin,editor">편집</button>
-
-    <!-- 사용자 ID가 기사 작성자 ID와 일치할 경우 -->
-    <div data-t-if="user.id={post.author_id}">
-      <a href="/edit">기사 편집</a>
-    </div>
-
-    <!-- 다음 페이지가 있을 때만 "다음"을 표시. allArticles는 _limit / _offset 없이 불러온 별도의 소스로, 건수 계산에 사용 (건수 > 현재 오프셋 + 10) -->
-    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">다음</a>
-    ```
-
-#### `data-t-redirect`
-
-처리(폼 전송 등)가 정상적으로 완료된 후의 페이지 이동 URL을 지정합니다.
-
-- **지정 방법**: 이동할 대상의 상대 경로 또는 절대 경로 지정
-- **대상 태그**: `form` 태그.
-- **동작**: 서버 측 처리 후 302 상태로 해당 경로로 리다이렉트합니다. 지정하지 않으면 현재 페이지를 새로고침합니다.
-- **이동 대상 제한**: 상대 경로는 폼이 있는 페이지를 기준으로 해석됩니다. 동일 오리진 대상만 허용되며, 그 외에는 폼이 있던 페이지 또는 `/`로 이동합니다.
-
-### 폼과 데이터 저장 (포스트백)
-
-표준 `<form>` 태그를 사용하여 데이터를 생성 및 업데이트할 수 있습니다. Bracify는 브라우저 표준의 **포스트백(페이지 이동을 수반하는 전송)** 방식으로 작동하며, JavaScript 비동기 통신(fetch)을 사용하지 않습니다.
-
-- **자동 처리**: `action` 속성에 저장 경로(예: `/_sys/data/xxxxx.json`)를 지정하고 `method="POST"`로 전송합니다(수정은 `action="/_sys/data/xxxxx.json?_method=PUT"`과 `<input type="hidden" name="id">`의 조합. 브라우저의 `<form>`은 `PUT`을 보낼 수 없습니다).
-- **리다이렉트 (PRG 패턴)**: 서버 저장 완료 후 `data-t-redirect`로 지정한 URL 또는 원본 페이지로 자동 리다이렉트합니다. 이를 통해 '폼 중복 전송'을 방지하고 안전한 페이지 이동이 가능합니다.
-- **데이터 바인딩(기초값)**: `<form>` 태그에 `data-t-scope`를 지정하여 기존 데이터를 입력란의 기초값으로 세팅할 수 있습니다.
-- **입력 항목**: `<input>` 이나 `<textarea>` 의 `name` 속성이 데이터의 항목명(프로퍼티)이 됩니다.
-- **서버 측 검증**: 폼에 작성한 제약(`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select`·`radio` 선택지)은 서버에서도 검증됩니다(폼 처리의 "서버 측 검증" 참조). 실패하면 저장되지 않고 `?error=메시지`와 함께 `data-t-redirect`(없으면 원래 페이지)로 돌아가며, `{_sys.query.error}`로 표시할 수 있습니다.
-- **서버 모드 전용**: 데이터 저장은 서버(SSR)에서만 이루어집니다. 로컬 개발 모드(`file://`)에는 쓰기 구조가 없어 `POST` / `PUT` / `DELETE` 폼은 저장되지 않습니다([#56](https://github.com/tri-comma/Bracify/issues/56)에서 대응을 검토 중).
-
-### 가공 필터 (파이프)
-
-데이터를 표시할 때 가공 필터(정식 명칭: 파이프) `|`를 사용할 수 있습니다.
-
-#### 기본 구문
-
-```html
-<p>업데이트일: { article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
-<span>가격: { product.price | currency }</span>
-<span>상태: { article.is_published | ternary: '공개중', '초안' }</span>
-<span>닉네임: { user.nickname | default: '이름없음' }</span>
-<span>요약: { article.summary | truncate: 10 | uppercase }</span>
-```
-
-↓ **실행 결과** (`article.summary`가 `"Bracify is simple"`인 경우)
-
-```html
-<p>업데이트일: 2025/12/10 14:05</p>
-<span>가격: ￥1,500</span>
-<span>상태: 초안</span>
-<span>닉네임: 이름없음</span>
-<span>요약: BRACIFY...</span>
-```
-
-#### 가공 필터 구문
-
-```text
-{ 데이터명.항목명 | 필터명 }
-{ 데이터명.항목명 | 필터명: 인수 }
-{ 데이터명.항목명 | 필터명: '인수1', '인수2' }
-{ 데이터명.항목명 | 필터명1 | 필터명2: '인수' }   ← 체이닝(왼쪽부터 순서대로 적용)
-```
-
-- 필터명 뒤의 첫 `:` 이후가 인수입니다. 여러 인수는 `,`로 구분합니다.
-- 인수는 `'...'` 또는 `"..."`로 감쌀 수 있습니다. 따옴표 안의 `:` `,` `|`는 구분자로 취급되지 않습니다. 숫자 인수는 따옴표가 필요 없습니다(예: `truncate: 20`).
-- **인수 안에 `}`는 사용할 수 없습니다**(플레이스홀더의 끝으로 해석되기 때문입니다).
-- `|`로 여러 필터를 체이닝할 수 있습니다. 앞 필터의 출력이 다음 필터의 입력이 됩니다(왼쪽부터 순서대로 적용).
-- 산술식(사칙연산)의 결과에도 파이프를 적용할 수 있습니다: `{ item.price * 1.1 | currency }`
-
-#### 적용 시점에 대한 주의
-
-파이프는 대상 데이터의 로드가 완료된 후에 적용됩니다. 데이터가 아직 로드되지 않은 동안에는 `{ ... }` 표기가 그대로 화면에 남아 있으며, 로드가 완료되면 올바른 값으로 치환됩니다. 이 특성을 활용하기 위해 `data-t-source`는 가능한 한 사용 위치보다 앞쪽에 배치하세요(권장: `<head>` 내의 `<link data-t-source>`).
-
-### 표준 필터 (내장 파이프 함수)
-
-#### `date`
-
-날짜 데이터를 지정한 형식으로 출력합니다.
-
-- **구문**: `{ 항목명 | date: '포맷' }`
-- **포맷 지정**:
-  - `yyyy`: 4자리 연도
-  - `mm`: 2자리 월
-  - `dd`: 2자리 일
-  - `HH`: 2자리 시(24시간제)
-  - `MM`: 2자리 분
-  - `SS`: 2자리 초
-- **주의**: 월을 나타내는 `mm`(소문자)과 분을 나타내는 `MM`(대문자)은 구분됩니다.
-- 예: `{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }` → `2025/12/10 14:05`
-
-#### `number`
-
-숫자를 '3자리 단위 콤마' 형식으로 출력합니다.
-
-- **구문**: `{ 항목명 | number }`
-
-#### `currency`
-
-숫자를 통화 형식으로 출력합니다.
-
-- **구문**: `{ 항목명 | currency }` / `{ 항목명 | currency: '통화 코드' }`
-- 통화 코드는 ISO 4217 형식(`USD`, `EUR` 등)으로 지정합니다. 생략하면 `JPY`가 사용됩니다.
-- 예: `{ product.price | currency }` → `￥1,500`
-- 예: `{ product.price | currency: 'USD' }` → `$1,500.00`
-
-#### `uppercase` / `lowercase`
-
-문자열을 대문자 또는 소문자로 변환합니다.
-
-- **구문**: `{ 항목명 | uppercase }` / `{ 항목명 | lowercase }`
-- 예: `{ user.code | uppercase }` → `ABC-001`
-
-#### `truncate`
-
-문자열을 지정한 길이로 자르고, 생략된 경우 끝에 `...`를 붙입니다.
-
-- **구문**: `{ 항목명 | truncate: 길이 }`
-- `...`를 포함하여 지정한 길이에 맞춰 잘립니다(예: `truncate: 10`인 경우 `Bracify is simple` → `Bracify...`(10자)).
-- 지정한 길이가 3 이하인 경우 `...`를 붙이지 않고 앞에서부터 지정한 길이만큼만 출력합니다.
-- 값의 길이가 지정한 길이 이하이면 그대로 출력됩니다.
-
-#### `default`
-
-값이 비어 있을 때(`undefined`, `null`, 빈 문자열) 대신 표시할 값을 지정합니다.
-
-- **구문**: `{ 항목명 | default: '대체값' }`
-- `0`과 `false`는 '비어 있음'으로 간주되지 않고 그대로 출력됩니다.
-- 예: `{ user.nickname | default: '이름없음' }`
-
-#### `ternary`
-
-참/거짓 값에 따라 표시할 문자열을 전환합니다.
-
-- **구문**: `{ 항목명 | ternary: '참일 때 값', '거짓일 때 값' }`
-- 참/거짓 판정은 `data-t-if`와 동일한 기준입니다(`false`, `0`, `""`, `null`, `undefined`, 빈 배열, 빈 객체가 거짓으로 판정됩니다). 문자열 `"false"`나 `"0"`은 참으로 판정되는 점에 유의하세요.
-- 거짓일 때의 값을 생략하면 빈 문자열이 출력됩니다.
-- 예: `{ article.is_published | ternary: '공개중', '초안' }`
-
-#### `json`
-
-데이터를 서식이 지정된 JSON 문자열로 출력합니다. 디버깅에 유용합니다.
-
-- **구문**: `{ 항목명 | json }`
-
-## 데이터 저장 처리 (Form Handler)
-
-Bracify는 외부로의 데이터 API를 직접 제공하지 않습니다. `/_sys` 하위의 모든 리소스는 숨겨지며, 폼 전송을 위한 입구로 다음 엔드포인트만 작동합니다.
-
-```text
-POST /_sys/data/{entity}.json
-```
-
-이 엔드포인트는 브라우저에서 `GET`으로 직접 접근할 수 없습니다(403 Forbidden). 폼의 `action`으로만 사용 가능합니다.
-
-#### 데이터 조작
-조작은 HTTP 요청으로 수행되지만, 응답은 항상 '페이지로의 리다이렉트'가 됩니다.
-
-| 메서드 | 동작 | 설명 |
-| :--- | :--- | :--- |
-| `POST` | 생성 | 새로운 데이터를 생성합니다. 이미 존재하는 `id`를 지정하면 덮어쓰지 않고 거부됩니다(덮어쓰기는 `PUT`만 가능). |
-| `PUT` | 업데이트 | `id`로 지정한 레코드를 전송된 데이터로 **통째로 교체**합니다(`id`가 존재하지 않으면 레코드가 생성됩니다). |
-| `DELETE`| 삭제 | 지정된 데이터를 삭제합니다. |
-
-표준 `<form>`은 `GET` / `POST`만 전송할 수 있으므로, `POST`에 쿼리로 `_method=PUT` 또는 `_method=DELETE`를 붙이면 해당 메서드로 처리됩니다(예: `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
-
-`PUT`에는 대상 `id`(쿼리의 `?id=` 또는 폼의 `id` 항목)가 필수이며, 부분 업데이트가 아닙니다. 폼에 포함되지 않은 항목은 저장 후 레코드에서 **사라집니다**. 기존 값을 남기고 싶은 항목은 `data-t-scope`로 기초값을 넣은 입력란(필요하면 `type="hidden"`)으로 폼에 포함하세요.
-
-`DELETE`에는 `id` 등 데이터 필터가 하나 이상 필요합니다. 필터가 없는 `DELETE`(`_limit` 등만 있는 경우 포함)는 엔터티 전체가 삭제되지 않도록 400으로 거부됩니다.
-
-#### 서버 측 검증
-
-`POST` / `PUT`은 저장하기 전에 본문(`a.b` 형태의 중첩 필드 포함)을 프로젝트 HTML의 폼에서 도출한 제약 조건으로 검증합니다. 브라우저 검증을 우회한 요청(예: `curl`)에도 같은 제약이 적용됩니다.
-
-- **검증하는 제약**: `required`, `maxlength`, `minlength`, `type="number"` / `type="range"`의 `min` / `max`, `pattern`(전체 일치. 중첩 수량자가 있는 위험한 패턴은 건너뛰며 1000자를 넘는 값은 거부), `type="email"`, `type="date"`(`YYYY-MM-DD`), `<select>`와 `radio`의 선택지.
-- **대상 폼**: `action`이 해당 엔터티의 `_sys/data/<entity>.json`이고 `method`가 `POST`(또는 `PUT`)인 폼입니다. `data-t-include`로 불러온 부분의 필드도 포함됩니다. `GET` 폼(검색 등)과 `_method=DELETE` 폼은 무시됩니다. 프로젝트의 모든 HTML 파일(`_sys`, 점으로 시작하는 폴더, `node_modules` 제외)이 대상이므로, 오래된 사본이 남아 있으면 검증이 느슨해질 수 있습니다. `data-t-include`는 `<form>` 요소 안에서만 전개되므로, 페이지 슬롯을 감싸는 폼을 가진 레이아웃이 제공하는 필드는 검증도 타입 변환도 되지 않습니다. 이런 폼이 없는 엔터티와 어떤 폼에도 선언되지 않은 필드는 검증하지 않습니다. `<option>` / `radio` 값을 `{ }`로 동적으로 생성하는 경우 선택지는 검증하지 않습니다.
-- **여러 폼이 같은 엔터티에 저장하는 경우**: 폼이 서로의 정당한 제출을 거부하지 않도록 가장 느슨한 선언이 우선합니다. 필드가 `required`가 되는 것은 모든 쓰기 폼이 그 필드를 갖고 필수로 지정한 경우뿐이며, 그 밖의 제약은 그 필드를 선언한 모든 폼에서 위반된 경우에만 거부합니다(한 폼이라도 제약이 없으면 제약 없음).
-- **검증하지 않는 것**: `disabled` 컨트롤, `type="hidden"`의 제약, `data-t-if` 안쪽 또는 `data-t-list`로 반복되는 컨트롤의 `required`(렌더링되지 않을 수 있음. `data-t-list`로 생성한 `radio` 그룹의 `required`는 검증됨), 같은 이름의 체크박스 그룹의 `required`(단일 체크박스의 `required`는 검증). 필드는 하나의 값만 받습니다. `<select multiple>`과 같은 이름의 체크박스 그룹을 제외하고 배열과 객체는 거부됩니다. `type="email" multiple`은 쉼표로 구분된 각 주소를 검증합니다.
-- **실패 시**: 아무것도 저장되지 않습니다. 폼 전송(HTML을 요청하는 요청)은 303으로 `data-t-redirect`(없으면 `Referer`)에 `?error=`를 붙여 되돌아가고, JSON 클라이언트에는 `400`과 `{ "error": "..." }`가 반환됩니다. 페이지에서는 `{_sys.query.error}`로 메시지를 표시할 수 있습니다.
-- **중복 `id`**: `POST`로 이미 존재하는 `id`(본문의 `id` 또는 `?id=`)를 지정하면 마찬가지로 거부됩니다(JSON은 `409`). `id`가 문자열도 숫자도 아니면 `POST`와 `PUT` 모두 400으로 거부됩니다. 기존 레코드를 수정하려면 `PUT`(폼에서는 `action="...?_method=PUT"`과 `<input type="hidden" name="id">`)을 사용하세요.
-- `DELETE`는 검증하지 않습니다. HTML 수정은 재시작 없이 반영됩니다.
-
-```html
-<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
-  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
-  <input name="title" required maxlength="80">
-  <button type="submit">생성</button>
-</form>
-```
-
-#### 저장되는 값의 타입
-
-검증을 통과한 `POST` / `PUT`의 값은 폼 입력 종류에 맞는 타입으로 변환해 저장합니다(Studio의 레코드 생성·수정도 같은 규칙입니다). 폼의 값은 본래 모두 문자열이어서, 그대로 저장하면 `_sort`가 문자열 순으로 정렬되고 `"false"`가 `data-t-if`에서 참이 되는 등의 불일치가 생기기 때문입니다.
-
-| 입력 | 폼 전송 | JSON |
-| :--- | :--- | :--- |
-| `type="number"` / `"range"` | 숫자 문자열은 숫자로 변환(`" 9 "` -> `9`). 빈 문자열·공백만 있는 문자열은 항목을 저장하지 않음. `0x10`, `1e999`, `NaN`, `1,5`, `9px` 등은 거부. ±2^53(`Number.MAX_SAFE_INTEGER`)을 넘는 정수도 너무 크다는 이유로 거부 | 유한한 숫자는 그대로, 숫자 문자열은 변환, 불리언·배열은 거부. `min` / `max`는 변환 후의 숫자에 적용 |
-| 단일 `checkbox` | 전송되면(`value`가 무엇이든) `true`, 전송되지 않으면 `false` | 불리언은 그대로. 문자열은 `"true"`, `"on"`, 그 `checkbox`의 `value`(모두 `true`)와 `"false"`(`false`)만 허용(대소문자 무시, 단 선언된 `value`와의 비교는 대소문자 구분)하며, 그 외 문자열(`"no"`, `"0"` 등)과 숫자는 거부. `required`인 `checkbox`는 `false`를 받지 않음. 빈 문자열은 미전송으로 취급 |
-| `checkbox` 그룹(같은 이름 여러 개)·`<select multiple>` | 항상 문자열 배열(값이 하나여도 `["x"]`). 아무것도 선택하지 않으면 항목을 저장하지 않음 | 문자열 배열(문자열 하나는 배열로 감쌈) |
-| `text`, `textarea`, `email`, `select`, `radio`, `date` 등 | 문자열 그대로 | 문자열만 허용. 숫자·불리언은 거부(`false` / `0`으로 `required`를 통과할 수 없음). 단 `radio`·`select`·`hidden`은 유한한 숫자도 받아 그대로 저장(`author_id: 1` 같은 관계 ID용). 불리언은 거부 |
-
-- **체크 해제가 `false`가 되는 조건**: 해당 엔터티의 **모든** 쓰기 폼이 그 `checkbox`를 가진 경우에만 해당합니다. 하나라도 없는 폼이 있으면 전송되지 않은 항목은 저장하지 않습니다(그 폼의 데이터를 지우지 않기 위해). `PUT`도 같아서, 체크 해제는 `false`로 바뀝니다.
-- **변환하지 않는 것**: 폼마다 종류가 다른 항목(예: 한 폼은 `type="number"`, 다른 폼은 `type="text"`), 어떤 폼에도 선언되지 않은 항목, `id`(항상 문자열), 쓰기 폼이 없는 엔터티는 전송된 그대로 저장합니다. 페이지 슬롯을 감싸는 폼을 가진 레이아웃이 제공하는 필드(`data-t-include`는 `<form>` 요소 안에서만 전개됩니다)는 검증도 타입 변환도 되지 않습니다.
-- **점 표기**: `meta.isbn` 같은 항목이 선언되어 있으면, 그 부모(`meta`)를 객체가 아닌 값(문자열·숫자·불리언·배열·`null`)으로 보내는 요청은 자식의 제약을 피하지 못하도록 거부됩니다(`meta=str&meta.isbn=x`도 마찬가지입니다).
-- `NaN` / `Infinity`는 저장되지 않습니다. 검증이나 타입 검사에 실패하면 아무것도 저장되지 않습니다.
-- **기존 데이터는 마이그레이션되지 않습니다**: 이미 문자열로 저장된 값(`"9"`, `"on"`)은 그대로이며, 다시 저장하기 전까지는 문자열로 정렬·비교됩니다.
-
-> **File API에 대하여**: 이전 버전에서 기재했던 파일 관리용 엔드포인트(`/_sys/file/{filename}.{ext}`의 GET/POST/PUT/DELETE)는 **구현되어 있지 않습니다**. 이미지 등 정적 파일은 프로젝트 내에 두고 일반 URL(`/images/logo.png` 등)로 참조하세요.
-
-### 데이터 조회 조건 지정
-
-`data-t-source`의 `href`에 붙이는 쿼리 파라미터로 가져올 데이터를 좁힙니다(`DELETE`의 필터 조건도 같은 표기입니다).
-
-#### 파라미터
-
-- **`{entity}`**: 데이터 타입 (엔티티). 예: `article`, `user`
-- **`{prop}`**: 필터링 기준 항목명
-- **`{val}`**: 조건 값
-
-#### 연산자
-
-| 연산자 | 의미 | 작성 예시 | 설명 |
-| :--- | :--- | :--- | :--- |
-| (없음) | 일치함 | `?status=active` | 상태가 `active`인 것 |
-| `:ne` | 일치하지 않음 | `?status:ne=draft` | 상태가 `draft`가 아닌 것 |
-| `:gt` | 초과 | `?price:gt=1000` | 1000원 초과 |
-| `:gte` | 이상 | `?price:gte=1000` | 1000원 이상 |
-| `:lt` | 미만 | `?stock:lt=10` | 10개 미만 |
-| `:lte` | 이하 | `?stock:lte=10` | 10개 이하 |
-
-#### 와일드카드 (`*`)
-
-연산자 없는(일치) 조건에서 값에 `*`를 포함하면, `*`가 임의의 문자열에 일치하는 패턴 검색(SQL의 `LIKE`)이 됩니다.
-
-| 작성 예시 | 일치하는 것 |
-| :--- | :--- |
-| `?title=Web*` | `Web`으로 시작하는 제목 |
-| `?title=*입문*` | `입문`을 포함하는 제목 |
-
-- 서버 모드(Data API)에서만 유효합니다. 로컬 개발 모드는 완전 일치만 지원하며, `*`도 문자 그대로 비교됩니다.
-- `id` 조건과 `DELETE`의 필터 조건에서는 `*`가 일반 문자로 취급됩니다(패턴 검색이 되지 않음).
-- **주의**: `?title={?q}`처럼 사용자 입력을 그대로 조건으로 사용하면 `q=*`가 해당 항목을 가진 모든 레코드에 일치하는 등 사용자가 패턴 검색을 지정할 수 있습니다. 또한 값에 `*`가 포함되면 SQL의 `LIKE`와 마찬가지로 `_`는 임의의 1문자, `%`는 임의의 문자열에 일치하며, 영문 대소문자는 구분되지 않습니다.
-
-### 시스템 예약 변수 (`_sys`)
-
-| 변수명 | 설명 | 예시 |
-| :--- | :--- | :--- |
-| `_sys.query` | GET 쿼리 파라미터. `?id=123` 등의 값. | `{_sys.query.id}` |
-
-#### 단축 표기 `{?xxx}`
-
-`{?xxx}`는 `{_sys.query.xxx}`의 단축형으로, `data-t-source`의 `href`뿐만 아니라 본문 텍스트·속성값·`data-t-if`·`data-t-include` 등 플레이스홀더를 사용할 수 있는 모든 곳에서 쓸 수 있습니다. 파이프나 사칙연산도 마찬가지로 사용할 수 있습니다.
-
-```html
-<!-- URL이 ?q=bracify 인 경우 -->
-<p>「{?q}」 검색 결과</p>                   <!-- 「bracify」 검색 결과 -->
-<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
-<a href="books.html?q={?q | default: ''}&_sort=title">제목순</a>
-```
-
-- 파라미터가 없으면 빈 문자열이 됩니다.
-- **URL 인코딩에 대하여**: `data-t-source`의 `href` 쿼리 부분에 삽입한 값은 자동으로 URL 인코딩되지만, 일반 속성(`<a href>` 등)에서는 HTML 이스케이프만 되고 URL 인코딩은 되지 않습니다. `&`나 `=`를 포함할 수 있는 값을 링크의 쿼리에 넣으면 별도의 파라미터로 해석될 수 있습니다.
-- 값을 지정하지 않는 `{?}`(자동 바인딩)는 `data-t-source`의 `href` 안에서만 사용할 수 있습니다(아래 참조).
-
-#### `data-t-source`에서의 활용
-
-| 표기법 | 의미 | 예시 |
-| :--- | :--- | :--- |
-| `{_sys.query.xxx}` | 특정 항목 삽입 | `?id={_sys.query.id}` |
-| `{?}` | **자동 바인딩**. 키 이름과 같은 파라미터를 URL에서 가져옴 | `?title={?}` |
-| `{?xxx}` | **단축 표기**. `_sys.query.xxx` 와 동일 | `?title={?q}` |
-
-#### 작성 예시
-
-```html
-<!-- URL이 ?title=Web&_limit=10 인 경우 -->
-<link data-t-source="articles" href="/_sys/data/articles.json?title={?}&_limit={?}&_sort=created_at">
-```
-
-### 데이터 상세 정보 (시스템 프로퍼티)
-
-| 프로퍼티명 | 설명 | 예시 |
-| :--- | :--- | :--- |
-| `_length` | 데이터 개수 또는 문자열 길이. | `{articles._length}개의 기사` |
-
-#### 제어 파라미터 (정렬 및 페이지네이션)
-
-| 파라미터 | 설명 | 예시 |
-| :--- | :--- | :--- |
-| `_limit` | 최대 개수 | `?_limit=20` |
-| `_offset` | 건너뛸 개수 | `?_offset=20` |
-| `_sort` | 정렬 기준 항목 | `?_sort=created_at` |
-| `_order` | 순서 (`asc`, `desc`) | `?_order=desc` |
-
-#### 사용 예시
-
-```html
-<link data-t-source="articles" href="/_sys/data/articles.json?title={_sys.query.title}&_sort={_sys.query._sort}&_order={_sys.query._order}&_limit={_sys.query._limit}">
-```
-
-#### 디렉토리 구성 예시
-
-```text
-project/
-├── index.html
-├── _sys/
-│   └── data/
-│       ├── article.json
-│       ├── user.json
-│       └── product.json
-└── parts/
-    ├── header.html
-    └── footer.html
-```
-
-### 로컬 개발 모드 (True Zero Server Mode)
-
-서버 없이 브라우저에서 `index.html`을 로컬 파일(`file://`)로 열어 개발하는 모드입니다.
-
-#### File System Access API를 통한 빌드 없는 개발
-
-1. **프로젝트 폴더 선택**: 초기화 시 표시되는 폴더 선택 창에서 루트 디렉토리를 선택하면 브라우저가 직접 파일을 조작합니다.
-2. **빌드 없는 프리뷰**: 브라우저가 `.json` 과 `.html` 파일을 직접 읽으므로, 파일 저장 후 새로고침이나 이동만으로 즉시 반영됩니다.
-
-#### 폴더 접근 권한 초기화
-
-선택한 폴더 핸들은 브라우저의 IndexedDB에 저장되어 다음 접속 시 자동으로 복원됩니다. 다른 프로젝트로 전환하거나 권한을 다시 설정하려면 다음 중 하나로 초기화할 수 있습니다(`file://` 모드 한정).
-
-- **Disconnect Folder 버튼**: 폴더가 연결된 동안 엔진이 화면 오른쪽 아래에 작은 "Disconnect Folder" 버튼을 표시합니다. 클릭하면 저장된 핸들을 폐기하고 폴더 선택 오버레이를 다시 표시합니다.
-- **JavaScript API**: `Bracify.resetRootAccess()`(Promise 반환). IndexedDB의 핸들과 메모리상의 핸들을 폐기하고 폴더 선택 오버레이를 다시 표시합니다.
-- **URL 파라미터**: `?bracify_reset=1`로 열면 저장된 핸들을 복원하지 않고 폐기하며 오버레이를 표시합니다. 파라미터는 `history.replaceState`로 URL에서 자동 제거됩니다.
-
-SSR(서버) 출력에는 이러한 UI가 포함되지 않습니다.
-
-#### 페이지 이동과 SPA 라우팅
-
-위에서 설명한 '[페이지 이동과 SPA 라우팅 (Unified SPA)](#3-페이지-이동과-spa-라우팅-unified-spa)'에 따라, CSR 모드에서도 모든 이동은 SPA로 처리됩니다. 이는 `file://` 환경에서 새로고침 시 폴더 액세스 권한이 상실되는 문제를 해결합니다.
-
-#### 비지원 환경에서의 제한
-
-API 미지원 브라우저나 폴더 미선택 시에는 '읽기 전용 모크 모드'로 작동합니다.
-
-#### 필터링 및 제어 (공통 사양)
-
-- **필터 제한**: 완전 일치만 가능하며 `:gt` 등의 연산자는 무시됩니다.
-  - **빈 `id` 예외**: 키가 `id`인 필터만 예외입니다. 값이 비어 있거나 해결되지 않은 플레이스홀더(`{?}` 등)이면 무시하지 않고 레코드를 하나도 반환하지 않습니다(`?id={?id}&_limit=1`에서 id가 없으면 첫 레코드가 아니라 "찾을 수 없음"이 됩니다).
-- **제어 파라미터**: `_limit`, `_offset`, `_sort`, `_order` 는 간이적으로 동작합니다.
-
-#### JavaScript 동작 규칙
-
-- **스코프 분리**: 페이지 스크립트를 IIFE로 자동 래핑하여 변수 충돌을 방지합니다.
-- **중복 실행 방지**: 이미 로드된 `<head>` 스크립트는 다시 실행되지 않습니다.
-- **전역 변수 유지**: `window` 객체에 명시적으로 담은 데이터는 유지됩니다.
-
-## 데이터베이스 설정 (Database Configuration)
-
-기본적으로 내장 SQLite(`_sys/data.db`)를 사용하며, 외부 MySQL/PostgreSQL 연결이 가능합니다.
-
-### 작동 원리
-
-시작 시 프로젝트 내의 `_sys/data.db` 를 참조하여 설정을 확인합니다. 인증 정보가 소스 코드에 남지 않도록 저장소 외부에서 안전하게 관리됩니다.
-
-### 기본 동작
-
-설정이 없으면 내장 SQLite를 자동으로 사용합니다.
-
-### 설정 방법
-
-GUI 또는 `config` 테이블에 직접 연결 정보(JSON)를 입력합니다.
-
-```json
-[
-  {
-    "target_entity": "users",
-    "engine": "mysql",
-    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
-  }
-]
-```
-
-#### 라우팅 우선순위
-
-엔티티 이름에 따라 '완전 일치 > 와일드카드 매칭 > JSON 정의 순서' 로 자동 선택됩니다.
-
-## 배포 (Deployment)
-
-- **Serverless**: Vercel, Netlify 등 지원.
-- **Zip Upload**: GUI 앱에서 Zip으로 압축하여 각 서비스 대시보드에 드래그 앤 드롭하면 배포가 완료됩니다.
-
-## 개발 흐름
-
-1. GUI 앱 설치.
-2. 폴더 생성 및 선택.
-3. HTML/부품 편집 및 실시간 프리뷰.
-4. 배포용 Zip 압축 및 공개.
-
-## 보안
-
-- **자동 이스케이프**: XSS 방지.
-- **안전한 데이터 주입**: 스크립트 태그 간섭 방지.
-- **URL 새니타이징**: 위험한 프로토콜 자동 차단.
-- **언더스코어 가드 (SSR 전용)**:
-  서버 동작 시, 루트의 언더스코어(`_`)로 시작하는 리소스(예: `data.db`, `_parts/`)에 대한 외부 직접 접근을 전면 차단(403 Forbidden)합니다.
-  * 참고: 공식 폼 엔드포인트(예: `POST /_sys/data/*.json`)는 이 제한에서 제외됩니다.
-- **교차 출처 보호 (Data API)**: `/_sys/data/*.json`에 대한 `POST` / `PUT` / `DELETE` 요청(`?_method=` 재정의 포함)은 `Origin` 헤더가 `Host`와 다르면 403으로 거부됩니다(`Origin` 헤더가 없는 일반 폼 전송은 허용됩니다).
+### Studio 데이터 관리와 스캐폴드
+
+Studio는 HTML에서 엔티티와 스키마를 자동으로 수집하여 레코드의 목록, 등록, 편집, 삭제와 목록·편집 페이지 스캐폴드 생성을 지원합니다.
+
+## 현재의 제한
+
+Bracify는 초기 단계의 프로젝트입니다. 다음 사항을 이해하고 사용해 주세요.
+
+- **로컬 모드는 읽기 전용**입니다. `file://`에서는 폼을 저장할 수 없습니다([#56](https://github.com/tri-comma/Bracify/issues/56)).
+- **아직 인증 기능이 없습니다.** 공개 서버에서는 Data API에 접근할 수 있는 누구나 데이터를 쓸 수 있습니다([#106](https://github.com/tri-comma/Bracify/issues/106)). 공개할 때는 충분히 주의하세요.
+- **파일 업로드는 지원하지 않습니다**([#107](https://github.com/tri-comma/Bracify/issues/107)).
+- **원스텝 배포 기능은 없습니다.** 정적 빌드를 정적 호스팅에 올리거나, Node.js가 동작하는 호스트에서 서버 모드를 실행합니다([#105](https://github.com/tri-comma/Bracify/issues/105)).
+
+## 문서
+
+자세한 사양은 `docs/`에 있습니다. 레퍼런스는 영어와 일본어로 제공됩니다.
+
+| 파일 | 내용 |
+| --- | --- |
+| [`docs/en/README.md`](./docs/en/README.md) | 문서 목차 |
+| [`docs/en/studio.md`](./docs/en/studio.md) | Bracify Studio(런처, 관리 대시보드, 데이터 관리, 스캐폴드) |
+| [`docs/en/project-structure.md`](./docs/en/project-structure.md) | 프로젝트 구조, 렌더링(SSR / CSR / SPA), 클라이언트 측 엔진 로드 |
+| [`docs/en/attributes.md`](./docs/en/attributes.md) | 커스텀 속성(`data-t-include`, `data-t-source`, `data-t-list`, `data-t-if` 등), 폼과 데이터 저장 |
+| [`docs/en/pipes.md`](./docs/en/pipes.md) | 파이프(필터)와 기본 제공 필터 |
+| [`docs/en/data-api.md`](./docs/en/data-api.md) | Data API(데이터 조작, 서버 측 검증, 값의 타입)와 조회 조건 |
+| [`docs/en/system-variables.md`](./docs/en/system-variables.md) | `_sys` 예약 변수와 시스템 속성 |
+| [`docs/en/local-mode.md`](./docs/en/local-mode.md) | 로컬 개발 모드(`file://`) |
+| [`docs/en/database.md`](./docs/en/database.md) | 데이터베이스 설정과 라우팅 우선순위 |
+| [`docs/en/deployment.md`](./docs/en/deployment.md) | 빌드, 배포, 개발 흐름 |
+| [`docs/en/security.md`](./docs/en/security.md) | 보안 |
 
 ## 예제 (Examples)
 
-[`examples/`](./examples/) 폴더에는 이 README의 레퍼런스 기능을 폭넓게 사용하는 실용 예제 앱 "Bracify Books"(장서 / 독서 기록 앱)가 있습니다. 같은 파일이 서버 모드(SSR + SQLite)와 로컬 `file://` 개발 모드 양쪽에서 그대로 동작합니다. 실행 방법과 기능별 파일 대응표는 [`examples/README.md`](./examples/README.md)를 참고하세요.
+[`examples/`](./examples/) 폴더에는 문서의 주요 기능을 사용하는 실용 예제 앱 "Bracify Books"(장서 / 독서 기록 앱)가 있습니다. 같은 파일이 서버 모드(SSR + SQLite)와 로컬 `file://` 개발 모드 양쪽에서 그대로 동작합니다. 실행 방법과 기능별 파일 대응표는 [`examples/README.md`](./examples/README.md)를 참고하세요.
 
 ## 기여하기 (Contributing)
 

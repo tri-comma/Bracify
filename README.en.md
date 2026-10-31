@@ -6,17 +6,19 @@
 
 # Bracify 🚀
 
-> **The HTML-only web framework. No CLI, Just Markup.**
+> **The HTML-only web framework. Just Markup.**
+>
+> No terminal is needed to build an app (Studio, the GUI, covers it). The CLI is an optional tool for static builds.
 
 Bracify is a framework that allows you to build web applications using only HTML markup.
-We provide an "HTML-first" development experience, aiming to eliminate the barriers of programming and complex environment setup.
+It offers an "HTML-first" development experience that aims to lower the barriers of programming and complex environment setup.
 
 ## What is Bracify?
 
 Bracify pursues simplicity: "Build apps just by marking up."
 
 - **For engineers tired of React/Vue**: Be free from complex build settings and the learning curve of heavy frameworks.
-- **For markup engineers**: No programming required. Use only your HTML skills to build full-featured web apps, from data integration to deployment.
+- **For markup engineers**: No programming required. Use only your HTML skills to build working web apps, including data integration.
 
 ## Demo
 
@@ -25,9 +27,9 @@ Bracify pursues simplicity: "Build apps just by marking up."
 ## Key Concepts
 
 - **HTML Markup Only**: Build apps just by marking up HTML without writing programs.
-- **No CLI Required**: No "black screen" (terminal) needed. Our dedicated GUI launcher solves everything.
+- **Terminal-free Authoring**: Creating pages, previewing and managing data need no terminal. Bracify Studio, the GUI tool, covers it. The CLI (for static builds) is optional.
 - **Hybrid Rendering**: Develop with `file://` (CSR), and publish as a server `https://` (SSR) as is.
-- **Zero Configuration**: No complex `npm install` etc. needed.
+- **Minimal Setup**: A project needs no configuration files or build steps. Starting Studio requires Node.js and a one-time `npm install` (see Quick Start below).
 - **Portable**: The project is just HTML. Carry it anywhere and run it immediately.
 
 ## Quick Start
@@ -36,7 +38,7 @@ Let's start by creating a simple page. It only takes 4 steps.
 
 ### 1. Preparation
 
-Launch the `Bracify` GUI app and select a new workspace folder.
+Start Bracify Studio and select a new workspace folder. Studio is currently started from source (Node.js is required): run `npm install` once at the repository root, then `npm start`. See [Studio](./docs/en/studio.md) for details.
 
 ### 2. Create HTML
 
@@ -56,7 +58,7 @@ Create a file named `index.html` and write the following:
 </html>
 ```
 
-`<script src="bracify.js"></script>` loads the client-side engine (needed for SPA transitions and Local Development Mode; see "Loading the client-side engine").
+`<script src="bracify.js"></script>` loads the client-side engine (needed for SPA transitions and Local Development Mode; see [Project Structure](./docs/en/project-structure.md)).
 
 ### 3. Create Data
 
@@ -70,976 +72,131 @@ Create a file named `/_sys/data/info.json` and write the following:
 
 ### 4. Run
 
-When you press the `Start Server` button in the GUI app and open `localhost:3000`, `Hello Bracify!` will be displayed.
+When you press the `Start Server` button in Studio and open `localhost:3000`, `Hello Bracify!` will be displayed.
 The server reads `index.html` and `info.json` on startup, resolves SSI (Server Side Includes) in memory, and returns the response.
-When you edit and save a file, the OS-level monitoring immediately updates the template in memory.
+When you edit and save a file, OS-level monitoring immediately updates the template in memory.
 
 ---
 
-## Development Tools (Bracify Studio)
+## What You Can Build
 
-`Bracify` provides a dedicated GUI tool (code name: **Bracify Studio**) to maximize the developer experience.
-This tool operates in a hybrid configuration of an Electron-based "Launcher" and an "Admin Dashboard (Web App)" built with `Bracify` itself.
+One minimal example per feature. See the [Documentation](#documentation) for details.
 
-### 1. Bracify Launcher (Desktop)
+### Showing data (`data-t-source` and placeholders)
 
-A lightweight wrapper application to launch the Admin Dashboard.
+Give a name to JSON data and embed it in text or attributes with `{name.field}`. URL parameters are available as `{?id}`.
 
-- **System Server**: Starts a system management API server upon application launch.
-- **Launch**: Automatically opens the Admin Dashboard in a browser (or Electron window).
-
-### 2. Admin Dashboard (Web)
-
-An integrated management screen that consolidates all operations.
-
-- **Project Control**:
-  - **Open Project**: Opens a folder selection dialog via the system API to load projects.
-  - **Start/Stop Server**: Specifies a port number to start the preview server for the target project.
-  - **Concurrent multi-project execution**: Each project runs as an independent child process (`node engine/start.cjs <path> <port>`), so several can run at the same time.
-    - Start/stop uses plain `<form method="POST">` (SSR), no JavaScript required.
-      - `POST /_sys/server/start` (field: `id` = project ID)
-      - `POST /_sys/server/stop` (field: `id`)
-      - After processing, redirects (303) to `data-t-redirect`, else the Referer, else `/`. On failure it redirects back with `?error=message` appended so the page can show `{?error}`.
-    - The `port` of the `projects` entity is used. If empty, probing starts at 3000; if the configured port is busy, free ports are probed upward from that port. The port actually used overwrites `port` in the record.
-    - This feature is enabled only on the server running as the system server (Studio); elsewhere `/_sys/server/*` returns 404. POSTs whose `Origin` header does not match `Host` are rejected with 403. If a child process exits unexpectedly, `status` is updated to `stopped`.
-    - The result (`status` = `running`/`stopped`, `pid`, actual `port`) is written back to the project record and shown on the dashboard.
-    - Stopping the system server also stops all child processes it started.
-- **Data Manager**:
-  - Automatically collects entities and schema from the project's HTML, and provides data listing, create/edit/delete (CRUD) and scaffolding. The pages are `studio/data/index.html?project=<id>` (entity list) and `studio/data/entity.html?project=<id>&entity=<name>` (schema, records, create form), all JavaScript-free SSR forms.
-  - **Entity discovery**: scans every `*.html` in the project (excluding `node_modules`, `_sys` and dot-folders; `_parts` is included) and collects entities from:
-    - the `href` of `data-t-source` (`_sys/data/<entity>.json`)
-    - `<form action="..._sys/data/<entity>.json">` and the `name` of its `input` / `select` / `textarea` (`data-t-redirect` is skipped; dotted names such as `a.b` are nested fields)
-    - `{<source>.<field>}` placeholders that use a known source name (type `unknown`)
-    - existing DB records (fields not defined by forms get `number` / `boolean` / `string` / `object` inferred from values)
-  - **Schema info**: per field, the type (`text` / `number` / `email` / `date` / `checkbox` / `enum` (options of a `select`) / `unknown`, ...), `required`, `maxlength`, `minlength`, `min`, `max` and `pattern`.
-  - **Validation limits**: field names must match `[A-Za-z0-9_.-]` (others are ignored). `required` is not enforced for `checkbox` (an unchecked box is not submitted). Values longer than 1000 characters are rejected by `pattern` checks. A `pattern` containing nested quantifiers (e.g. `(a+)+$`) is not enforced for safety and the field's `patternSkipped` is `true` in the schema.
-  - **CRUD**: operates directly on the target project's data (`<project>/_sys/data.db` and that project's routing config). Studio's own DB is not affected.
-    - `POST /_sys/studio/records?project=<id>&entity=<name>` (create), `POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>` (update), `POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>` (delete)
-    - Create/update are validated server-side against the discovered schema (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / type); on failure the response is a 303 redirect back with `?error=message`. On success it redirects to `data-t-redirect`, or the Referer.
-    - SSR data sources (virtual hrefs for Studio pages only): `_sys/studio/entities.json?project=<id>`, `_sys/studio/records.json?project=<id>&entity=<name>` (supports the same filters, `_sort`, `_limit`, `_offset` as the Data API) and `_sys/studio/schema.json?project=<id>&entity=<name>`.
-  - **Scaffold (development only)**: `POST /_sys/studio/scaffold?project=<id>&entity=<name>` generates `<entity>/index.html` (list and delete forms) and `<entity>/edit.html` (create/edit form with `type` / `required` / `maxlength` / `pattern` matching the schema) in the target project. The output uses only documented Bracify attributes and never overwrites existing files (it returns an error instead).
-  - Like `/_sys/server/*`, these features are enabled only on the system server (Studio) (404 elsewhere), and POSTs whose `Origin` differs from `Host` are rejected with 403. `entity` may contain only letters, digits, `_` and `-` (not starting with `_`).
-- **API Monitor**:
-  - Check communication logs.
-
----
-
-## Project Structure (File System Structure)
-
-A `Bracify` project consists of a single source folder. No physical build directory is required for execution.
-
-### Recommended Directory Structure
-
-```text
-project/
-├── index.html          # Entry point
-├── style.css           # Static resource
-├── img/                # Any folder not starting with underscore is public
-│   └── logo.png
-├── _parts/             # [Private] Components for include
-│   ├── header.html
-│   └── footer.html
-└── _sys/               # [Private] System data and settings
-    ├── data.db         # Database file
-    └── data/           # JSON data for entities
-        └── articles.json
+```html
+<link data-t-source="article" href="_sys/data/articles.json?id={?id}">
+<h1>{article.title}</h1>
+<p>{article.body}</p>
 ```
 
-### Rendering Specifications
+### Lists (`data-t-list`)
 
-Bracify allows you to seamlessly switch between "SSR Mode" (acting as a web server) and "CSR Mode" (running directly in the browser).
+Put it on the element to repeat; it is cloned once per record. Sorting, limits and paging are set with URL parameters.
 
-#### 1. SSR Mode (Server-Side)
-The server dynamically builds HTML in response to requests.
+```html
+<link data-t-source="articles" href="_sys/data/articles.json?_sort=id&_order=desc&_limit=5">
+<ul>
+  <li data-t-list="articles"><a href="article.html?id={articles.id}">{articles.title}</a></li>
+</ul>
+```
 
-- **On-memory Build**: Resolves `data-t-include` and caches the combined HTML template in **memory** upon startup or file save.
-- **File Watching**: When `index.html` or files under `_parts/` are updated, the server detects OS-level events and automatically rebuilds the memory cache.
-- **High Performance**: Responses are served from the pre-combined templates in memory, minimizing disk I/O.
+### Conditions (`data-t-if`)
 
-#### 2. CSR Mode (Client-Side)
-Runs via the `file://` protocol by opening the folder directly in a browser.
+Show or hide elements by existence, comparison (`=`, `:gt`, ...), AND (space) and OR (comma).
 
-- **Runtime Include**: When the browser loads the HTML, it fetches and merges files specified by `data-t-include` on the fly using the File System Access API.
-- **Consistency**: Both SSR and CSR use the exact same binding engine (`engine.js`), ensuring identical results across environments.
+```html
+<span data-t-if="status=published">Published</span>
+<div data-t-if="price:gte=1000 stock:gt=0">In stock</div>
+<div data-t-if="!user.is_login"><a href="login.html">Log in</a></div>
+```
 
-#### 3. Page Transitions and SPA Routing (Unified SPA)
-Bracify treats **all page transitions as SPA by default** in both SSR and CSR modes.
+### Saving forms (Data API with server-side validation)
 
-- **Seamless Experience**: By avoiding full page reloads, Bracify uses Ajax (Fetch) to retrieve the next page's HTML and dynamically replaces the `<body>` and other DOM elements. This prevents the "blank screen" (flicker) and provides a fast, smooth app-like feel.
-- **Permission Persistence**: Crucial for CSR mode. In a `file://` environment, a full page reload resets browser folder access permissions. The SPA approach allows you to maintain permission throughout the session.
-- **Automatic Interception**: Standard `<a>` tags for internal links are automatically detected and promoted to SPA transitions. Developers can build SPA apps without writing a single line of JavaScript.
-- **Browser History Support**: Utilizes the `history.pushState` API so that URL updates and "Back/Forward" buttons work exactly as expected even during SPA transitions.
+Post a plain `<form>` to the Data API and the data is saved. Constraints such as `required`, `maxlength` and `pattern` are also checked on the server; on failure the user returns to the page with `?error=`.
 
-#### 4. Loading the Client-Side Engine
+```html
+<form method="POST" action="/_sys/data/articles.json" data-t-redirect="articles.html">
+  <input type="text" name="title" required maxlength="100">
+  <input type="email" name="email" required>
+  <button>Save</button>
+</form>
+<p>{_sys.query.error}</p>
+```
 
-Pages displayed by SSR alone don't need a `<script>`, but to use SPA transitions, Local Development Mode (`file://`), or CSR, each page must load the client-side engine in its `<head>`.
+### Parts and layouts (`data-t-include`)
 
-In every mode the engine is loaded with this single `<script>`:
+Insert shared parts such as a header, or pour page content into a common layout.
+
+```html
+<!-- _parts/layout.html contains <main data-t-content="main-body"></main> -->
+<body data-t-include="_parts/layout.html">
+  <div data-t-content="main-body"><p>Page content</p></div>
+</body>
+```
+
+### Pipes (filters)
+
+Format with `|`: dates, numbers, currency, truncation, defaults. `date`, `number`, `currency`, `uppercase`, `lowercase`, `truncate`, `default`, `ternary` and `json` are built in.
+
+```html
+<p>{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
+<span>{ product.price | currency }</span>
+<span>{ article.summary | truncate: 10 | uppercase }</span>
+```
+
+### SPA navigation
+
+Plain `<a>` links to internal pages automatically navigate without a full page reload. No JavaScript needed.
+
+```html
+<a href="book.html?id=1">Book</a>
+```
+
+### Local mode (`file://`, no server)
+
+Open `index.html` in Chrome / Edge by double-clicking and choose the project folder (read-only; uses the File System Access API). Each page needs this one line.
 
 ```html
 <script src="bracify.js"></script>
 ```
 
-In pages inside a subfolder use a relative path (e.g. `<script src="../bracify.js"></script>`).
-
-- **Server mode**: The server serves the engine at the virtual path `/bracify.js` (root only) as `text/javascript`. Even if the project has a file with the same name, the server's own engine always wins, so SSR and the browser run the same engine version. Conditional requests with ETag are supported.
-- **Local Development Mode (`file://`)**: Since there is no server, `bracify.js` must be placed inside your project, reachable from the page by a relative path. Studio's scaffold and the CLI build create it automatically. Otherwise copy the repository's `engine/lib/engine.cjs` as `bracify.js` ([`examples/`](./examples/) refreshes its copy with `npm run sync:examples`).
-- **Compatibility**: The previous `/engine/engine.cjs` is still served (as `text/javascript`). During SPA transitions the engine script is recognized by any of the file names `bracify.js`, `engine.js` and `engine.cjs` and is never loaded again.
-
----
-
-## Reference
-
-### Custom Attributes
-
-#### `data-t-include`
-
-Loads an external HTML file and expands it as the content of the element. This attribute has two operation modes: **Snippet Include** and **Layout Application**.
-
-In either mode, **the tag containing `data-t-include` itself is not deleted; its child elements (innerHTML) are replaced by the expanded result.**
-
----
-
-##### Mode 1: Snippet Include
-
-Inserts common components like headers or footers at the current location.
-
-- **Operation**: Expands the content of the specified file directly inside the tag.
-- **Example**:
-
-    ```html
-    <header data-t-include="_parts/header.html"></header>
-    ```
-
-    ↓ The content of `_parts/header.html` is expanded.
-
----
-
-##### Mode 2: Layout & content
-
-Loads a common "framework (layout)" and fills specific areas within it with its own content.
-
-- **Operation**:
-    1. Loads the template file specified by `data-t-include`.
-    2. Matches `data-t-content` elements in the template with `data-t-content` elements within itself.
-    3. Injects the page-side content into the specified locations on the template side.
-- **Matching Rule**: Elements with matching `data-t-content` attribute values (names) become the targets for replacement. If no name is provided, it is treated as the default slot.
-
-- **Example**:
-    **Template (`_parts/layout.html`)**:
-
-    ```html
-    <div class="container">
-        <h1 data-t-content="page-title">Default Title</h1>
-        <main data-t-content="main-body"></main>
-    </div>
-    ```
-
-    **Page using layout (`index.html`)**:
-
-    ```html
-    <body data-t-include="_parts/layout.html">
-        <span data-t-content="page-title">My Profile</span>
-        <div data-t-content="main-body">
-            <p>Body content goes here.</p>
-        </div>
-    </body>
-    ```
-
-    ↓ **Result**:
-
-    ```html
-    <body>
-        <div class="container">
-            <h1 data-t-content="page-title">My Profile</h1>
-            <main data-t-content="main-body">
-                <div data-t-content="main-body">
-                    <p>Body content goes here.</p>
-                </div>
-            </main>
-        </div>
-    </body>
-    ```
-
-- **Note**: Merging occurs on the server side during development server use or via File System Access API in the browser.
-
----
-
-##### Dynamic Include (Path via Placeholder)
-
-The include path can contain the placeholder `{ }`, so you can switch the file to load with a URL parameter, for example.
-
-```html
-<!-- If ?p=_parts/help.html, _parts/help.html is expanded -->
-<div data-t-include="{?p}"></div>
-```
-
-- If the value is empty (e.g. the parameter is not specified) or loading is rejected by the restrictions below, nothing is expanded and the element's original content is left as is (the same applies when a circular include, the nesting limit, or the per-render include limit is hit).
-- **Path restrictions**: The expanded path must stay inside the project. Paths containing `..`, paths containing the `_sys` directory, paths containing `:` (such as `C:` or `http:`), and paths starting with `\` are not loaded (same for SSR and CSR). Nothing is expanded if the specified file does not exist, either.
-- **Security note**: If you use a URL parameter directly as the path, visitors can insert any HTML in the project (including parts in `_parts/`). If the possible targets are known, we recommend using `data-t-if` to output a fixed-path include for each candidate.
-
-  ```html
-  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
-  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
-  ```
-
-#### `data-t-source`
-
-Fetch data to display in HTML and give it a name.
-
-- **Usage**: Specify the data URL in the `href` attribute and check any name.
-- **Data URL Specification**:
-  - **Recommended Format**: `_sys/data/{DataName}.json` (Relative Path)
-    - This format, omitting the leading `/`, is recommended as it works in local preview (`file://`).
-  - **Keys Allowed Format**: `/_sys/data/{DataName}.json` (Absolute-like Path)
-    - In CSR (browser), the leading `/` is automatically ignored and treated as a relative path.
-- **Data Name Restrictions**: Only **alphanumeric characters, underscores `_`, and hyphens `-`** are allowed.
-  - Paths containing `..` or `/` (Directory Traversal) are **prohibited** and will not be loaded.
-- **Constraint**: Can only be specified in `<link>` tags.
-- **Example**:
-
-    ```html
-    <!-- OK (Recommended): Relative Path -->
-    <link data-t-source="articles" href="_sys/data/article.json">
-
-    <!-- OK: With leading slash (treated as relative internally) -->
-    <link data-t-source="users" href="/_sys/data/user.json?status=active">
-
-    <!-- NG: Directory traversal is prohibited -->
-    <link data-t-source="invalid" href="_sys/data/../../conf.json">
-    ```
-
-#### Data Display (Universal Placeholder)
-
-You can display data by writing `{datasource_name.item_name}` in the HTML text or attribute values.
-
-- **Basic Example**:
-    Specify the data source and its property (item name) to display.
-
-    ```html
-    <link data-t-source="article" href="/_sys/data/articles.json?id={?id}">
-    <h1>{article.title}</h1>
-    <p>{article.body}</p>
-    ```
-
-- **Displaying Nested Data**:
-  You can access nested properties within an object using dot notation `.`. You can describe deep hierarchies in the same way.
-
-  ```json
-   {
-    "user": {
-      "name": "John Doe",
-      "address": {
-        "city": "New York"
-      }
-    }
-  }
-  ```
-
-  ```html
-  <p>User Name: {user.name}</p>
-  <p>City: {user.address.city}</p>
-  ```
-
-- **Automatic data relations (lookup)**:
-  When several data sources are loaded with `data-t-source`, you can follow a foreign key to related data using plain dot notation. For `article.category`, if the object has no `category` property but has `category_id` (or `categoryId`), Bracify automatically finds the record whose `id` matches in the data source named after the plural of `category` (`categories`). No extra attributes or syntax are needed.
-
-  ```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <link data-t-source="categories" href="/_sys/data/categories.json">
-
-  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
-  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
-  <ul>
-    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
-  </ul>
-  ```
-
-  - The source name is tried as `X + s`, `X + es`, (for names ending in `y`) `ies`, and finally `X` itself; the first one that exists is used.
-  - `id` values are compared as strings. If no record matches, it behaves like any other undefined value.
-  - A real `category` property on the object always takes precedence.
-  - Chains such as `article.category.parent.name` work too.
-  - `article.category` itself resolves to the whole related record, so it can be used with `data-t-scope="article.category"` or `data-t-if="article.category"`.
-  - Form auto-binding (prefilling inputs by `name`) does NOT follow relations; use the foreign key field instead (e.g. `name="category_id"`).
-  - The first existing source name is used even if it has no matching record; later candidates are not tried.
-  - It works in `{ }`, `data-t-if`, `data-t-list`, `data-t-scope` and attribute bindings (`href="/cat.html?id={article.category.id}"`), identically in SSR and CSR.
-
-- **Numeric Calculations (Arithmetic)**:
-  You can perform arithmetic operations (`+`, `-`, `*`, `/`, `%`) and use parentheses `()` inside placeholders `{ }` to calculate numeric values without writing JavaScript. Combine data values and numeric literals, and pass the result to subsequent pipes (`|`).
-
-  ```html
-  <!-- Variable addition (next pagination offset) -->
-  <a href="?_offset={_sys.query._offset + 10}">Next</a>
-
-  <!-- Multiplication combined with a pipe (tax / total display) -->
-  <span>Total: {item.price * 1.1 | number} 円</span>
-
-  <!-- Precedence with parentheses -->
-  <span>Total: {(item.price + item.shipping) * item.qty}</span>
-  ```
-
-  - Variables in the expression (e.g. `item.price`) are automatically resolved from the data. Undefined, `null`, or non-numeric values are safely treated as `0`, so rendering is never interrupted by an error.
-  - Division/modulo by `0` returns `0`.
-
-- **Displaying List Indices**:
-  For each element iterated by `data-t-list`, a zero-based index `_index` is automatically injected. Add `+ 1` to correct to a one-based index.
-
-  ```html
-  <ul>
-    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
-  </ul>
-  ```
-
-- **Escaping Placeholders**:
-  If you want to display the placeholder notation as is without evaluating it, place a backslash `\` before the opening curly brace.
-
-  ```html
-  <code>\{user.name\}</code> <!-- Result: {user.name} -->
-  <code>C:\\temp</code> <!-- Result: C:\temp (write a literal backslash as \\) -->
-  ```
-
-- **When a value does not exist**:
-  When the data itself exists (a `data-t-source`, a `data-t-scope`, or the current `data-t-list` item) but the field or related record is missing (e.g. `{book.author.name}` for a deleted author), the placeholder renders as an **empty string**, in both text and attributes (`class="s-{book.status}"` becomes `class="s-"`). Use `data-t-if` to control what is displayed. `{...}` is left as-is only when the data itself is not available (an unloaded or undefined source/scope).
-  - `{?x}` / `{_sys.query.x}` with an absent URL parameter also render empty (`_sys` is always available). A `data-t-scope` on a missing related record (e.g. `data-t-scope="book.author"`) is a valid empty scope, so its inner placeholders render empty.
-  - **Filter value limitation**: in a `data-t-source` `href`, a filter value that contains both `{` and `}` (e.g. searching for a book titled `{foo}` with `?title={foo}`) is treated as an unresolved placeholder and the filter is ignored (SSR and CSR).
-
-### List Display (`data-t-list`)
-
-If there are multiple data items you want to display, you must specify `data-t-list="Data Source Name"` on the element (range) you want to repeat.
-
-```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <ul>
-    <li data-t-list="articles">
-      <h3>{articles.title}</h3>
-    </li>
-  </ul>
-```
-
-#### Embedding Data into Attributes (Universal Placeholder)
-
-In all standard attributes (`href`, `src`, `class`, `value`, `style`, etc.), you can directly embed data by writing placeholders `{ }`.
-
-- **Usage Example**:
-
-    ```html
-    <img src="{article.thumbnail}" alt="{article.title}">
-    <a href="/post/{article.id}" class="btn {article.category}">View Details</a>
-    <div style="background-color: {user.color}; height: {progress}%;"></div>
-    ```
-
-- **Limit**: To avoid interference with JavaScript syntax, **placeholders cannot be used inside event handler attributes (`onclick`, `onchange`, etc.).** See "Avoiding Placeholder Interference" below.
-
-#### Avoiding Placeholder Interference and Limitations
-
-Bracify's placeholders `{ }` can be used in HTML attributes and text nodes. However, to prevent interference with JavaScript or CSS code (syntax using curly braces), **expansion is disabled** in the following locations:
-
-- **Where expansion does NOT occur**:
-  - Inside `<script>` tags.
-  - Inside `<style>` tags.
-  - Inside event handler attributes (all attributes starting with `on`, such as `onclick`, `onmouseover`, `onsubmit`).
-
-##### Recommended Pattern: Using data in event handlers
-
-If you want to use dynamic data within an event handler (JavaScript), we recommend the pattern of **embedding the data in a `data-` attribute and referencing it via `this.dataset`** instead of writing `{ }` directly.
-
-```html
-<!-- NOT recommended (will not work) -->
-<button onclick="alert('ID: {article.id}')">Show</button>
-
-<!-- RECOMMENDED pattern -->
-<button data-id="{article.id}" onclick="alert('ID: ' + this.dataset.id)">Show</button>
-```
-
-By using this method, the Bracify template engine and standard browser JavaScript syntax can coexist safely.
-
-#### Automatic Binding of Form Elements
-
-If a `name` attribute is specified for `input`, `select`, or `textarea` elements, `Bracify` automatically binds (displays) the value from the appropriate data source. Users do not need to manually specify `value` or placeholders.
-
-- **Priority for Automatic Binding**:
-    1. **Current data context**: Sets the value from the properties of data specified by `data-t-scope`, etc.
-    2. **URL Parameters (`_sys.query`)**: If there is an item with the same name as `name` in the page URL's query parameters, that value is set. If a parameter is repeated (`?tag=a&tag=b`), the last value is used (in both SSR and CSR).
-
-- **Specifying Data with `data-t-scope`**:
-    By writing `data-t-scope="article"` on a container element (`div`, `form`, etc.), you can specify the "default data source" within that element. As a result, the internal `name="title"` will automatically refer to `article.title`.
-
-- **Example (Search Form)**:
-
-    ```html
-    <!-- If the URL is ?title=Web, value="Web" is automatically set -->
-    <input type="text" name="title" placeholder="Search articles...">
-    ```
-
-- **Example (Edit Form)**:
-
-    ```html
-    <!-- title and content from article data are automatically set in each field -->
-    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
-      <input type="hidden" name="id">
-      <input type="text" name="title">
-      <textarea name="content"></textarea>
-    </form>
-    ```
-
-- **Automatic Selection for Select Boxes**:
-    The `selected` attribute is automatically added to `<option>` elements whose `value` matches the value bound to the `<select>` tag. This also applies to options generated by `data-t-list`.
-
-#### `data-t-if`
-
-Displays or hides elements based on conditions. The element is displayed if the data value exists (`true`, non-null, non-zero, non-empty string).
-
-- **Specification**: Specify the name of the data item to be evaluated.
-- **Example**:
-
-    ```html
-    <!-- Displayed only if user.is_login is true -->
-    <div data-t-if="user.is_login">
-      Welcome, <span>{user.name}</span>!
-    </div>
-    ```
-
-    ↓ **Result (if `user.is_login` is true)**
-
-    ```html
-    <div>
-      Welcome, <span>John Doe</span>!
-    </div>
-    ```
-
-    ↓ **Result (if `user.is_login` is false)**
-
-    ```html
-    <!-- The element itself is not output -->
-    ```
-
-    **Note (Negative Condition / Else)**:
-    By adding `!` at the beginning, you can specify conditions for when the "value does not exist (false)". Use this instead of `else`.
-
-    ```html
-    <!-- Displayed only if user.is_login is false -->
-    <div data-t-if="!user.is_login">
-      <a href="/login.html">Please log in</a>
-    </div>
-    ```
-
-    **Comparison and Logical Operations (Data API Style)**:
-    You can specify more detailed conditions using the same syntax as Data API query parameters.
-
-    - **Comparison Operators**: Uses the same notation as the [Data Access API Operators](#operators) (`=`, `:ne=`, `:gt=`, etc.).
-    - **Logical Operations (AND/OR)**: Space separation represents **AND**, and comma separation in values represents **OR**.
-    - **Using Variables**: By enclosing in `{ }`, you can use data values in conditions. [Arithmetic](#data-display-universal-placeholder) is also available inside `{ }` (e.g. `matched._length:gt={_sys.query._offset + 10}`).
-    - **Single Key**: If you write only a key without operators, it determines the presence (truthiness) of that value as before.
-
-    ```html
-    <!-- Status is published (status == 'published') -->
-    <span data-t-if="status=published">Published</span>
-
-    <!-- Price is 1000 or more AND stock is greater than 0 (price >= 1000 AND stock > 0) -->
-    <div data-t-if="price:gte=1000 stock:gt=0">
-      Popular Item (In Stock)
-    </div>
-
-    <!-- Role is admin OR editor (role == 'admin' OR role == 'editor') -->
-    <button data-t-if="role=admin,editor">Edit</button>
-
-    <!-- User ID matches the article's author ID (user.id == post.author_id) -->
-    <div data-t-if="user.id={post.author_id}">
-      <a href="/edit">Edit Article</a>
-    </div>
-
-    <!-- Show "Next" only when there is a next page. allArticles is a separate source loaded without _limit / _offset, used for counting (count > current offset + 10) -->
-    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">Next</a>
-    ```
-
-#### `data-t-redirect`
-
-Specifies the transition destination URL after a process (such as form submission) is successfully completed.
-
-- **Specification**: Specify the relative or absolute path of the destination.
-- **Target Tag**: `form` tag.
-- **Operation**: After the server completes the process, it redirects with a 302 status to the specified path. If not specified, it reloads the current page.
-- **Destination rules**: Relative paths are resolved against the page containing the form. Only same-origin destinations are allowed; anything else falls back to the form page, or `/`.
-
-### Forms and Data Saving (Postback)
-
-You can create and update data using standard `<form>` tags. Bracify works with browser-standard **postbacks (submissions involving page transitions)** without using asynchronous JavaScript (fetch).
-
-- **Automatic Handling**: Specify the destination in the `action` attribute (e.g., `/_sys/data/xxxxx.json`) and send using `method="POST"` (to update, use `action="/_sys/data/xxxxx.json?_method=PUT"` plus `<input type="hidden" name="id">`; browser `<form>` elements cannot send `PUT`).
-- **Redirect (PRG Pattern)**: Once saved on the server, it automatically redirects to the URL specified by `data-t-redirect` or the original page. This prevents "form resubmission" and allows for safe navigation.
-- **Data Binding (Initial values)**: By specifying `data-t-scope` on the `<form>` tag, you can set existing data as default values for input fields.
-- **Input Items**: The `name` attribute of `<input>` and `<textarea>` becomes the data item name (property).
-- **Server-side validation**: the constraints written in the form (`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select` and `radio` options) are also enforced on the server (see "Server-side validation" under the form handler). On failure nothing is saved and the user is sent back to `data-t-redirect` (or the originating page) with `?error=message`; show it with `{_sys.query.error}`.
-- **Server mode only**: Data is saved only on the server (SSR). Local Development Mode (`file://`) has no write mechanism, so `POST` / `PUT` / `DELETE` forms are not saved (support is under consideration in [#56](https://github.com/tri-comma/Bracify/issues/56)).
-
-### Processing Filters (Pipes)
-
-You can use processing filters (formal name: pipes) `|` when displaying data.
-
-#### Basic Syntax
-
-```html
-<p>Updated: { article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
-<span>Price: { product.price | currency }</span>
-<span>Status: { article.is_published | ternary: 'Published', 'Draft' }</span>
-<span>Nickname: { user.nickname | default: 'Anonymous' }</span>
-<span>Summary: { article.summary | truncate: 10 | uppercase }</span>
-```
-
-↓ **Result** (when `article.summary` is `"Bracify is simple"`)
-
-```html
-<p>Updated: 2025/12/10 14:05</p>
-<span>Price: $1,500.00</span>
-<span>Status: Draft</span>
-<span>Nickname: Anonymous</span>
-<span>Summary: BRACIFY...</span>
-```
-
-#### Pipe Syntax
-
-```text
-{ data_name.item_name | filter_name }
-{ data_name.item_name | filter_name: argument }
-{ data_name.item_name | filter_name: 'argument1', 'argument2' }
-{ data_name.item_name | filter_name1 | filter_name2: 'argument' }   ← chaining (applied left to right)
-```
-
-- Everything after the first `:` following a filter name is treated as its arguments. Multiple arguments are separated by `,`.
-- Arguments can be wrapped in `'...'` or `"..."`. Inside quotes, `:` `,` and `|` are not treated as separators. Numeric arguments don't need quotes (e.g. `truncate: 20`).
-- **Arguments cannot contain `}`** (it would be interpreted as the end of the placeholder).
-- Multiple filters can be chained with `|`. The output of the previous filter becomes the input of the next one (applied left to right).
-- Pipes can also be applied to the result of an arithmetic expression: `{ item.price * 1.1 | currency }`
-
-#### A Note on Timing
-
-Pipes are applied only after the target data has finished loading. While the data is not yet loaded, the `{ ... }` placeholder remains as-is on the page and is replaced with the correct value once loading completes. To take advantage of this, place `data-t-source` as early as possible relative to where it's used (recommended: a `<link data-t-source>` in `<head>`).
-
-### Standard Filters (Built-in Pipes)
-
-#### `date`
-
-Outputs date data (date type) as text in the specified format.
-
-- **Syntax**: `{ item_name | date: 'format' }`
-- **Format Specifications**:
-  - `yyyy`: 4-digit year
-  - `mm`: 2-digit month
-  - `dd`: 2-digit day
-  - `HH`: 2-digit hour (24-hour)
-  - `MM`: 2-digit minute
-  - `SS`: 2-digit second
-- **Note**: `mm` (lowercase, month) and `MM` (uppercase, minute) are case-sensitive and distinct.
-- Example: `{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }` → `2025/12/10 14:05`
-
-#### `number`
-
-Outputs numbers in "3-digit comma separated" format.
-
-- **Syntax**: `{ item_name | number }`
-
-#### `currency`
-
-Outputs numbers formatted as currency.
-
-- **Syntax**: `{ item_name | currency }` / `{ item_name | currency: 'currency_code' }`
-- The currency code follows ISO 4217 (e.g. `USD`, `EUR`). If omitted, `JPY` is used.
-- Example: `{ product.price | currency }` → `¥1,500`
-- Example: `{ product.price | currency: 'USD' }` → `$1,500.00`
-
-#### `uppercase` / `lowercase`
-
-Converts a string to uppercase or lowercase.
-
-- **Syntax**: `{ item_name | uppercase }` / `{ item_name | lowercase }`
-- Example: `{ user.code | uppercase }` → `ABC-001`
-
-#### `truncate`
-
-Truncates a string to the specified length, appending `...` if it was shortened.
-
-- **Syntax**: `{ item_name | truncate: length }`
-- The truncated string, including `...`, fits within the specified length (e.g. with `truncate: 10`, `Bracify is simple` → `Bracify...` (10 characters)).
-- If the specified length is 3 or less, `...` is not appended — only the first `length` characters are output.
-- If the value is already within the specified length, it is output unchanged.
-
-#### `default`
-
-Specifies a fallback value to display when the value is empty (`undefined`, `null`, or an empty string).
-
-- **Syntax**: `{ item_name | default: 'fallback' }`
-- `0` and `false` are not considered "empty" and are output as-is.
-- Example: `{ user.nickname | default: 'Anonymous' }`
-
-#### `ternary`
-
-Switches the displayed string based on a boolean condition.
-
-- **Syntax**: `{ item_name | ternary: 'value_if_true', 'value_if_false' }`
-- Truthiness is evaluated using the same rules as `data-t-if` (`false`, `0`, `""`, `null`, `undefined`, empty arrays, and empty objects are falsy). Note that the strings `"false"` and `"0"` are truthy.
-- If the false-case argument is omitted, an empty string is output.
-- Example: `{ article.is_published | ternary: 'Published', 'Draft' }`
-
-#### `json`
-
-Outputs data as a formatted JSON string. Useful for debugging or using data directly in JavaScript.
-
-- **Syntax**: `{ item_name | json }`
-
-## Data Saving Processing (Form Handler)
-
-Bracify does not provide data externally (API). All resources under `/_sys` are hidden, except for the following endpoints that act as handlers for form submissions.
-
-```text
-POST /_sys/data/{entity}.json
-```
-
-This endpoint cannot be accessed directly via `GET` from a browser (403 Forbidden). It is only available as a form `action`.
-
-#### Data Operations
-Data operations are performed via HTTP requests, but the response is always a "redirect to a page".
-
-| Method | Action | Description |
-| :--- | :--- | :--- |
-| `POST` | Create | Creates new data. An `id` that already exists is refused, not overwritten (overwriting is `PUT` only). |
-| `PUT` | Update | **Replaces the whole** record identified by `id` with the submitted data (a record is created if the `id` does not exist). |
-| `DELETE`| Delete | Deletes specified data. |
-
-Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_method=PUT` or `_method=DELETE` in the query string is handled as that method (e.g. `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`).
-
-`PUT` requires the target `id` (`?id=` in the query or an `id` field in the form) and is not a partial update. Fields not included in the form are **removed** from the saved record. For values you want to keep, include them in the form as input fields pre-filled with `data-t-scope` (using `type="hidden"` if needed).
-
-A `DELETE` requires at least one data filter (such as `id`). A `DELETE` without a filter (including one with only `_limit` and similar parameters) is rejected with 400 so that it can never wipe the whole entity.
-
-#### Server-side validation
-
-On `POST` / `PUT` the body (including nested `a.b` names) is checked before saving against the constraints derived from the project's forms. Requests that bypass the browser (e.g. `curl`) are held to the same constraints.
-
-- **Constraints enforced**: `required`, `maxlength`, `minlength`, `min` / `max` for `type="number"` / `type="range"`, `pattern` (full match; dangerous patterns with nested quantifiers are skipped and values over 1000 characters are rejected), `type="email"`, `type="date"` (`YYYY-MM-DD`), and the options of `<select>` and `radio`.
-- **Which forms count**: forms whose `action` is the entity's `_sys/data/<entity>.json` and whose `method` is `POST` (or `PUT`). Fields inside `data-t-include` partials are included. `GET` forms (e.g. search) and `_method=DELETE` forms are ignored. Every HTML file of the project counts (except `_sys`, dot-folders and `node_modules`), so a stale copy of a page can loosen validation. `data-t-include` is expanded only inside `<form>` elements, so fields supplied by a layout whose form wraps page slots are neither validated nor typed. An entity with no such form, and fields no form declares, are not validated. If the `<option>` / `radio` values are generated with `{ }`, the options are not checked.
-- **Several forms writing to one entity**: the loosest declaration wins so forms never reject each other's legitimate submissions. A field is `required` only if every write form contains it and marks it required; any other constraint rejects a value only if it is violated in every form that declares the field (no constraint in one form means no constraint).
-- **Not enforced**: `disabled` controls, constraints on `type="hidden"`, `required` on controls inside a `data-t-if` or repeated by `data-t-list` (they may not be rendered; a `radio` group generated by `data-t-list` keeps its `required`), and `required` on a group of same-name checkboxes (a single checkbox's `required` is enforced). A field takes one value: arrays and objects are rejected except for `<select multiple>` and same-name checkbox groups. `type="email" multiple` is validated per comma-separated address.
-- **On failure**: nothing is saved. A form submission (a request that wants HTML) is answered with a 303 to `data-t-redirect` (or the `Referer`) with `?error=`; JSON clients get `400` and `{ "error": "..." }`. Show the message on the page with `{_sys.query.error}`.
-- **Duplicate `id`**: a `POST` carrying an `id` that already exists (in the body or as `?id=`) is refused the same way (`409` for JSON). An `id` that is not a string or a number is rejected with 400 on both `POST` and `PUT`. To update an existing record use `PUT` (in a form: `action="...?_method=PUT"` plus `<input type="hidden" name="id">`).
-- `DELETE` is not validated. Edits to the HTML take effect without a restart.
-
-```html
-<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
-  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
-  <input name="title" required maxlength="80">
-  <button type="submit">Create</button>
-</form>
-```
-
-#### Stored value types
-
-Values of a `POST` / `PUT` that pass validation are converted to the type of the form's input before they are stored (Studio's record create/update follows the same rules). Form values are strings by nature, and storing them as such makes `_sort` order text and lets `"false"` count as true in `data-t-if`.
-
-| Input | Form submission | JSON |
-| :--- | :--- | :--- |
-| `type="number"` / `"range"` | A numeric string becomes a number (`" 9 "` -> `9`). An empty or whitespace-only string omits the field. `0x10`, `1e999`, `NaN`, `1,5`, `9px` and the like are rejected, and so are integers beyond ±2^53 (`Number.MAX_SAFE_INTEGER`) as too large | Finite numbers are kept; numeric strings are converted; booleans and arrays are rejected. `min` / `max` apply to the converted number |
-| A single `checkbox` | `true` if submitted (whatever its `value`), `false` if not | Booleans are kept. Strings are limited to `"true"`, `"on"`, the checkbox's own `value` (all `true`) and `"false"` (`false`), case-insensitive (the declared `value` is matched case-sensitively); any other string (`"no"`, `"0"` ...) or a number is rejected. A required checkbox does not accept `false`. An empty string counts as not submitted |
-| A `checkbox` group (same name, several boxes) and `<select multiple>` | Always an array of strings (`["x"]` even for one value); nothing selected omits the field | An array of strings (a single string is wrapped into an array) |
-| `text`, `textarea`, `email`, `select`, `radio`, `date` ... | Left as the string | Strings only; numbers and booleans are rejected (`false` / `0` can no longer satisfy `required`). `radio`, `select` and `hidden` also accept finite numbers, stored as given (for relation ids such as `author_id: 1`); booleans are rejected |
-
-- **When an unchecked box becomes `false`**: only if **every** write form of the entity contains that `checkbox`. If any form lacks it, an unsubmitted field is not stored (so that form's data is not clobbered). `PUT` behaves the same: an unchecked box is replaced by `false`.
-- **Left unconverted**: fields whose kind differs between forms (e.g. `type="number"` in one form, `type="text"` in another), fields no form declares, `id` (always a string), and entities without a write form are stored as submitted. Fields supplied by a layout whose form wraps page slots (`data-t-include` is only expanded inside `<form>` elements) are neither validated nor typed.
-- **Dot notation**: if a field such as `meta.isbn` is declared, sending its parent (`meta`) as a non-object (string, number, boolean, array or `null`) is rejected so that the child's constraints cannot be skipped (so is `meta=str&meta.isbn=x`).
-- `NaN` / `Infinity` are never stored. When validation or the type check fails, nothing is stored.
-- **Existing data is not migrated**: values already stored as strings (`"9"`, `"on"`) stay as they are and keep sorting and comparing as text until the record is saved again.
-
-> **About the File API**: The file management endpoints described in earlier versions (GET/POST/PUT/DELETE on `/_sys/file/{filename}.{ext}`) are **not implemented**. Place static files such as images inside the project and reference them by normal URLs (e.g. `/images/logo.png`).
-
-### Filtering Data
-
-Query parameters attached to the `href` of `data-t-source` narrow down the data to fetch (the same notation is used for `DELETE` filter conditions).
-
-#### Parameters
-
-- **`{entity}`**: The type of data (formal name: entity). e.g., `article`, `user`
-- **`{prop}`**: The item name of the data used for filtering (formal name: property)
-- **`{val}`**: The value specified for the condition
-
-#### Operators
-
-By adding symbols (operators) after the item name, you can specify more detailed conditions.
-
-| Operator | Meaning | Example | Description of Example |
-| :--- | :--- | :--- | :--- |
-| (none) | Equal | `?status=active` | Status is `active` |
-| `:ne` | Not equal | `?status:ne=draft` | Status is **NOT** `draft` |
-| `:gt` | Greater than | `?price:gt=1000` | Price is **higher than** 1000 (1001~) |
-| `:gte` | Greater than or equal | `?price:gte=1000` | Price is 1000 **or higher** (1000~) |
-| `:lt` | Less than | `?stock:lt=10` | Stock is **less than** 10 (~9) |
-| `:lte` | Less than or equal | `?stock:lte=10` | Stock is 10 **or less** (~10) |
-
-#### Wildcard (`*`)
-
-If the value of a condition without an operator (equal) contains `*`, it becomes a pattern search (like SQL `LIKE`) where `*` matches any string.
-
-| Example | Matches |
-| :--- | :--- |
-| `?title=Web*` | Titles starting with `Web` |
-| `?title=*Guide*` | Titles containing `Guide` |
-
-- Only effective in server mode (Data API). Local Development Mode supports exact match only, and `*` is compared as a plain character.
-- In the `id` condition and in `DELETE` filter conditions, `*` is treated as a normal character (no pattern search).
-- **Note**: If you use user input directly as a condition, as in `?title={?q}`, users can specify a pattern search, for example `q=*` matches every record that has that field. Also, when the value contains `*`, `_` matches any single character and `%` matches any string, as in SQL `LIKE`, and Latin letters are matched case-insensitively.
-
-### System Reserved Variable (`_sys`)
-
-A reserved variable named `_sys` is provided to get the overall application context and browser request information.
-
-| Variable Name | Description | Example |
-| :--- | :--- | :--- |
-| `_sys.query` | GET query parameters. Gets values such as `?id=123` from the URL. | `{_sys.query.id}` |
-
-#### Shorthand `{?xxx}`
-
-`{?xxx}` is a shorthand for `{_sys.query.xxx}`. It can be used not only in the `href` of `data-t-source` but anywhere placeholders are available, such as body text, attribute values, `data-t-if`, and `data-t-include`. Pipes and arithmetic work the same way.
-
-```html
-<!-- If the URL is ?q=bracify -->
-<p>Search results for "{?q}"</p>          <!-- Search results for "bracify" -->
-<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
-<a href="books.html?q={?q | default: ''}&_sort=title">Sort by title</a>
-```
-
-- If the parameter is absent, it becomes an empty string.
-- **About URL encoding**: Values embedded in the query part of the `href` of `data-t-source` are URL-encoded automatically, but in ordinary attributes (such as `<a href>`) they are only HTML-escaped, not URL-encoded. Putting a value that may contain `&` or `=` into a link's query may cause it to be interpreted as separate parameters.
-- The no-value `{?}` (auto binding) can only be used inside the `href` of `data-t-source` (see below).
-
-#### Usage in `data-t-source` (Dynamic Parameter Binding)
-
-Inside the `href` attribute of `data-t-source`, you can dynamically embed query parameters using placeholders `{ }`. Furthermore, a shorthand notation `{?}` specific to URL parameters is available.
-
-| Notation | Meaning | Example |
-| :--- | :--- | :--- |
-| `{_sys.query.xxx}` | Embed specified item (standard format) | `?id={_sys.query.id}` |
-| `{?}` | **Auto Binding**. Gets a value from the URL with the same name as the key on the left | `?title={?}` |
-| `{?xxx}` | **Shorthand**. Equivalent to `_sys.query.xxx` | `?title={?q}` |
-
-#### Examples in Data Source
-
-```html
-<!-- If the URL is ?title=Web&_limit=10 -->
-
-<!-- 1. Auto Binding: Best when the key name matches the URL parameter name -->
-<link data-t-source="articles" href="/_sys/data/articles.json?title={?}&_limit={?}&_sort=created_at">
-
-<!-- 2. Shorthand: When the URL parameter name (e.g., q) and API key name (e.g., title) differ -->
-<link data-t-source="search" href="/_sys/data/articles.json?title={?q}">
-
-<!-- 3. Standard Format: To be more explicit -->
-<link data-t-source="items" href="/_sys/data/items.json?category={_sys.query.cat}">
-```
-
-### Detailed Data Information (System Properties)
-
-In addition to values contained in the data itself (titles, IDs, etc.), you may want to know the "count" or "status" of data.
-In `Bracify`, you can get this special information by adding a name starting with an underscore `_` after the data name.
-
-| Property Name | Description | Example |
-| :--- | :--- | :--- |
-| `_length` | Displays the number of items in a list (array) or the length of a string. | `{articles._length} articles` |
-
-#### Control Parameters (Sort & Pagination)
-
-To control the number of data items fetched and their order, use reserved parameters starting with an underscore `_`. This prevents conflicts with normal data items (e.g., a column named `limit`).
-
-| Parameter | Description | Example |
-| :--- | :--- | :--- |
-| `_limit` | Maximum number of items to fetch | `?_limit=20` |
-| `_offset` | Number of items to skip (for pagination) | `?_offset=20` (starts from the 21st item) |
-| `_sort` | Item name to sort by | `?_sort=created_at` |
-| `_order` | Sort order (`asc`: ascending, `desc`: descending) | `?_order=desc` (default is `asc`) |
-
-#### Examples of Control Parameters
-
-```html
-<!-- Example of search/sort using URL parameters -->
-<link data-t-source="articles" href="/_sys/data/articles.json?title={_sys.query.title}&_sort={_sys.query._sort}&_order={_sys.query._order}&_limit={_sys.query._limit}">
-
-<!-- Fixed category, with only page specified by parameter -->
-<link data-t-source="techArticles" href="/_sys/data/articles.json?category=Tech&_limit=10&_offset={_sys.query._offset}">
-```
-
-#### Local Directory Structure Example
-
-```text
-project/
-├── index.html
-├── _sys/
-│   └── data/
-│       ├── article.json
-│       ├── user.json
-│       └── product.json
-└── parts/
-    ├── header.html
-    └── footer.html
-```
-
-**JSON File Example** (`_sys/data/article.json`):
-
-```json
-[
-  {
-    "id": 1,
-    "title": "Article Title 1",
-    "summary": "Article summary...",
-    "published_at": "2025-12-01T10:00:00Z"
-  },
-  {
-    "id": 2,
-    "title": "Article Title 2",
-    "summary": "Article summary...",
-    "published_at": "2025-12-05T15:30:00Z"
-  }
-]
-```
-
-### Local Development Mode (True Zero Server Mode)
-
-The mode where you develop by directly opening `index.html` as a local file (`file://`) in a browser without starting a server.
-
-#### Build-less Development via File System Access API
-
-By utilizing the **File System Access API** provided by modern browsers (Chrome, Edge, etc.), the traditional build process becomes unnecessary.
-
-1. **Select Project Folder**: When opening a page via `file://`, a folder selection prompt appears during initialization. By selecting the project's root directory, the browser can directly fetch and operate on files.
-2. **Build-less Preview**: Since `_sys/data/*.json` and `_parts/*.html` are read directly by the browser, any edits and saves are instantly reflected upon browser reload (or transition).
-
-#### Resetting Folder Access
-
-The selected folder handle is stored in the browser's IndexedDB and restored automatically next time. To switch to another project or redo the permission, reset it in any of the following ways (`file://` mode only).
-
-- **Disconnect Folder button**: While a folder is connected, the engine shows a small "Disconnect Folder" button at the bottom-right of the screen. Clicking it discards the stored handle and shows the folder selection overlay again.
-- **JavaScript API**: `Bracify.resetRootAccess()` (returns a Promise). It deletes the handle from IndexedDB, drops the in-memory handle, and shows the folder selection overlay again.
-- **URL parameter**: Opening with `?bracify_reset=1` discards the stored handle instead of restoring it and shows the overlay. The parameter is removed from the URL automatically via `history.replaceState`.
-
-None of this UI is included in SSR (server) output.
-
-#### Page Transitions and SPA Routing
-
-As described in [Page Transitions and SPA Routing (Unified SPA)](#3-page-transitions-and-spa-routing-unified-spa), all transitions in CSR mode are handled as SPA. This solves the major challenge of losing folder access permissions upon reload in a `file://` environment.
-
-#### Limitations in Unsupported Browsers
-
-If the browser does not support the File System Access API or if folder selection is not performed, it operates in the following restricted "Read-only Mock Mode":
-
-- **Filter Limitations**: Exact match only. Operators like `:gt` or `:lt` will not work.
-- **No Updates**: Data saving via form submission is not performed.
-- **Partial Display**: Loading external files (`data-t-include`) may be restricted.
-
-#### Data Filtering and Control (Common Specs)
-
-In local development mode (both True Zero Server and Mock Mode), simple data processing occurs within the browser with the following limitations and specifications:
-
-- **Filter Limitations**:
-  - **Exact Match Only**: Returns data only when the specified key and value match exactly.
-  - **Ignore Empty Values**: If the filter value is an empty string (`?name=`), that condition is ignored (all items are displayed).
-  - **Empty `id` Exception**: A filter on the key `id` is the one exception: if its value is empty or an unresolved placeholder (e.g. `{?}`), it returns no records instead of being ignored (so `?id={?id}&_limit=1` with no id shows "not found" rather than the first record).
-  - **Advanced Operators Not Supported**: Operators like `:gt` or `:lt` do not function and are ignored.
-
-- **Supported Control Parameters**:
-  The following parameters operate simply even in local environments:
-  - `_limit`: Display limit
-  - `_offset`: Data skip
-  - `_sort`: Sort key
-  - `_order`: `asc` (ascending) or `desc` (descending)
-
-#### JavaScript Behavior in SPA Mode
-
-In Local Development Mode (True Zero Server Mode), when transitioning without a page reload, JavaScript execution follows these rules:
-
-- **Scope Isolation (IIFE Wrapping)**: To prevent conflicts with variable declarations (`const`, `let`) from previous pages, page-specific scripts (inside `<body>` and newly loaded scripts in `<head>`) are automatically wrapped and executed as Immediately Invoked Function Expressions (IIFE) by Bracify.
-- **Prevention of Duplicate Execution**: Among scripts in `<head>`, those already loaded (like `engine.js` or common libraries) are not re-executed in the navigation destination.
-- **Persistence of Global Variables**: Data explicitly attached to the `window` object or `var` variables defined outside of IIFEs persist after navigation.
-- **Event Listeners**: Event listeners added directly to `window` or `document` are not automatically cleaned up upon navigation. It is recommended to attach page-specific events to elements within `<body>` or design them with navigation in mind.
-
-## Database Configuration
-
-By default, Bracify uses the built-in SQLite (`_sys/data.db`), but you can connect to external databases like MySQL or PostgreSQL by configuring the connection settings.
-
-### How it Works
-
-Upon startup, Bracify always refers to the `_sys/data.db` (SQLite) within the project to check system configurations. Database connection and routing settings are stored in the `config` table within this file.
-
-This eliminates the need to manage or commit sensitive information (like credentials) as text files, ensuring secure operation by keeping secrets out of the repository.
-
-### Default Behavior (No Configuration)
-
-If the `config` table does not exist or there is no configuration for a specific entity, **the built-in SQLite (`_sys/data.db`) is used automatically.** No configuration is required for simple projects.
-
-### How to Configure
-
-You can configure this via the GUI (Bracify Studio) or by directly inserting values into the `config` table of the database in the following format:
-
-- **Target Table**: `config`
-- **Columns**: `name` = 'db', `value` = (JSON array of connection info below)
-
-**Connection Info Format (JSON):**
-
-```json
-[
-  {
-    "target_entity": "users",
-    "engine": "mysql",
-    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
-  },
-  {
-    "target_entity": "logs_*",
-    "engine": "mongodb",
-    "option": { "url": "mongodb://${MONGO_USER}:${MONGO_PASS}@localhost:27017" }
-  },
-  {
-    "target_entity": "*",
-    "engine": "postgresql",
-    "option": { "host": "db.example.com", "port": 5432, "database": "shared_db" }
-  }
-]
-```
-
-#### Routing Priority (target_entity)
-
-The connection destination is automatically selected based on the entity name according to the following rules:
-
-1. **Exact Match**: Settings that perfectly match the name are given the highest priority.
-2. **Pattern Match**: For settings containing a wildcard `*`, the one with the "longest fixed part (characters)" is prioritized (e.g., `data_*` takes precedence over `*`).
-3. **Definition Order**: If multiple patterns match with the same fixed part length, the one **defined higher in the JSON array** is prioritized.
-4. **Built-in SQLite**: Used as a fallback if none of the above rules match.
-
-- **engine**: `sqlite`, `mysql`, `postgresql`, `mongodb`, etc. (implemented sequentially).
-- **option**: Driver-specific connection settings. Supports environment variables using the `${ENV_VAR}` format.
-
-## Deployment
-
-- **Serverless**: Intended for deployment to Vercel or Netlify.
-- **Zip Upload**: Deploy by Zipping the project in the GUI app and simply dragging and dropping it onto the dashboard of each service.
-
-## Development Flow
-
-1. Download and install the `Bracify` GUI app from the official site.
-2. Launch the app and create/select a workspace folder.
-3. Edit `index.html`, `_parts/header.html`, etc. The GUI app provides a real-time preview.
-4. Once complete, Zip and publish.
-
-## Security
-
-Bracify includes several built-in protection features to support safe frontend development.
-
-- **Auto-Escaping**: Data expansion via `{placeholder}` is automatically HTML-escaped (treated as plain text), preventing XSS (Cross-Site Scripting).
-- **Secure Data Injection**: When injecting data into HTML during SSR or build processes, it is automatically escaped to prevent script tag interference (such as `</script>` breakouts).
-- **URL Sanitization**: When embedding data into `href` or `src` attributes, any dangerous protocols such as `javascript:` are automatically detected and disabled to prevent unexpected script execution.
-- **Underscore Guard (SSR-Only)**:
-  When running as a server, it rejects all external direct access (403 Forbidden) to resources where the directory or file name at the root starts with an underscore (`_`).
-  This blocks unauthorized access to internal info like `data.db` or include components (`_parts/`) at the web server level.
-  * Note: Official form endpoints (like `POST /_sys/data/*.json`) are exempt from this restriction.
-- **Cross-origin protection (Data API)**: any `POST` / `PUT` / `DELETE` request to `/_sys/data/*.json` (including `?_method=` overrides) whose `Origin` header differs from `Host` is rejected with 403 (requests without an `Origin` header, such as ordinary form submissions, are allowed).
+### Studio data manager and scaffold
+
+Studio collects entities and schemas from your HTML, lets you list, create, edit and delete records, and generates list and edit page scaffolds.
+
+## Current Limitations
+
+Bracify is an early-stage project. Please use it with the following in mind.
+
+- **Local mode is read-only.** Forms cannot be saved on `file://` ([#56](https://github.com/tri-comma/Bracify/issues/56)).
+- **There is no authentication yet.** On a public server, anyone who can reach the Data API can write data ([#106](https://github.com/tri-comma/Bracify/issues/106)). Be careful when publishing.
+- **File upload is not supported** ([#107](https://github.com/tri-comma/Bracify/issues/107)).
+- **There is no one-step deployment.** Put the static build on a static host, or run server mode on a host that runs Node.js ([#105](https://github.com/tri-comma/Bracify/issues/105)).
+
+## Documentation
+
+The detailed specification is in `docs/`.
+
+| File | Contents |
+| --- | --- |
+| [`docs/en/README.md`](./docs/en/README.md) | Table of contents of the documentation |
+| [`docs/en/studio.md`](./docs/en/studio.md) | Bracify Studio (launcher, admin dashboard, data manager, scaffold) |
+| [`docs/en/project-structure.md`](./docs/en/project-structure.md) | Project structure, rendering (SSR / CSR / SPA), loading the client-side engine |
+| [`docs/en/attributes.md`](./docs/en/attributes.md) | Custom attributes (`data-t-include`, `data-t-source`, `data-t-list`, `data-t-if`, ...), forms and saving |
+| [`docs/en/pipes.md`](./docs/en/pipes.md) | Pipes (filters) and the built-in filters |
+| [`docs/en/data-api.md`](./docs/en/data-api.md) | Data API (operations, server-side validation, value types) and query conditions |
+| [`docs/en/system-variables.md`](./docs/en/system-variables.md) | `_sys` reserved variables and system properties |
+| [`docs/en/local-mode.md`](./docs/en/local-mode.md) | Local development mode (`file://`) |
+| [`docs/en/database.md`](./docs/en/database.md) | Database configuration and routing priority |
+| [`docs/en/deployment.md`](./docs/en/deployment.md) | Build, deployment and development flow |
+| [`docs/en/security.md`](./docs/en/security.md) | Security |
 
 ## Examples
 
-The [`examples/`](./examples/) folder contains "Bracify Books", a practical library / reading-log app that exercises the reference features of this README. The same files run unchanged in both server mode (SSR + SQLite) and local `file://` development mode. See [`examples/README.md`](./examples/README.md) for how to run it and a feature-to-file map.
+The [`examples/`](./examples/) folder contains "Bracify Books", a practical library / reading-log app that uses the main features of the documentation. The same files run unchanged in both server mode (SSR + SQLite) and local `file://` development mode. See [`examples/README.md`](./examples/README.md) for how to run it and a feature-to-file map.
 
 ## Contributing
 
