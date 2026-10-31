@@ -44,8 +44,7 @@ const page = async (p) => (await fetch(base + p)).text();
 const records = async () => {
     // Read records through the SSR-rendered studio page's embedded pre-fetched data
     const html = await page('/index.html');
-    const m = html.match(/window\.__BRACIFY_DATA__ = (.*);/);
-    return JSON.parse(m[1].replace(/\\u003c/g, '<')).projects;
+    return JSON.parse(html.match(/<script type="application\/json" id="__bracify_state__">(.*?)<\/script>/s)[1]).data.projects;
 };
 
 const getRecord = async (id) => (await records()).find(r => r.id === id);
@@ -210,7 +209,7 @@ test('reconcile marks unmanaged running records as stopped', { timeout: TIMEOUT 
         });
         await s2.setCurrentProjectPath(studioDir); // re-open => reconcile
         const html = await (await fetch(b2 + '/index.html')).text();
-        const data = JSON.parse(html.match(/window\.__BRACIFY_DATA__ = (.*);/)[1].replace(/\\u003c/g, '<'));
+        const data = JSON.parse(html.match(/<script type="application\/json" id="__bracify_state__">(.*?)<\/script>/s)[1]).data;
         assert.strictEqual(data.projects.find(r => r.id === 'ghost').status, 'stopped');
     } finally {
         await s2.stop();
@@ -229,7 +228,7 @@ test('same-id concurrent starts, CSRF, gating, unexpected exit', { timeout: TIME
     });
     const rec3 = async (id) => {
         const html = await (await fetch(b3 + '/index.html')).text();
-        const d = JSON.parse(html.match(/window\.__BRACIFY_DATA__ = (.*);/)[1].replace(/\\u003c/g, '<'));
+        const d = JSON.parse(html.match(/<script type="application\/json" id="__bracify_state__">(.*?)<\/script>/s)[1]).data;
         return d.projects.find(r => r.id === id);
     };
     try {

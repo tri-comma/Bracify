@@ -340,7 +340,7 @@ Displays or hides elements based on conditions. The element is displayed if the 
 
     - **Comparison Operators**: Uses the same notation as the [Data Access API Operators](data-api.md#operators) (`=`, `:ne=`, `:gt=`, etc.).
     - **Logical Operations (AND/OR)**: Space separation represents **AND**, and comma separation in values represents **OR**.
-    - **Using Variables**: By enclosing in `{ }`, you can use data values in conditions. [Arithmetic](#data-display-universal-placeholder) is also available inside `{ }` (e.g. `matched._length:gt={_sys.query._offset + 10}`).
+    - **Using Variables**: By enclosing in `{ }`, you can use data values in conditions. [Arithmetic](#data-display-universal-placeholder) is also available inside `{ }` (e.g. `articles._total:gt={_sys.query._offset + 10}`).
     - **Single Key**: If you write only a key without operators, it determines the presence (truthiness) of that value as before.
 
     ```html
@@ -360,8 +360,8 @@ Displays or hides elements based on conditions. The element is displayed if the 
       <a href="/edit">Edit Article</a>
     </div>
 
-    <!-- Show "Next" only when there is a next page. allArticles is a separate source loaded without _limit / _offset, used for counting (count > current offset + 10) -->
-    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">Next</a>
+    <!-- Show "Next" only when there is a next page. articles is a source with _limit=10, and _total is the count before _limit / _offset (count > current offset + 10) -->
+    <a data-t-if="articles._total:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">Next</a>
     ```
 
 ### `data-t-redirect`

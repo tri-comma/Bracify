@@ -49,6 +49,9 @@ File System Access API に非対応のブラウザ、またはフォルダ選択
   - `_offset`: データの読み飛ばし
   - `_sort`: ソート対象のキー
   - `_order`: `asc` (昇順) または `desc` (降順)
+  - `_fields`: 取得する項目の絞り込み（カンマ区切り、`id` は常に含まれる）
+
+  `{ソース名._total}` も同じ値になります（`_limit` / `_offset` を適用する前の件数）。`BRACIFY_MAX_LIMIT` はサーバー（SSR）だけの設定で、ローカルモードには適用されません。
 
 ### SPA モード時の JavaScript の動作
 

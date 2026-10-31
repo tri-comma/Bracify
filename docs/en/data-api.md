@@ -27,6 +27,8 @@ Standard `<form>` elements can only send `GET` / `POST`, so a `POST` with `_meth
 
 A `DELETE` requires at least one data filter (such as `id`). A `DELETE` without a filter (including one with only `_limit` and similar parameters) is rejected with 400 so that it can never wipe the whole entity.
 
+The reserved read parameters (`_limit` / `_offset` / `_sort` / `_order` / `_fields`), the `_total` count and the `BRACIFY_MAX_LIMIT` cap on `_limit` are described in [System Variables](./system-variables.md).
+
 ### Server-side validation
 
 On `POST` / `PUT` the body (including nested `a.b` names) is checked before saving against the constraints derived from the project's forms. Requests that bypass the browser (e.g. `curl`) are held to the same constraints.

@@ -58,6 +58,7 @@
 | プロパティ名 | 説明 | 記述例 |
 | :--- | :--- | :--- |
 | `_length` | リスト（配列）に含まれるデータの件数、または文字の長さを表示します。 | `{articles._length}件の記事` |
+| `_total` | `_limit` / `_offset` を適用する前の、条件に一致した全件数です。ページネーションの総件数や「次へ」の判定に使います（`_limit` が無ければ `_length` と同じ）。レコードの項目ではなく `_length` と同じメタプロパティで、`_limit=1` の単一オブジェクト展開でも使えます。 | `{articles._length} / {articles._total}件` |
 
 ### 制御パラメータ (ソート・ページネーション)
 
@@ -69,6 +70,11 @@
 | `_offset` | 読み飛ばす件数（ページネーション用） | `?_offset=20` (21件目から取得) |
 | `_sort` | ソート対象のキー項目名 | `?_sort=created_at` |
 | `_order` | 並び順 (`asc`: 昇順, `desc`: 降順) | `?_order=desc` (省略時は `asc`) |
+| `_fields` | 取得する項目をカンマ区切りで絞ります。`id` は常に含まれ、存在しない項目名は無視されます。リレーション（`{book.author.name}`）に使う `author_id` のようなキーも、書いたとおりにしか残らないため明示してください。ページに埋め込まれる項目（`window.__BRACIFY_DATA__`）も絞られるので、表示しない項目をレスポンスに含めたくない場合にも使えます。 | `?_fields=id,title,price` |
+
+`_limit` の上限は、環境変数 `BRACIFY_MAX_LIMIT` で設定できます（SSR で、リクエストごとに参照されます）。既定では 1000 に設定されています。それを超える `_limit`（`?_limit={?_limit}` のようにユーザー入力を渡している場合など）は上限値に切り詰められます。`BRACIFY_MAX_LIMIT=1` なら、それより大きい `_limit` は 1 になり、単一オブジェクトとして展開されます。数値でない・負の `_limit`（`-1` や `abc`）も上限値になります。正の整数を設定すると上限を変更でき、`0` を設定すると上限を無効にできます。`_limit` を指定しない取得には適用されません。
+
+> **破壊的変更**: 上限が既定で有効になったため、1000 を超える `_limit` を指定しているページは 1000 件に切り詰められます。必要な場合は `BRACIFY_MAX_LIMIT` で引き上げてください。
 
 ### 制御パラメータの使用例
 
@@ -78,6 +84,10 @@
 
 <!-- カテゴリ固定、ページのみパラメータで指定 -->
 <link data-t-source="techArticles" href="/_sys/data/articles.json?category=Tech&_limit=10&_offset={_sys.query._offset}">
+
+<!-- 総件数と「次へ」の判定は _total で行う（件数のために全件を読み込む別ソースは不要） -->
+<p>{techArticles._length} / {techArticles._total}件</p>
+<a data-t-if="techArticles._total:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">次へ</a>
 ```
 
 ### ローカルディレクトリ構成例

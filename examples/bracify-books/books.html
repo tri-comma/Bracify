@@ -9,11 +9,9 @@
     <link data-t-source="authors" href="_sys/data/authors.json">
     <link data-t-source="categories" href="_sys/data/categories.json">
     <!-- Filters come from the URL ({?name} = _sys.query.name); empty / missing values are ignored.
-         "shelf" is one page (3 rows), "matched" is the same filter without paging (used for the total). -->
+         "shelf" is one page (3 rows); shelf._total is the number of matches before paging. -->
     <link data-t-source="shelf"
         href="_sys/data/books.json?status={?status}&category_id={?category}&author_id={?author}&title={?q}&_sort={?sort}&_order={?order}&_limit=3&_offset={?_offset}">
-    <link data-t-source="matched"
-        href="_sys/data/books.json?status={?status}&category_id={?category}&author_id={?author}&title={?q}">
     <link rel="stylesheet" href="style.css">
     <script src="bracify.js"></script>
 </head>
@@ -48,7 +46,7 @@
         </form>
 
         <p class="muted">
-            Showing {shelf._length} of {matched._length} book(s)
+            Showing {shelf._length} of {shelf._total} book(s)
             <span data-t-if="_sys.query._offset:gt=0">(from #{_sys.query._offset + 1})</span>
         </p>
         <p class="notice warn" data-t-if="!shelf._length">No books match your filters.</p>
@@ -108,7 +106,7 @@
         <nav class="pager">
             <a data-t-if="_sys.query._offset:gt=0"
                 href="books.html?_offset={_sys.query._offset - 3}&q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort={?sort | default: ''}&order={?order | default: ''}">&larr; Previous</a>
-            <a data-t-if="matched._length:gt={_sys.query._offset + 3}"
+            <a data-t-if="shelf._total:gt={_sys.query._offset + 3}"
                 href="books.html?_offset={_sys.query._offset + 3}&q={?q | default: ''}&category={?category | default: ''}&status={?status | default: ''}&sort={?sort | default: ''}&order={?order | default: ''}">Next &rarr;</a>
         </nav>
     </div>

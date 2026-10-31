@@ -46,8 +46,7 @@ const page = async (p) => (await fetch(base + p)).text();
 
 const pageData = async (p, origin = base) => {
     const html = await (await fetch(origin + p)).text();
-    const m = html.match(/window\.__BRACIFY_DATA__ = (.*);/);
-    return JSON.parse(m[1].replace(/\\u003c/g, '<'));
+    return JSON.parse(html.match(/<script type="application\/json" id="__bracify_state__">(.*?)<\/script>/s)[1]).data;
 };
 
 // Read the user project's records through a separate DB manager

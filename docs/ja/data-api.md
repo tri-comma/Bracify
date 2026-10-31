@@ -27,6 +27,8 @@ POST /_sys/data/{entity}.json
 
 `DELETE` はデータの絞り込み条件（`id` など）が必須です。条件なしの `DELETE`（`_limit` などのみの場合を含む）は全件削除を防ぐため 400 で拒否されます。
 
+取得側の予約パラメータ（`_limit` / `_offset` / `_sort` / `_order` / `_fields`）と、件数を表す `_total`、`_limit` の上限 `BRACIFY_MAX_LIMIT` は[システム予約変数](./system-variables.md)にまとめています。
+
 ### サーバー側バリデーション
 
 `POST` / `PUT` では、保存前に本文（`a.b` 形式のネストも含む）を、プロジェクトの HTML のフォームから導出した制約で検証します。ブラウザの検証を迂回した `curl` などの送信にも同じ制約が適用されます。
