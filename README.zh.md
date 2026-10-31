@@ -6,17 +6,19 @@
 
 # Bracify 🚀
 
-> **仅使用 HTML 的 Web 框架。无需 CLI，只需标记。**
+> **仅使用 HTML 的 Web 框架。只需标记。**
+>
+> 构建应用无需使用终端（GUI 工具 Studio 即可完成）。CLI 是用于静态构建的可选工具。
 
 Bracify 是一个允许您仅通过 HTML 标记即可构建 Web 应用程序的框架。
-我们提供“HTML 优先”的开发体验，旨在消除编程和复杂环境配置的壁垒。
+我们提供“HTML 优先”的开发体验，旨在降低编程和复杂环境配置的门槛。
 
 ## 什么是 Bracify？
 
 Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 
 - **致深受 React/Vue 疲劳困扰的工程师**：从复杂的构建配置和沉重的框架学习曲线中解放出来。
-- **致标记语言工程师（切图仔/页面重构工程师）**：无需编程。仅凭您的 HTML 技能，即可完成从数据对接至部署的全功能 Web 应用构建。
+- **致标记语言工程师（切图仔/页面重构工程师）**：无需编程。仅凭您的 HTML 技能，即可构建包含数据对接的可运行 Web 应用。
 
 ## Demo
 
@@ -25,9 +27,9 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 ## 核心概念 (Key Concepts)
 
 - **仅使用 HTML 标记**：无需编写程序，仅通过 HTML 标记即可创建应用。
-- **无需 CLI**：不再需要“黑窗口”（终端）。专用的 GUI 启动器将解决一切问题。
+- **创作无需终端**：创建页面、预览和管理数据都不需要终端，GUI 工具 Bracify Studio 即可完成。CLI（用于静态构建）是可选的。
 - **混合渲染 (Hybrid Rendering)**：使用 `file://` (CSR) 进行开发，生产环境可直接作为服务器 `https://` (SSR) 发布。
-- **零配置 (Zero Configuration)**：完全不需要复杂的 `npm install` 等操作。
+- **极简配置 (Minimal Setup)**：项目不需要配置文件或构建步骤。启动 Studio 需要 Node.js 以及一次性的 `npm install`（见下方快速入门）。
 - **便携 (Portable)**：项目即是 HTML。可携带至任何地方并立即运行。
 
 ## 快速入门
@@ -36,7 +38,7 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 
 ### 1. 准备
 
-启动 `Bracify` GUI 应用，并选择一个新的工作目录。
+启动 Bracify Studio，并选择一个新的工作目录。目前 Studio 需从源码启动（需要 Node.js）：在仓库根目录执行一次 `npm install`，然后执行 `npm start`。详见 [Studio](./docs/en/studio.md)。
 
 ### 2. 创建 HTML
 
@@ -56,7 +58,7 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 </html>
 ```
 
-`<script src="bracify.js"></script>` 用于加载客户端引擎（SPA 跳转和本地开发模式需要；详见“加载客户端引擎”一节）。
+`<script src="bracify.js"></script>` 用于加载客户端引擎（SPA 跳转和本地开发模式需要；详见[项目结构](./docs/en/project-structure.md)）。
 
 ### 3. 创建数据
 
@@ -70,885 +72,131 @@ Bracify 追求极致的简洁：“仅通过标记即可构建应用”。
 
 ### 4. 运行
 
-在 GUI 应用中点击 `Start Server` 按钮并访问 `localhost:3000`，即可看到 `Hello Bracify!`。
+在 Studio 中点击 `Start Server` 按钮并访问 `localhost:3000`，即可看到 `Hello Bracify!`。
 服务器在启动时读取 `index.html` 和 `info.json`，在内存中解析 SSI（服务端包含），并返回响应。
 当您编辑并保存文件时，OS 级别的监控会立即更新内存中的模板。
 
 ---
 
-## 开发工具 (Bracify Studio)
+## 你可以构建什么
 
-`Bracify` 提供专用的 GUI 工具（代号：**Bracify Studio**）以最大化开发体验。
-该工具采用基于 Electron 的“启动器 (Launcher)”与使用 `Bracify` 自身构建的“管理面板 (Admin Dashboard - Web App)”的混合架构。
+每个功能给出一个最小示例。详情请参阅[文档](#文档)。
 
-### 1. Bracify Launcher (桌面端)
+### 显示数据（`data-t-source` 与占位符）
 
-用于启动管理面板的轻量级包装应用。
+为 JSON 等数据命名，并用 `{名称.字段}` 嵌入文本或属性。URL 参数可用 `{?id}` 引用。
 
-- **系统服务器 (System Server)**：应用启动时开启用于系统管理的 API 服务器。
-- **启动 (Launch)**：自动在浏览器（或 Electron 窗口）中打开管理面板。
-
-### 2. 管理面板 (Web 端)
-
-集成所有操作的统一管理界面。
-
-- **项目控制 (Project Control)**：
-  - **打开项目 (Open Project)**：通过系统 API 打开文件夹选择对话框以加载项目。
-  - **启动/停止服务器 (Start/Stop Server)**：指定端口号，启动目标项目的预览服务器。
-  - **多项目同时运行**：每个项目作为独立的子进程（`node engine/start.cjs <path> <port>`）运行，可同时运行多个。
-    - 启动/停止无需 JavaScript，使用标准的 `<form method="POST">`（SSR）。
-      - `POST /_sys/server/start`（字段：`id` = 项目ID）
-      - `POST /_sys/server/stop`（字段：`id`）
-      - 处理后重定向（303）到 `data-t-redirect`，否则为 Referer，再否则为 `/`。失败时附加 `?error=消息` 返回，页面可通过 `{?error}` 显示。
-    - 使用 `projects` 实体的 `port`。若为空则从 3000 开始；若指定端口已被占用，则从该端口起向上探测空闲端口。实际使用的端口会覆盖记录中的 `port`。
-    - 此功能仅在作为系统服务器（Studio）运行的服务器上启用，其他情况下 `/_sys/server/*` 返回 404。`Origin` 头与 `Host` 不一致的 POST 会被 403 拒绝。子进程意外退出时，`status` 会更新为 `stopped`。
-    - 结果（`status` = `running`/`stopped`、`pid`、实际 `port`）会写回项目记录并显示在仪表板上。
-    - 停止系统服务器时，也会停止其启动的所有子进程。
-- **数据管理器 (Data Manager)**：
-  - 从项目的 HTML 自动收集实体和模式 (Schema)，提供数据列表、新增/编辑/删除 (CRUD) 以及模板生成 (Scaffold)。页面为 `studio/data/index.html?project=<id>`（实体列表）和 `studio/data/entity.html?project=<id>&entity=<name>`（模式、记录、新增表单），均为不使用 JavaScript 的 SSR 表单。
-  - **实体发现**：扫描项目中所有 `*.html`（排除 `node_modules`、`_sys` 和以 `.` 开头的文件夹；包含 `_parts`），从以下位置收集实体：
-    - `data-t-source` 的 `href`（`_sys/data/<entity>.json`）
-    - `<form action="..._sys/data/<entity>.json">` 及其中 `input` / `select` / `textarea` 的 `name`（跳过 `data-t-redirect`；`a.b` 这样的点号名称为嵌套字段）
-    - 使用已知数据源名称的 `{<source>.<field>}` 占位符（类型为 `unknown`）
-    - 数据库中的现有记录（表单未定义的字段根据值推断 `number` / `boolean` / `string` / `object`）
-  - **模式信息**：每个字段收集类型（`text` / `number` / `email` / `date` / `checkbox` / `enum`（`select` 的选项）/ `unknown` 等）、`required`、`maxlength`、`minlength`、`min`、`max`、`pattern`。
-  - **验证限制**：字段名只能匹配 `[A-Za-z0-9_.-]`（其他名称会被忽略）。`checkbox` 的 `required` 不做验证（未勾选不会提交）。`pattern` 检查会拒绝超过 1000 个字符的值。包含嵌套量词的 `pattern`（如 `(a+)+$`）出于安全考虑不会强制执行，模式中的 `patternSkipped` 为 `true`。
-  - **CRUD**：直接操作目标项目的数据（`<project>/_sys/data.db` 及该项目的路由配置），不影响 Studio 自身的数据库。
-    - `POST /_sys/studio/records?project=<id>&entity=<name>`（新增）、`POST /_sys/studio/records/update?project=<id>&entity=<name>&id=<id>`（更新）、`POST /_sys/studio/records/delete?project=<id>&entity=<name>&id=<id>`（删除）
-    - 新增/更新时按已发现的模式在服务器端验证（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / 类型）；失败时以 303 重定向返回并附带 `?error=消息`。成功时重定向到 `data-t-redirect` 或 Referer。
-    - SSR 数据源（仅限 Studio 页面的虚拟 href）：`_sys/studio/entities.json?project=<id>`、`_sys/studio/records.json?project=<id>&entity=<name>`（支持与 Data API 相同的过滤、`_sort`、`_limit`、`_offset`）、`_sys/studio/schema.json?project=<id>&entity=<name>`。
-  - **Scaffold（仅限开发时）**：`POST /_sys/studio/scaffold?project=<id>&entity=<name>` 在目标项目中生成 `<entity>/index.html`（列表和删除表单）和 `<entity>/edit.html`（带有与模式对应的 `type` / `required` / `maxlength` / `pattern` 的新增/编辑表单）。仅使用已文档化的 Bracify 属性，不会覆盖已有文件（返回错误）。
-  - 与 `/_sys/server/*` 相同，这些功能仅在系统服务器 (Studio) 上启用（其他情况返回 404），`Origin` 与 `Host` 不一致的 POST 会被 403 拒绝。`entity` 只能包含字母、数字、`_` 和 `-`（不能以 `_` 开头）。
-- **API 监视器 (API Monitor)**：
-  - 查看通信日志。
-
----
-
-## 项目结构 (File System Structure)
-
-`Bracify` 项目由单一的源码文件夹组成。运行时无需物理构建目录。
-
-### 推荐目录结构
-
-```text
-project/
-├── index.html          # 入口文件
-├── style.css           # 静态资源
-├── img/                # 任何不以下划线开头的文件夹都是公开的
-│   └── logo.png
-├── _parts/             # [非公开] 引用组件
-│   ├── header.html
-│   └── footer.html
-└── _sys/               # [非公开] 系统数据与配置
-    ├── data.db         # 数据库文件
-    └── data/           # 实体的 JSON 数据
-        └── articles.json
+```html
+<link data-t-source="article" href="_sys/data/articles.json?id={?id}">
+<h1>{article.title}</h1>
+<p>{article.body}</p>
 ```
 
-### 渲染规范
+### 列表（`data-t-list`）
 
-Bracify 允许您在“SSR 模式”（作为 Web 服务器）和“CSR 模式”（在浏览器中直接运行）之间无缝切换。
+加在需要重复的元素上，每条记录会复制一份。排序、条数限制和分页通过 URL 参数指定。
 
-#### 1. SSR 模式（服务端）
-服务器根据请求动态构建 HTML。
+```html
+<link data-t-source="articles" href="_sys/data/articles.json?_sort=id&_order=desc&_limit=5">
+<ul>
+  <li data-t-list="articles"><a href="article.html?id={articles.id}">{articles.title}</a></li>
+</ul>
+```
 
-- **内存构建**：启动或保存文件时，在**内存**中解析 `data-t-include` 并缓存合并后的 HTML 模板。
-- **文件监视**：当 `index.html` 或 `_parts/` 下的文件更新时，服务器会检测 OS 级别事件并自动重构内存缓存。
-- **高性能**：从内存中预先合并的模板提供响应，最大限度地减少磁盘 I/O。
+### 条件显示（`data-t-if`）
 
-#### 2. CSR 模式（客户端）
-通过 `file://` 协议在浏览器中直接打开文件夹运行。
+按是否存在、比较（`=`、`:gt` 等）、AND（空格）和 OR（逗号）来显示或隐藏元素。
 
-- **运行时包含**：当浏览器加载 HTML 时，利用 File System Access API 即时获取并合并 `data-t-include` 指定的文件。
-- **一致性**：SSR 和 CSR 使用完全相同的绑定引擎 (`engine.js`)，确保在任何环境下结果一致。
+```html
+<span data-t-if="status=published">Published</span>
+<div data-t-if="price:gte=1000 stock:gt=0">In stock</div>
+<div data-t-if="!user.is_login"><a href="login.html">Log in</a></div>
+```
 
-#### 3. 页面跳转与 SPA 路由 (Unified SPA)
-Bracify 在 SSR 和 CSR 模式下，**默认将所有页面跳转作为 SPA 处理**。
+### 保存表单（带服务端校验的 Data API）
 
-- **无缝体验**：通过避免完整的页面重新加载，Bracify 使用 Ajax (Fetch) 获取下一页的 HTML，并动态替换 `<body>` 等 DOM 元素。这消除了白屏（闪烁）现象，提供了快速流畅的操作感。
-- **权限持久性**：对 CSR 模式至关重要。在 `file://` 环境下，页面重载会重置浏览器的文件夹访问权限。SPA 方式允许在整个会话期间保持该权限。
-- **自动拦截链接**：自动检测标准 `<a>` 标签的内部链接，并将其提升为 SPA 跳转。开发者无需编写 JavaScript 即可构建 SPA 应用。
-- **浏览器历史记录支持**：利用 `history.pushState` API，确保 URL 更新以及浏览器的“后退/前进”按钮在 SPA 跳转过程中仍能按预期工作。
+把普通的 `<form>` 提交到 Data API 即可保存数据。`required`、`maxlength`、`pattern` 等约束也会在服务器端校验；失败时带着 `?error=` 返回原页面。
 
-#### 4. 加载客户端引擎
+```html
+<form method="POST" action="/_sys/data/articles.json" data-t-redirect="articles.html">
+  <input type="text" name="title" required maxlength="100">
+  <input type="email" name="email" required>
+  <button>Save</button>
+</form>
+<p>{_sys.query.error}</p>
+```
 
-仅通过 SSR 显示的页面不需要 `<script>`，但如果要使用 SPA 跳转、本地开发模式（`file://`）或 CSR，则需要在每个页面的 `<head>` 中加载客户端引擎。
+### 部件与布局（`data-t-include`）
 
-在任何模式下，只需下面这一个 `<script>` 即可加载引擎：
+可以插入页眉等共用部件，也可以把页面内容填入通用布局。
+
+```html
+<!-- _parts/layout.html contains <main data-t-content="main-body"></main> -->
+<body data-t-include="_parts/layout.html">
+  <div data-t-content="main-body"><p>Page content</p></div>
+</body>
+```
+
+### 管道 (Pipes，过滤器)
+
+用 `|` 格式化日期、数字、货币，或截断、设置默认值。内置 `date`、`number`、`currency`、`uppercase`、`lowercase`、`truncate`、`default`、`ternary` 和 `json`。
+
+```html
+<p>{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
+<span>{ product.price | currency }</span>
+<span>{ article.summary | truncate: 10 | uppercase }</span>
+```
+
+### SPA 导航
+
+内部链接只需写普通的 `<a>`，就会自动以不刷新整页的方式跳转。无需 JavaScript。
+
+```html
+<a href="book.html?id=1">Book</a>
+```
+
+### 本地模式（`file://`，无需服务器）
+
+在 Chrome / Edge 中双击打开 `index.html` 并选择项目文件夹即可运行（只读；使用 File System Access API）。每个页面都需要这一行。
 
 ```html
 <script src="bracify.js"></script>
 ```
 
-位于子文件夹中的页面请使用相对路径（例如 `<script src="../bracify.js"></script>`）。
-
-- **服务器模式**：服务器通过虚拟路径 `/bracify.js`（仅限根路径）以 `text/javascript` 提供引擎。即使项目中存在同名文件，也始终优先使用服务器自带的引擎，以保证 SSR 与浏览器运行相同版本。支持基于 ETag 的条件请求。
-- **本地开发模式（`file://`）**：由于没有服务器，必须把 `bracify.js` 放在项目内，且能从页面通过相对路径访问。Studio 的脚手架生成和 CLI 构建会自动创建它；其他情况下请把仓库中的 `engine/lib/engine.cjs` 复制为 `bracify.js`（[`examples/`](./examples/) 通过 `npm run sync:examples` 更新副本）。
-- **兼容性**：原有的 `/engine/engine.cjs` 仍会提供（`text/javascript`）。SPA 跳转时，`bracify.js`、`engine.js`、`engine.cjs` 中任一文件名都会被识别为引擎脚本，不会被重复加载。
-
----
-
-## 参考文档 (Reference)
-
-### 自定义属性
-
-#### `data-t-include`
-
-加载外部 HTML 文件并将其作为元素内容展开。该属性有两种运行模式：**片段插入 (Snippet Include)** 和 **布局应用 (Layout Application)**。
-
-无论哪种模式，**编写 `data-t-include` 的标签本身不会被删除，其子元素 (innerHTML) 将被展开结果替换。**
-
----
-
-##### 模式 1：片段插入 (Snippet Include)
-
-将页眉、页脚等公共组件插入到当前位置。
-
-- **运行方式**：将指定文件内容直接展开在标签内部。
-- **示例**：
-
-    ```html
-    <header data-t-include="_parts/header.html"></header>
-    ```
-
-    ↓ `_parts/header.html` 的内容将被展开。
-
----
-
-##### 模式 2：布局应用 (Layout & content)
-
-加载公共“框架（布局）”，并将其中特定区域填充为您自身的内容。
-
-- **运行方式**：
-    1. 加载经 `data-t-include` 指定的模板文件。
-    2. 将模板内的 `data-t-content` 元素与您自身内部的 `data-t-content` 元素进行匹配。
-    3. 将页面端的内容注入模板端的指定位置。
-- **匹配规则**：`data-t-content` 属性值（名称）一致的元素将被相互替换。若未提供名称，则视为默认插槽 (Slot)。
-
-- **示例**：
-    **模板 (`_parts/layout.html`)**:
-
-    ```html
-    <div class="container">
-        <h1 data-t-content="page-title">默认标题</h1>
-        <main data-t-content="main-body"></main>
-    </div>
-    ```
-
-    **使用页面 (`index.html`)**:
-
-    ```html
-    <body data-t-include="_parts/layout.html">
-        <span data-t-content="page-title">我的个人资料</span>
-        <div data-t-content="main-body">
-            <p>这里是个人资料正文。</p>
-        </div>
-    </body>
-    ```
-
-    ↓ **运行结果**:
-
-    ```html
-    <body>
-        <div class="container">
-            <h1 data-t-content="page-title">我的个人资料</h1>
-            <main data-t-content="main-body">
-                <div data-t-content="main-body">
-                    <p>这里是个人资料正文。</p>
-                </div>
-            </main>
-        </div>
-    </body>
-    ```
-
-- **注意点**：在开发服务器运行或通过浏览器中的 File System Access API 进行合并。
-
----
-
-##### 动态插入（通过占位符指定路径）
-
-插入的路径可以使用占位符 `{ }`，例如可以通过 URL 参数切换要加载的文件。
-
-```html
-<!-- 当 ?p=_parts/help.html 时，展开 _parts/help.html -->
-<div data-t-include="{?p}"></div>
-```
-
-- 当值为空（例如未指定参数）或因下述限制而拒绝加载时，不会展开任何内容，元素的原有内容将原样保留（发生循环引用、超过嵌套上限或单次渲染的上限时也同样处理）。
-- **路径限制**：展开后的路径仅限于项目内。包含 `..` 的路径、包含 `_sys` 目录的路径、包含 `:` 的路径（`C:`、`http:` 等）以及以 `\` 开头的路径不会被加载（SSR 与 CSR 通用）。指定不存在的文件时也不会展开。
-- **安全提示**：如果将 URL 参数直接用作路径，访客可以插入项目内的任意 HTML（包括 `_parts/` 内的部件）。如果切换目标是固定的，建议使用 `data-t-if` 为每个候选项分别输出固定路径的 include。
-
-  ```html
-  <div data-t-if="_sys.query.tab=help" data-t-include="_parts/help.html"></div>
-  <div data-t-if="_sys.query.tab=faq" data-t-include="_parts/faq.html"></div>
-  ```
-
-#### `data-t-source`
-
-获取要在 HTML 中展示的数据，并为该数据命名。
-
-- **指定方法**：在 `href` 属性指定数据获取 URL，并指定任意名称。
-- **数据获取 URL 规范**：
-  - **推荐格式**：`_sys/data/{数据定义名称}.json` （相对路径）
-    - 为确保在本地预览 (`file://`) 中也能运行，推荐省略开头的 `/`。
-  - **允许格式**：`/_sys/data/{数据定义名称}.json` （绝对路径风格）
-    - 在 CSR (浏览器) 环境下，开头的 `/` 会被自动忽略并作为相对路径处理。
-- **数据定义名称限制**：仅允许使用 **字母、数字、下划线 `_` 和连字符 `-`**。
-  - **禁止**包含 `..` 或 `/` 的路径指定（目录遍历），此类指定将不会被加载。
-- **约束**：仅限在 `<link>` 标签中指定。
-- **示例**：
-
-    ```html
-    <!-- OK (推荐)：相对路径 -->
-    <link data-t-source="articles" href="_sys/data/article.json">
-
-    <!-- OK：包含开头斜杠（内部作为相对路径处理） -->
-    <link data-t-source="users" href="/_sys/data/user.json?status=active">
-
-    <!-- NG：禁止目录遍历 -->
-    <link data-t-source="invalid" href="_sys/data/../../conf.json">
-    ```
-
-#### 数据展示（通用占位符）
-
-通过在 HTML 文本或属性中编写 `{数据源名称.项目名称}` 即可展示数据。
-
-- **基本示例**：
-    指定数据源及其属性进行展示。
-
-    ```html
-    <link data-t-source="article" href="/_sys/data/articles.json?id={?id}">
-    <h1>{article.title}</h1>
-    <p>{article.body}</p>
-    ```
-
-- **嵌套数据展示**：
-  使用点符号 `.` 可以访问对象内嵌套的属性。即使数据层级较深，也可以通过同样的方式进行。
-
-  ```json
-   {
-    "user": {
-      "name": "张三",
-      "address": {
-        "city": "北京"
-      }
-    }
-  }
-  ```
-
-  ```html
-  <p>用户名: {user.name}</p>
-  <p>城市: {user.address.city}</p>
-  ```
-
-- **自动数据关联（查找）**:
-  使用 `data-t-source` 加载多个数据时，可以沿用点号写法通过外键访问关联数据。对于 `article.category`，如果对象没有 `category` 属性但有 `category_id`（或 `categoryId`），Bracify 会在以 `category` 的复数命名的数据源（`categories`）中自动查找 `id` 匹配的记录。无需任何额外属性或语法。
-
-  ```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <link data-t-source="categories" href="/_sys/data/categories.json">
-
-  <!-- articles: [{ "id": 1, "title": "Hello", "category_id": 2 }] -->
-  <!-- categories: [{ "id": 2, "name": "Tech" }] -->
-  <ul>
-    <li data-t-list="articles">{articles.title} ({articles.category.name})</li>
-  </ul>
-  ```
-
-  - 数据源名称依次尝试 `X + s`、`X + es`、（以 `y` 结尾时）`ies`，最后是 `X` 本身，使用第一个存在的。
-  - `id` 按字符串比较。没有匹配记录时，与其他未定义值的处理相同。
-  - 对象上存在真实的 `category` 属性时，始终优先使用该属性。
-  - 也可以像 `article.category.parent.name` 这样链式访问。
-  - `article.category` 本身会解析为完整的关联记录，因此可用于 `data-t-scope="article.category"` 或 `data-t-if="article.category"`。
-  - 表单自动绑定（按 `name` 自动填充输入）不会跟随关联；请使用外键字段（例如 `name="category_id"`）。
-  - 使用第一个存在的数据源，即使其中没有匹配记录也不会尝试后续候选。
-  - 可用于 `{ }`、`data-t-if`、`data-t-list`、`data-t-scope` 和属性绑定（`href="/cat.html?id={article.category.id}"`），SSR 与 CSR 行为一致。
-
-- **数值计算（四则运算）**：
-  可以在占位符 `{ }` 内使用四则运算（`+`, `-`, `*`, `/`, `%`）和括号 `()`，无需编写 JavaScript 即可计算数值。可以组合数据值和数字字面量进行计算，并可将结果传递给后续的管道（`|`）。
-
-  ```html
-  <!-- 变量加法（分页的下一个偏移量） -->
-  <a href="?_offset={_sys.query._offset + 10}">Next</a>
-
-  <!-- 乘法与管道的组合（税额/合计显示） -->
-  <span>Total: {item.price * 1.1 | number} 円</span>
-
-  <!-- 用括号指定优先级 -->
-  <span>合计: {(item.price + item.shipping) * item.qty}</span>
-  ```
-
-  - 表达式中的变量（例如 `item.price`）会自动从数据中解析。未定义、`null` 或非数字的值会被安全地视为 `0`，因此渲染不会因错误而中断。
-  - 除以 `0` 的除法/取余返回 `0`。
-
-- **列表索引显示**：
-  对于由 `data-t-list` 迭代的每个元素，会自动注入从 0 开始的索引 `_index`。若要调整为从 1 开始，请加上 `+ 1`。
-
-  ```html
-  <ul>
-    <li data-t-list="projects">No. {projects._index + 1}: {projects.title}</li>
-  </ul>
-  ```
-
-- **占位符转义**：
-  如果希望直接显示占位符符号而不对其求值，请在开始的花括号前放置一个反斜杠 `\`。
-
-  ```html
-  <code>\{user.name\}</code> <!-- 显示结果: {user.name} -->
-  <code>C:\\temp</code> <!-- 显示结果: C:\temp（反斜杠本身写作 \\） -->
-  ```
-
-- **值不存在时的显示**:
-  当数据本身存在（`data-t-source`、`data-t-scope` 或当前 `data-t-list` 项）但缺少该字段或关联记录时（例如已删除作者的 `{book.author.name}`），占位符在文本和属性中均输出为**空字符串**（`class="s-{book.status}"` 变为 `class="s-"`）。请使用 `data-t-if` 控制显示。仅当数据本身不可用（未加载或未定义的数据源/作用域）时，才会原样保留 `{...}`。
-  - URL 参数缺失时，`{?x}` / `{_sys.query.x}` 同样渲染为空（`_sys` 始终可用）。作用于缺失关联记录的 `data-t-scope`（例如 `data-t-scope="book.author"`）视为有效的空作用域，其内部占位符渲染为空。
-  - **过滤值限制**: 在 `data-t-source` 的 `href` 中，同时包含 `{` 和 `}` 的过滤值（例如用 `?title={foo}` 搜索标题为 `{foo}` 的书）会被视为未解析的占位符，该过滤条件将被忽略（SSR/CSR 均如此）。
-
-### 列表展示 (`data-t-list`)
-
-若要展示多条数据，您必须在需要重复的元素上指定 `data-t-list="数据源名称"`。
-
-```html
-  <link data-t-source="articles" href="/_sys/data/articles.json">
-  <ul>
-    <li data-t-list="articles">
-      <h3>{articles.title}</h3>
-    </li>
-  </ul>
-```
-
-#### 在属性中嵌入数据（通用占位符）
-
-在所有标准属性（`href`, `src`, `class`, `value`, `style` 等）中，您可以直接编写占位符 `{ }` 来嵌入数据。
-
-- **利用示例**：
-
-    ```html
-    <img src="{article.thumbnail}" alt="{article.title}">
-    <a href="/post/{article.id}" class="btn {article.category}">查看详情</a>
-    <div style="background-color: {user.color}; height: {progress}%;"></div>
-    ```
-
-- **限制**：为避免与 JavaScript 语法冲突，**无法在事件句柄属性（`onclick`, `onchange` 等）中使用占位符。** 请参阅下文“避免占位符冲突”。
-
-#### 避免占位符冲突与限制
-
-Bracify 的占位符 `{ }` 可在 HTML 属性和文本节点中使用，但为了防止与 JavaScript 或 CSS 代码冲突，在以下位置**已禁用展开**：
-
-- **不执行展开的位置**：
-  - `<script>` 标签内部
-  - `<style>` 标签内部
-  - 事件句柄属性（`onclick`, `onmouseover`, `onsubmit` 等所有以 `on` 开头的属性）
-
-##### 推荐模式：在事件句柄中使用数据
-
-若需在事件句柄 (JavaScript) 中使用动态数据，建议**将数据嵌入 `data-` 属性，并经由 `this.dataset` 进行引用**。
-
-```html
-<!-- 不推荐（无法运行） -->
-<button onclick="alert('ID: {article.id}')">显示</button>
-
-<!-- 推荐模式 -->
-<button data-id="{article.id}" onclick="alert('ID: ' + this.dataset.id)">显示</button>
-```
-
-通过此方法，可使 Bracify 模板引擎与浏览器标准的 JavaScript 语法安全共存。
-
-#### 表单元素自动绑定
-
-若在 `input`, `select`, `textarea` 属性中指定了 `name`，`Bracify` 将从合适的数据源自动绑定（展示）数值。用户无需手动指定 `value` 或占位符。
-
-- **自动绑定的优先级**：
-    1. **当前数据上下文**：从由 `data-t-scope` 等指定的数据属性中设置数值。
-    2. **URL 参数 (`_sys.query`)**：若查询参数中存在与 `name` 同名的项目，则设置该数值。若同一参数重复出现（`?tag=a&tag=b`），则使用最后一个值（SSR 与 CSR 一致）。
-
-- **通过 `data-t-scope` 指定数据**：
-    在容器元素（`div`, `form` 等）上编写 `data-t-scope="article"`，可以指定该元素内的“默认数据源”。
-
-- **示例（搜索表单）**：
-
-    ```html
-    <!-- 若 URL 为 ?title=Web，则自动设置 value="Web" -->
-    <input type="text" name="title" placeholder="搜索文章...">
-    ```
-
-- **示例（编辑表单）**：
-
-    ```html
-    <!-- article 数据的 title, content 将自动填充至对应字段 -->
-    <form data-t-scope="article" method="POST" action="/_sys/data/article.json?_method=PUT">
-      <input type="hidden" name="id">
-      <input type="text" name="title">
-      <textarea name="content"></textarea>
-    </form>
-    ```
-
-- **选择框自动选中**：
-    与绑定值一致的 `value` 所在的 `<option>` 元素将自动获得 `selected` 属性。`data-t-list` 生成的 `<option>` 同样适用。
-
-#### `data-t-if`
-
-根据条件显示或隐藏元素。当数据值存在（`true`, 非 null, 非 0, 非空字符串）时显示元素。
-
-- **指定方法**：指定要判定的数据项目名称。
-- **示例**：
-
-    ```html
-    <!-- 仅当 user.is_login 为 true 时显示 -->
-    <div data-t-if="user.is_login">
-      欢迎，<span>{user.name}</span>!
-    </div>
-    ```
-
-    ↓ **运行结果（`user.is_login` 为 true 时）**
-
-    ```html
-    <div>
-      欢迎，<span>张三</span>!
-    </div>
-    ```
-
-    ↓ **运行结果（`user.is_login` 为 false 时）**
-
-    ```html
-    <!-- 元素本身不会被输出 -->
-    ```
-
-    **提示（否定条件 / Else）**：
-    通过在开头添加 `!`，可以指定“值不存在 (false)”时的条件。
-
-    ```html
-    <!-- 仅当 user.is_login 为 false 时显示 -->
-    <div data-t-if="!user.is_login">
-      <a href="/login.html">请登录</a>
-    </div>
-    ```
-
-    **比较运算与逻辑运算 (Data API 风格)**：
-    您可以使用与 Data API 查询参数相同的语法来指定更详细的条件。
-
-    - **比较运算符**：使用与 [数据访问 API 运算符](#运算符) 相同的记法（`=`, `:ne=`, `:gt=` 等）。
-    - **逻辑运算 (AND/OR)**：空格分隔表示 **AND**，值中的逗号分隔表示 **OR**。
-    - **使用变量**：通过用 `{ }` 包围，可以在条件中使用数据的值。在 `{ }` 中也可以使用[四则运算](#数据展示通用占位符)（例如：`matched._length:gt={_sys.query._offset + 10}`）。
-
-    ```html
-    <!-- 状态为已发布 (status == 'published') -->
-    <span data-t-if="status=published">已发布</span>
-
-    <!-- 价格为 1000 或以上 且 库存大于 0 -->
-    <div data-t-if="price:gte=1000 stock:gt=0">
-      热门商品 (有货)
-    </div>
-
-    <!-- 角色为 admin 或 editor -->
-    <button data-t-if="role=admin,editor">编辑</button>
-
-    <!-- 用户 ID 与文章作者 ID 一致 -->
-    <div data-t-if="user.id={post.author_id}">
-      <a href="/edit">编辑文章</a>
-    </div>
-
-    <!-- 仅当存在下一页时显示“下一页”。allArticles 是不带 _limit / _offset 单独加载的数据源，用于计数（件数 > 当前偏移量 + 10） -->
-    <a data-t-if="allArticles._length:gt={_sys.query._offset + 10}" href="?_offset={_sys.query._offset + 10}">下一页</a>
-    ```
-
-#### `data-t-redirect`
-
-指定处理（如表单提交）完成后页面跳转的目标 URL。
-
-- **指定方法**：指定跳转目标的相对路径或绝对路径。
-- **目标标签**：`form` 标签。
-- **行为**：服务端处理完成后，以 302 状态码跳转至指定路径。未指定时刷新当前页面。
-- **目标限制**：相对路径以包含表单的页面为基准解析。仅允许同源目标，其他目标将回退到表单所在页面或 `/`。
-
-### 表单与数据保存 (Postback)
-
-可以使用标准的 `<form>` 标签进行数据的创建和更新。Bracify 采用浏览器标准的 **Postback（伴随页面跳转的提交）**，而非 JavaScript 异步提交。
-
-- **自动处理**：在 `action` 属性设置目标（如 `/_sys/data/xxxxx.json`），并使用 `method="POST"` 发送（更新时使用 `action="/_sys/data/xxxxx.json?_method=PUT"` 加 `<input type="hidden" name="id">`；浏览器的 `<form>` 无法发送 `PUT`）。
-- **重定向 (PRG 模式)**：服务端保存后，自动跳转至 `data-t-redirect` 指定的 URL 或原页面。防止表单重复提交。
-- **数据绑定（初值）**：在 `<form>` 上指定 `data-t-scope`，可将现有数据设置为输入初值。
-- **输入项**：`<input>` 或 `<textarea>` 的 `name` 属性即为数据的项目名。
-- **服务端校验**：表单中写的约束（`required` / `maxlength` / `minlength` / `min` / `max` / `pattern` / `type="email"` / `type="date"` / `select` 与 `radio` 的选项）在服务端同样会被强制执行（见表单处理中的“服务端校验”）。失败时不会保存，并带着 `?error=消息` 跳转回 `data-t-redirect`（或来源页面）；可用 `{_sys.query.error}` 显示。
-- **仅限服务器模式**：数据仅在服务端（SSR）保存。本地开发模式（`file://`）没有写入机制，`POST` / `PUT` / `DELETE` 表单不会被保存（[#56](https://github.com/tri-comma/Bracify/issues/56) 中讨论支持方案）。
-
-### 处理过滤器 (Pipes)
-
-展示数据时，可使用处理过滤器（管道）`|`。
-
-#### 基本语法
-
-```html
-<p>更新日期：{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }</p>
-<span>价格：{ product.price | currency }</span>
-<span>状态：{ article.is_published | ternary: '已发布', '草稿' }</span>
-<span>昵称：{ user.nickname | default: '匿名' }</span>
-<span>摘要：{ article.summary | truncate: 10 | uppercase }</span>
-```
-
-↓ **运行结果**（当 `article.summary` 为 `"Bracify is simple"` 时）
-
-```html
-<p>更新日期：2025/12/10 14:05</p>
-<span>价格：￥1,500</span>
-<span>状态：草稿</span>
-<span>昵称：匿名</span>
-<span>摘要：BRACIFY...</span>
-```
-
-#### 过滤器语法
-
-```text
-{ 数据名.项目名 | 过滤器名 }
-{ 数据名.项目名 | 过滤器名: 参数 }
-{ 数据名.项目名 | 过滤器名: '参数1', '参数2' }
-{ 数据名.项目名 | 过滤器名1 | 过滤器名2: '参数' }   ← 链式调用（从左到右依次应用）
-```
-
-- 过滤器名后第一个 `:` 之后的部分为参数。多个参数用 `,` 分隔。
-- 参数可以用 `'...'` 或 `"..."` 括起来。引号内的 `:` `,` `|` 不会被当作分隔符。数字参数无需加引号（例如 `truncate: 20`）。
-- **参数中不能包含 `}`**（会被解释为占位符的结束）。
-- 可以用 `|` 连接多个过滤器。前一个过滤器的输出作为下一个过滤器的输入（从左到右依次应用）。
-- 过滤器也可应用于算术表达式的结果：`{ item.price * 1.1 | currency }`
-
-#### 关于应用时机的说明
-
-过滤器仅在目标数据加载完成后才会被应用。当数据尚未加载时，`{ ... }` 占位符会原样保留在页面上，加载完成后会被替换为正确的值。为了利用这一特性，请尽量将 `data-t-source` 放在使用位置之前（推荐：放在 `<head>` 中的 `<link data-t-source>`）。
-
-### 标准过滤器 (内置管道函数)
-
-#### `date`
-
-按指定格式输出日期数据。
-
-- **语法**：`{ 项目名 | date: '格式' }`
-- **格式指定**：
-  - `yyyy`：4 位年份
-  - `mm`：2 位月份
-  - `dd`：2 位日期
-  - `HH`：2 位小时（24 小时制）
-  - `MM`：2 位分钟
-  - `SS`：2 位秒
-- **注意**：表示月份的 `mm`（小写）与表示分钟的 `MM`（大写）是区分大小写的。
-- 示例：`{ article.updated_at | date: 'yyyy/mm/dd HH:MM' }` → `2025/12/10 14:05`
-
-#### `number`
-
-按“三位千分位”格式输出数字。
-
-- **语法**：`{ 字段名 | number }`
-
-#### `currency`
-
-将数字格式化为货币形式输出。
-
-- **语法**：`{ 字段名 | currency }` / `{ 字段名 | currency: '货币代码' }`
-- 货币代码遵循 ISO 4217 标准（如 `USD`、`EUR`）。省略时使用 `JPY`。
-- 示例：`{ product.price | currency }` → `￥1,500`
-- 示例：`{ product.price | currency: 'USD' }` → `$1,500.00`
-
-#### `uppercase` / `lowercase`
-
-将字符串转换为大写或小写。
-
-- **语法**：`{ 字段名 | uppercase }` / `{ 字段名 | lowercase }`
-- 示例：`{ user.code | uppercase }` → `ABC-001`
-
-#### `truncate`
-
-将字符串截断为指定长度，若发生截断则在末尾加上 `...`。
-
-- **语法**：`{ 字段名 | truncate: 长度 }`
-- 截断后的字符串（包含 `...`）会控制在指定长度内（例如 `truncate: 10` 时，`Bracify is simple` → `Bracify...`（10 个字符））。
-- 指定长度为 3 或以下时不会附加 `...`，只输出从开头起对应长度的字符。
-- 若值本身长度未超过指定长度，则原样输出。
-
-#### `default`
-
-指定当值为空（`undefined`、`null` 或空字符串）时显示的替代值。
-
-- **语法**：`{ 字段名 | default: '替代值' }`
-- `0` 和 `false` 不视为“空”，会原样输出。
-- 示例：`{ user.nickname | default: '匿名' }`
-
-#### `ternary`
-
-根据布尔值切换显示的字符串。
-
-- **语法**：`{ 字段名 | ternary: '为真时的值', '为假时的值' }`
-- 真假判定与 `data-t-if` 相同（`false`、`0`、`""`、`null`、`undefined`、空数组、空对象为假）。请注意字符串 `"false"` 和 `"0"` 会被判定为真。
-- 省略为假时的值时，输出空字符串。
-- 示例：`{ article.is_published | ternary: '已发布', '草稿' }`
-
-#### `json`
-
-输出格式化后的 JSON 字符串。
-
-- **语法**：`{ 字段名 | json }`
-
-## 数据保存处理 (Form Handler)
-
-Bracify 不对外提供数据 API。`/_sys` 下的所有资源都被隐藏，仅以下端点作为表单提交的句柄。
-
-```text
-POST /_sys/data/{entity}.json
-```
-
-无法从浏览器通过 `GET` 直接访问此端点（403 Forbidden）。仅可用作表单 `action`。
-
-#### 数据操作
-虽然通过 HTTP 请求进行，但响应始终是“跳转至页面”。
-
-| 方法 | 行为 | 说明 |
-| :--- | :--- | :--- |
-| `POST` | 创建 | 创建新数据。若指定的 `id` 已存在则拒绝而不会覆盖（覆盖只能使用 `PUT`）。 |
-| `PUT` | 更新 | 用提交的数据**整体替换**由 `id` 指定的记录（若该 `id` 不存在则创建记录）。 |
-| `DELETE`| 删除 | 删除指定数据。 |
-
-标准 `<form>` 只能发送 `GET` / `POST`，因此在查询字符串中带有 `_method=PUT` 或 `_method=DELETE` 的 `POST` 会按该方法处理（例如 `<form method="POST" action="/_sys/data/article.json?id=1&_method=DELETE">`）。
-
-`PUT` 必须指定目标 `id`（查询中的 `?id=` 或表单中的 `id` 项），且不是部分更新。表单中未包含的项目会从保存后的记录中**消失**。想保留现有值的项目，请作为通过 `data-t-scope` 设置了初值的输入框（必要时使用 `type="hidden"`）包含在表单中。
-
-`DELETE` 至少需要一个数据过滤条件（如 `id`）。没有过滤条件的 `DELETE`（包括只带 `_limit` 等参数的情况）会以 400 拒绝，以避免清空整个实体。
-
-#### 服务端校验
-
-`POST` / `PUT` 在保存前，会按照由项目 HTML 表单推导出的约束校验请求体（包括 `a.b` 形式的嵌套字段）。绕过浏览器校验的请求（如 `curl`）也受同样约束。
-
-- **校验的约束**：`required`、`maxlength`、`minlength`、`type="number"` / `type="range"` 的 `min` / `max`、`pattern`（整体匹配；含嵌套量词的危险模式会被跳过，超过 1000 个字符的值会被拒绝）、`type="email"`、`type="date"`（`YYYY-MM-DD`），以及 `<select>` 与 `radio` 的选项。
-- **哪些表单会被计入**：`action` 为该实体的 `_sys/data/<entity>.json` 且 `method` 为 `POST`（或 `PUT`）的表单。通过 `data-t-include` 引入的部件中的字段也包含在内。`GET` 表单（如搜索）和 `_method=DELETE` 的表单会被忽略。 项目中的所有 HTML 文件都会被计入（`_sys`、以点开头的文件夹和 `node_modules` 除外），因此遗留的旧副本可能使校验变宽松。 `data-t-include` 只会在 `<form>` 元素内部展开，因此由包裹页面插槽的表单所在布局提供的字段既不校验也不转换类型。没有此类表单的实体，以及没有任何表单声明的字段，都不会被校验。若 `<option>` / `radio` 的值由 `{ }` 动态生成，则不校验选项。
-- **多个表单写入同一实体**：以最宽松的声明为准，避免表单互相拒绝对方的合法提交。只有当所有写入表单都包含某字段且都将其设为必填时，该字段才是 `required`；其他约束只有在声明该字段的所有表单中都被违反时才会拒绝（任一表单无约束即视为无约束）。
-- **不校验的内容**：`disabled` 控件、`type="hidden"` 的约束、位于 `data-t-if` 内部或由 `data-t-list` 重复生成的控件的 `required`（它们可能不会被渲染；由 `data-t-list` 生成的 `radio` 组仍会校验 `required`），以及同名复选框组的 `required`（单个复选框的 `required` 会被校验）。每个字段只接受一个值：除 `<select multiple>` 和同名复选框组外，数组和对象会被拒绝。`type="email" multiple` 会按逗号分隔的每个地址分别校验。
-- **失败时**：不会保存任何内容。表单提交（请求 HTML 的请求）会以 303 跳转回 `data-t-redirect`（没有则为 `Referer`）并附带 `?error=`；JSON 客户端会收到 `400` 和 `{ "error": "..." }`。页面中可用 `{_sys.query.error}` 显示该消息。
-- **重复 `id`**：`POST` 指定了已存在的 `id`（请求体中的 `id` 或 `?id=`）时同样被拒绝（JSON 返回 `409`）。`id` 既不是字符串也不是数字时，`POST` 和 `PUT` 都会以 400 拒绝。更新已有记录请使用 `PUT`（表单中为 `action="...?_method=PUT"` 加 `<input type="hidden" name="id">`）。
-- `DELETE` 不做校验。HTML 的修改无需重启即可生效。
-
-```html
-<form method="POST" action="/_sys/data/books.json" data-t-redirect="/books.html">
-  <p data-t-if="_sys.query.error">{_sys.query.error}</p>
-  <input name="title" required maxlength="80">
-  <button type="submit">创建</button>
-</form>
-```
-
-#### 保存的值类型
-
-通过校验的 `POST` / `PUT` 的值，会先按表单输入类型转换后再保存（Studio 的记录创建/更新遵循相同规则）。表单的值本质上都是字符串，若原样保存，`_sort` 会按文本顺序排序，`"false"` 在 `data-t-if` 中也会被当作真。
-
-| 输入 | 表单提交 | JSON |
-| :--- | :--- | :--- |
-| `type="number"` / `"range"` | 数字字符串转换为数字（`" 9 "` -> `9`）。空字符串或仅含空白则不保存该字段。`0x10`、`1e999`、`NaN`、`1,5`、`9px` 等会被拒绝；超出 ±2^53（`Number.MAX_SAFE_INTEGER`）的整数也会因过大而被拒绝 | 有限数字原样保留；数字字符串会转换；布尔值和数组会被拒绝。`min` / `max` 对转换后的数字生效 |
-| 单个 `checkbox` | 只要提交（无论 `value` 是什么）即为 `true`，未提交为 `false` | 布尔值原样保留。字符串仅限 `"true"`、`"on"`、该 `checkbox` 自身的 `value`（均为 `true`）和 `"false"`（`false`），不区分大小写（与声明的 `value` 比较时区分大小写）；其他字符串（`"no"`、`"0"` 等）和数字会被拒绝。必填的 `checkbox` 不接受 `false`。空字符串视为未提交 |
-| `checkbox` 组（同名多个）和 `<select multiple>` | 始终是字符串数组（只有一个值也是 `["x"]`）；什么都没选则不保存该字段 | 字符串数组（单个字符串会被包成数组） |
-| `text`、`textarea`、`email`、`select`、`radio`、`date` 等 | 保持字符串 | 仅限字符串；数字和布尔值会被拒绝（`false` / `0` 不能再满足 `required`）。但 `radio`、`select`、`hidden` 也接受有限数字并原样保存（用于 `author_id: 1` 这类关联 ID）；布尔值会被拒绝 |
-
-- **未勾选变为 `false` 的条件**：仅当该实体的**所有**写入表单都包含该 `checkbox` 时。只要有一个表单没有它，未提交的字段就不保存（以免覆盖该表单的数据）。`PUT` 同样如此：未勾选会被替换为 `false`。
-- **不转换的情况**：各表单间类型不一致的字段（例如一个表单是 `type="number"`，另一个是 `type="text"`）、没有任何表单声明的字段、`id`（始终为字符串）以及没有写入表单的实体，均按提交的原样保存。由包裹页面插槽的表单所在布局提供的字段（`data-t-include` 只会在 `<form>` 元素内部展开）既不校验也不转换类型。
-- **点号写法**：若声明了 `meta.isbn` 这样的字段，将其父级（`meta`）以非对象（字符串、数字、布尔值、数组或 `null`）提交会被拒绝，以免绕过子字段的约束（`meta=str&meta.isbn=x` 同样如此）。
-- `NaN` / `Infinity` 永远不会被保存。校验或类型检查失败时，不会保存任何内容。
-- **不迁移已有数据**：已作为字符串保存的值（`"9"`、`"on"`）保持原样，在重新保存之前仍按文本排序和比较。
-
-> **关于 File API**：旧版本中记载的文件管理端点（`/_sys/file/{filename}.{ext}` 的 GET/POST/PUT/DELETE）**尚未实现**。图片等静态文件请放在项目内，并通过普通 URL（如 `/images/logo.png`）引用。
-
-### 数据获取的条件指定
-
-通过附加在 `data-t-source` 的 `href` 上的查询参数来筛选要获取的数据（`DELETE` 的筛选条件也使用相同的写法）。
-
-#### 参数
-
-- **`{entity}`**：数据类型（实体）。例如：`article`, `user`
-- **`{prop}`**：过滤用的属性名
-- **`{val}`**：指定的值
-
-#### 运算符
-
-| 运算符 | 含义 | 书写示例 | 说明 |
-| :--- | :--- | :--- | :--- |
-| (无) | 等于 | `?status=active` | 状态为 `active` |
-| `:ne` | 不等于 | `?status:ne=draft` | 状态**不等于** `draft` |
-| `:gt` | 大于 | `?price:gt=1000` | 价格**高于** 1000 |
-| `:gte` | 大于等于 | `?price:gte=1000` | 价格 1000 **或以上** |
-| `:lt` | 小于 | `?stock:lt=10` | 库存**少于** 10 |
-| `:lte` | 小于等于 | `?stock:lte=10` | 库存 10 **或以下** |
-
-#### 通配符（`*`）
-
-在不带运算符（等于）的条件中，如果值包含 `*`，则变为 `*` 匹配任意字符串的模式搜索（相当于 SQL 的 `LIKE`）。
-
-| 书写示例 | 匹配对象 |
-| :--- | :--- |
-| `?title=Web*` | 以 `Web` 开头的标题 |
-| `?title=*入门*` | 包含 `入门` 的标题 |
-
-- 仅在服务器模式（Data API）下有效。本地开发模式仅支持完全一致，`*` 也会作为普通字符直接比较。
-- 在 `id` 条件和 `DELETE` 的筛选条件中，`*` 被视为普通字符（不会变为模式搜索）。
-- **注意**：像 `?title={?q}` 这样将用户输入直接作为条件时，用户可以指定模式搜索，例如 `q=*` 会匹配所有具有该字段的记录。此外，当值包含 `*` 时，与 SQL 的 `LIKE` 相同，`_` 也会匹配任意单个字符，`%` 匹配任意字符串，且英文字母不区分大小写。
-
-### 系统保留变量 (`_sys`)
-
-| 变量名 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `_sys.query` | GET 查询参数。获取 URL 中的 `?id=123` 等数值。 | `{_sys.query.id}` |
-
-#### 缩写 `{?xxx}`
-
-`{?xxx}` 是 `{_sys.query.xxx}` 的缩写，不仅限于 `data-t-source` 的 `href`，在正文文本、属性值、`data-t-if`、`data-t-include` 等所有可使用占位符的位置都可以使用。管道和四则运算同样适用。
-
-```html
-<!-- URL 为 ?q=bracify 时 -->
-<p>“{?q}”的搜索结果</p>                   <!-- “bracify”的搜索结果 -->
-<p>{?q | uppercase}</p>                    <!-- BRACIFY -->
-<a href="books.html?q={?q | default: ''}&_sort=title">按标题排序</a>
-```
-
-- 参数不存在时为空字符串。
-- **关于 URL 编码**：嵌入 `data-t-source` 的 `href` 查询部分的值会自动进行 URL 编码，但在普通属性（如 `<a href>`）中只做 HTML 转义，不做 URL 编码。如果将可能包含 `&` 或 `=` 的值放入链接的查询中，可能会被解释为其他参数。
-- 不指定值的 `{?}`（自动绑定）只能在 `data-t-source` 的 `href` 内使用（见下文）。
-
-#### 在 `data-t-source` 中利用（动态参数绑定）
-
-| 写法 | 含义 | 示例 |
-| :--- | :--- | :--- |
-| `{_sys.query.xxx}` | 嵌入指定项（标准） | `?id={_sys.query.id}` |
-| `{?}` | **自动绑定**。从 URL 中获取同名数值 | `?title={?}` |
-| `{?xxx}` | **缩写**。等同于 `_sys.query.xxx` | `?title={?q}` |
-
-#### 示例
-
-```html
-<!-- URL 为 ?title=Web&_limit=10 时 -->
-<link data-t-source="articles" href="/_sys/data/articles.json?title={?}&_limit={?}&_sort=created_at">
-```
-
-### 详细数据信息（系统属性）
-
-| 属性名 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `_length` | 显示列表数据件数或字符串长度。 | `{articles._length} 篇文章` |
-
-#### 控制参数（排序·分页）
-
-| 参数 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| `_limit` | 最大获取件数 | `?_limit=20` |
-| `_offset` | 跳过的件数（用于分页） | `?_offset=20` |
-| `_sort` | 排序键名 | `?_sort=created_at` |
-| `_order` | 顺序 (`asc`: 升序, `desc`: 降序) | `?_order=desc` |
-
-#### 示例
-
-```html
-<link data-t-source="articles" href="/_sys/data/articles.json?title={_sys.query.title}&_sort={_sys.query._sort}&_order={_sys.query._order}&_limit={_sys.query._limit}">
-```
-
-#### 目录配置示例
-
-```text
-project/
-├── index.html
-├── _sys/
-│   └── data/
-│       ├── article.json
-│       ├── user.json
-│       └── product.json
-└── parts/
-    ├── header.html
-    └── footer.html
-```
-
-### 本地开发模式 (True Zero Server Mode)
-
-无需启动服务器，直接在浏览器中打开本地文件 (`file://`) 的模式。
-
-#### 通过 File System Access API 实现无需构建
-
-1. **选择项目文件夹**：初始化时弹出文件夹选择，选取后浏览器可直接操作文件。
-2. **无需构建的预览**：由于浏览器直接读取 `.json` 和 `.html`，保存文件后刷新或跳转即可立即反映更改。
-
-#### 重置文件夹访问权限
-
-所选文件夹的句柄保存在浏览器的 IndexedDB 中，下次会自动恢复。若要切换到其他项目或重新授权，可通过以下任一方式重置（仅限 `file://` 模式）。
-
-- **Disconnect Folder 按钮**：连接文件夹期间，引擎会在屏幕右下角显示一个小的 "Disconnect Folder" 按钮。点击后会丢弃已保存的句柄并重新显示文件夹选择遮罩。
-- **JavaScript API**：`Bracify.resetRootAccess()`（返回 Promise）。删除 IndexedDB 中的句柄，丢弃内存中的句柄，并重新显示文件夹选择遮罩。
-- **URL 参数**：带 `?bracify_reset=1` 打开时，不再恢复已保存的句柄而是将其丢弃，并显示遮罩。该参数会通过 `history.replaceState` 自动从 URL 中移除。
-
-SSR（服务器）输出中不包含任何此类 UI。
-
-#### 页面跳转与 SPA 路由
-
-如前文“[页面跳转与 SPA 路由 (Unified SPA)](#3-页面跳转与-spa-路由-unified-spa)”所述，CSR 模式下的所有跳转均由 SPA 处理。这解决了 `file://` 环境下“重载导致文件夹访问权限丢失”的核心难题。
-
-#### 不支持环境的限制
-
-若浏览器不支持 API 或未选择文件夹，将以限制性的“只读模拟模式”运行。
-
-#### 筛选与控制相关（通用规范）
-
-- **筛选限制**：仅限精确匹配，不支持 `:gt`, `:lt` 等。
-  - **空 `id` 例外**：只有键为 `id` 的过滤条件例外：当其值为空或为未解析的占位符（如 `{?}`）时不会被忽略，而是不返回任何记录（因此未指定 id 时，`?id={?id}&_limit=1` 显示“未找到”，而不是第一条记录）。
-- **控制参数**：`_limit`, `_offset`, `_sort`, `_order` 仍可简易运行。
-
-#### JavaScript 行为
-
-- **作用域隔离**：Bracify 自动使用 IIFE 包装页面脚本，防止变量冲突。
-- **防止重复执行**：已加载的 `<head>` 脚本不会重复执行。
-- **全局变量维持**：`window` 对象上的数据在跳转后仍维持。
-
-## 数据库配置 (Database Configuration)
-
-默认使用内置 SQLite (`_sys/data.db`)，可配置连接 MySQL/PostgreSQL。
-
-### 工作原理
-
-启动时引用项目内的 `_sys/data.db` 检查配置。连接设置存储在 `config` 表中，确保凭据不暴露在源码库。
-
-### 默认行为
-
-若无配置，自动使用内置 SQLite。
-
-### 配置方法
-
-通过 GUI 或直接向 `config` 表插入连接信息的 JSON 数组。
-
-```json
-[
-  {
-    "target_entity": "users",
-    "engine": "mysql",
-    "option": { "host": "localhost", "port": 3306, "user": "admin", "password": "${DB_PASS}", "database": "app_db" }
-  }
-]
-```
-
-#### 路由优先级
-
-根据实体名按“精确匹配 > 通配符最长匹配 > 定义顺序”自动选择。
-
-## 部署 (Deployment)
-
-- **Serverless**：适配 Vercel, Netlify 等。
-- **Zip Upload**：通过 GUI 打包为 Zip，拖拽至各服务仪表盘即可。
-
-## 开发流程
-
-1. 安装 GUI 应用。
-2. 创建·选择文件夹。
-3. 编辑 HTML/部品，实时预览。
-4. 打包并发布。
-
-## 安全性
-
-- **自动转义**：防止 XSS。
-- **安全数据注入**：防止脚本标签干扰。
-- **URL 清洗**：防止恶意协议。
-- **下划线保护 (仅限 SSR)**：
-  作为服务器运行时，拒绝所有对根目录下以下划线 (`_`) 开头的资源（如 `data.db`, `_parts/`）的直接外部访问 (403 Forbidden)。
-  * 注意：官方表单端点（如 `POST /_sys/data/*.json`）不受此限。
-- **跨源保护 (Data API)**：对 `/_sys/data/*.json` 的 `POST` / `PUT` / `DELETE` 请求（包括 `?_method=` 覆盖），若 `Origin` 头与 `Host` 不一致，将被 403 拒绝（没有 `Origin` 头的普通表单提交不受影响）。
+### Studio 数据管理与脚手架
+
+Studio 会从 HTML 中自动收集实体和 Schema，支持记录的列表、新增、编辑、删除，并生成列表页与编辑页的脚手架。
+
+## 当前限制
+
+Bracify 尚处于早期阶段，请在了解以下几点的前提下使用。
+
+- **本地模式是只读的。** 在 `file://` 下无法保存表单（[#56](https://github.com/tri-comma/Bracify/issues/56)）。
+- **尚无认证功能。** 在公开服务器上，任何能访问 Data API 的人都可以写入数据（[#106](https://github.com/tri-comma/Bracify/issues/106)）。公开部署时请务必谨慎。
+- **暂不支持文件上传**（[#107](https://github.com/tri-comma/Bracify/issues/107)）。
+- **没有一键部署功能。** 可将静态构建产物放到静态托管，或在可运行 Node.js 的主机上运行服务器模式（[#105](https://github.com/tri-comma/Bracify/issues/105)）。
+
+## 文档
+
+详细规范位于 `docs/`。参考文档提供英文和日文版本。
+
+| 文件 | 内容 |
+| --- | --- |
+| [`docs/en/README.md`](./docs/en/README.md) | 文档目录 |
+| [`docs/en/studio.md`](./docs/en/studio.md) | Bracify Studio（启动器、管理仪表盘、数据管理、脚手架） |
+| [`docs/en/project-structure.md`](./docs/en/project-structure.md) | 项目结构、渲染方式（SSR / CSR / SPA）、客户端引擎的加载 |
+| [`docs/en/attributes.md`](./docs/en/attributes.md) | 自定义属性（`data-t-include`、`data-t-source`、`data-t-list`、`data-t-if` 等）、表单与数据保存 |
+| [`docs/en/pipes.md`](./docs/en/pipes.md) | 管道（过滤器）与内置过滤器 |
+| [`docs/en/data-api.md`](./docs/en/data-api.md) | Data API（数据操作、服务端校验、值的类型）与数据查询条件 |
+| [`docs/en/system-variables.md`](./docs/en/system-variables.md) | `_sys` 保留变量与系统属性 |
+| [`docs/en/local-mode.md`](./docs/en/local-mode.md) | 本地开发模式（`file://`） |
+| [`docs/en/database.md`](./docs/en/database.md) | 数据库配置与路由优先级 |
+| [`docs/en/deployment.md`](./docs/en/deployment.md) | 构建、部署与开发流程 |
+| [`docs/en/security.md`](./docs/en/security.md) | 安全 |
 
 ## 示例 (Examples)
 
-[`examples/`](./examples/) 文件夹中提供了实用示例应用 "Bracify Books"（藏书 / 阅读记录应用），涵盖了本 README 的参考功能。同一份文件无需修改即可在服务器模式（SSR + SQLite）和本地 `file://` 开发模式下运行。运行方法及“功能 → 文件”对照表请参阅 [`examples/README.md`](./examples/README.md)。
+[`examples/`](./examples/) 文件夹中提供了实用示例应用 "Bracify Books"（藏书 / 阅读记录应用），使用了文档中的主要功能。同一份文件无需修改即可在服务器模式（SSR + SQLite）和本地 `file://` 开发模式下运行。运行方法及“功能 → 文件”对照表请参阅 [`examples/README.md`](./examples/README.md)。
 
 ## 贡献 (Contributing)
 

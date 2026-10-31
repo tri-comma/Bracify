@@ -1,7 +1,7 @@
 # Bracify Books (examples/bracify-books)
 
 A small library / reading-log app written with **HTML only** (no JavaScript, no build step). It is meant as a
-reference for the features documented in the top-level [README](../README.md): the same files run both in
+reference for the features documented in [docs/en](../docs/en/README.md) (Japanese: [docs/ja](../docs/ja/README.md)): the same files run both in
 **server mode** (SSR + Data API + SQLite) and in **local mode** (`file://`, True Zero Server).
 
 Data: books, authors, categories, reviews and a `site` settings object, all seeded from `_sys/data/*.json`.
@@ -31,7 +31,7 @@ Local mode (`file://`, CSR) reads the seed JSON directly and has no persistent D
    reset the folder access as well.
 
 Local mode is read-only: the browser engine has no write path, so the forms (create / edit / delete / review) only
-work in server mode. Local mode also supports exact-match filters only (no `:gt`, `:lt`, ...), see the README.
+work in server mode. Local mode also supports exact-match filters only (no `:gt`, `:lt`, ...), see [Local Development Mode](../docs/en/local-mode.md).
 A browser without the File System Access API gets the read-only mock mode (layout includes may be missing there).
 
 The pages are all in the app root and use relative links (`book.html?id=1`) so they behave the same in both modes.
@@ -54,12 +54,12 @@ npm test                # engine tests, then the examples tests
 | `tests/local.test.js` | local | Runs the engine the pages load (`bracify.js`, a copy pinned to `engine/lib/engine.cjs` by the identity test) in jsdom on a `file://` URL with a File System Access API directory handle backed by the real folder (temp copy). Covers folder connect / disconnect / reset, rendering, SPA navigation (links, pager, GET search form, history), mock mode, and compares the rendered output of 30 page/query combinations with the real server's output. |
 | `tests/helpers.cjs`, `tests/local-helpers.cjs` | both | Temp-copy, server start, and jsdom + directory-handle helpers. |
 
-The deployment CLI (`cli/`) is not part of the tests: the README documents deployment as uploading the project folder
-(no build step), so there is nothing to build for this app.
+The static-build CLI (`cli/`) is not part of the tests: the app runs as is in both modes (see [Deployment](../docs/en/deployment.md)),
+so there is nothing to build for this app.
 
 ## Feature to file map
 
-| README feature | Where it is used |
+| Documented feature | Where it is used |
 | --- | --- |
 | `data-t-include` snippet mode | `_parts/header.html`, `_parts/footer.html` (via `_parts/layout.html`), `about.html` (`_parts/about-text.html`), `_parts/book-fields.html` and `_parts/author-fields.html` (form fields) |
 | `data-t-include` layout mode + `data-t-content` | every page (`<body data-t-include="_parts/layout.html">`, slots `page-title` / `main-body`) |
@@ -99,7 +99,7 @@ against the page holding the form, #45). They are still valid syntax.
 
 * **Local mode cannot save forms.** There is no engine code that handles `POST` / `PUT` / `DELETE` forms on `file://`
   (#56).
-* **Source operators (`:gt` ...) in `data-t-source` URLs** work on the server only (README: local mode is exact-match only).
+* **Source operators (`:gt` ...) in `data-t-source` URLs** work on the server only (local mode is exact-match only, see [Local Development Mode](../docs/en/local-mode.md)).
   The server previously treated them as part of the field name and could not match numeric / boolean fields at all
   (fixed in the same pull request).
 * **Seed JSON files are imported once per entity**, so later edits to a seed file do not affect an existing `_sys/data.db`; delete `_sys/data.db` to re-seed.
