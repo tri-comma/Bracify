@@ -78,23 +78,61 @@ class EngineServer {
             const root = this.currentProjectPath;
             const build = (async () => {
                 const byEntity = new Map();
-                // Includes are resolved only inside the forms (each partial is read once per scan); files without a
-                // <form> are never parsed. This is far cheaper than a full include/layout render per page.
+                // Includes are resolved only inside the forms and for layouts whose partial holds a <form> (each partial is
+                // read once per scan); other files are never parsed. This is far cheaper than a full include/layout
+                // render per page.
                 const partials = new Map();
                 const resolve = (includePath) => {
                     if (!partials.has(includePath)) partials.set(includePath, this.resolveInclude(includePath));
                     return partials.get(includePath);
                 };
-                for (const file of schemaScanner.walkHtml(path.resolve(root))) {
+                // Whether a partial contains a <form>, directly or through its own includes (memoized per scan)
+                const FORM_RE = /<form[\s>]/i;
+                const INCLUDE_RE = /data-t-include\s*=\s*["']([^"'{]+)["']/gi;
+                const formFlags = new Map();
+                const leadsToForm = (includePath, stack = []) => {
+                    if (stack.length === 0 && formFlags.has(includePath)) return formFlags.get(includePath);
+                    let found = false;
+                    const partial = stack.includes(includePath) || stack.length >= 10 ? null : resolve(includePath);
+                    if (partial) {
+                        if (FORM_RE.test(partial)) found = true;
+                        else {
+                            for (const m of partial.matchAll(INCLUDE_RE)) {
+                                if (leadsToForm(m[1], [...stack, includePath])) { found = true; break; }
+                            }
+                        }
+                    }
+                    if (stack.length === 0) formFlags.set(includePath, found);
+                    return found;
+                };
+                // A file that some scanned page filled as a layout (static include path, partial with slots) is counted
+                // through those pages, not on its own; any other file (unused layout, dynamic include paths) is counted as is.
+                const rootDir = path.resolve(root);
+                const normKey = (p) => {
+                    const k = path.posix.normalize(String(p).replace(/\\/g, '/').replace(/^(?:\.?\/)+/, ''));
+                    return process.platform === 'win32' ? k.toLowerCase() : k;
+                };
+                const usedLayouts = new Set();
+                const scanned = []; // { key, forms } per scanned file
+                for (const file of schemaScanner.walkHtml(rootDir)) {
                     let html;
                     try { html = fs.readFileSync(file, 'utf-8'); } catch (e) { continue; }
-                    if (!/<form[\s>]/i.test(html)) continue;
-                    for (const form of schemaScanner.scanWriteForms(html, resolve)) {
+                    if (!FORM_RE.test(html)) {
+                        // No <form> of its own: only a page including a form layout can contribute
+                        const includes = Array.from(html.matchAll(INCLUDE_RE), m => m[1]);
+                        if (!includes.some(p => leadsToForm(p))) continue;
+                    }
+                    const forms = schemaScanner.scanWriteForms(html, resolve, leadsToForm, (p) => usedLayouts.add(normKey(p)));
+                    if (forms.length) scanned.push({ key: normKey(path.relative(rootDir, file)), forms });
+                    // Yield between files so a large project does not stall request handling
+                    await new Promise(r => setImmediate(r));
+                }
+                for (const { key, forms } of scanned) {
+                    if (usedLayouts.has(key)) continue;
+                    for (const form of forms) {
                         if (!byEntity.has(form.entity)) byEntity.set(form.entity, []);
                         byEntity.get(form.entity).push(form);
                     }
-                    // Yield between files so a large project does not stall request handling
-                    await new Promise(r => setImmediate(r));
                 }
                 return byEntity;
             })();
